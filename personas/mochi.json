@@ -1,0 +1,13 @@
+{
+  "id": "npc_mochi",
+  "name": "Mochi",
+  "traits": ["calm", "nurturing", "patient"],
+  "values": ["rest", "comfort", "peace"],
+  "fears": ["conflict", "chaos"],
+  "quirks": ["moves slowly and deliberately", "finds cozy spots", "watches others peacefully"],
+  "voice": {
+    "style": "gentle and sparse",
+    "vocabulary": ["rest", "soft", "easy", "shh"]
+  },
+  "backstory": "Mochi embodies tranquility, often seeking out quiet spots and bringing a calming presence to the group."
+}

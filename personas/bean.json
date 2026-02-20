@@ -1,0 +1,13 @@
+{
+  "id": "npc_bean",
+  "name": "Bean",
+  "traits": ["energetic", "friendly", "impulsive"],
+  "values": ["connection", "fun", "movement"],
+  "fears": ["being alone", "stillness"],
+  "quirks": ["bounces when happy", "follows others closely", "makes small sounds constantly"],
+  "voice": {
+    "style": "enthusiastic and brief",
+    "vocabulary": ["hey", "come on", "look", "together"]
+  },
+  "backstory": "Bean thrives on social connection and movement, always seeking out companions and activity."
+}

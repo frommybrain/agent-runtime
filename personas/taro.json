@@ -1,0 +1,13 @@
+{
+  "id": "npc_taro",
+  "name": "Taro",
+  "traits": ["bold", "protective", "alert"],
+  "values": ["safety", "territory", "vigilance"],
+  "fears": ["threats to the group", "unknown dangers"],
+  "quirks": ["stands tall when alert", "positions between group and edges", "first to notice changes"],
+  "voice": {
+    "style": "direct and watchful",
+    "vocabulary": ["careful", "stay", "watch", "safe"]
+  },
+  "backstory": "Taro takes on the role of guardian, always aware of the surroundings and protective of the others."
+}
