@@ -1,0 +1,146 @@
+import { readFile, writeFile, mkdir } from 'node:fs/promises'
+import { join } from 'node:path'
+
+// Manages the three persistent knowledge files: memory.md, skills.md, tools.md
+
+export class MemoryFiles {
+    constructor(config, logger) {
+        this.dataDir = config.dataDir
+        this.agentId = config.agentId
+        this.logger = logger
+    }
+
+    async init() {
+        await mkdir(this.dataDir, { recursive: true })
+
+        // Ensure all three files exist with defaults
+        await this._ensureFile('memory.md', `# ${this.agentId}'s Memory\n\n## Relationships\n\n## Learned Facts\n\n## Important Memories\n`)
+        await this._ensureFile('skills.md', `# ${this.agentId}'s Skills\n`)
+        await this._ensureFile('tools.md', `# Available Actions\n\n# Discovered Objects\n`)
+    }
+
+    // --- Read ---
+
+    async readMemory() {
+        return this._read('memory.md')
+    }
+
+    async readSkills() {
+        return this._read('skills.md')
+    }
+
+    async readTools() {
+        return this._read('tools.md')
+    }
+
+    // --- Write (full replace, used by sleep consolidation) ---
+
+    async writeMemory(content) {
+        await this._write('memory.md', content)
+    }
+
+    async writeSkills(content) {
+        await this._write('skills.md', content)
+    }
+
+    async writeTools(content) {
+        await this._write('tools.md', content)
+    }
+
+    // --- Append (used during waking hours for incremental updates) ---
+
+    async appendToMemory(section, content) {
+        const current = await this.readMemory()
+        const marker = `## ${section}`
+        const idx = current.indexOf(marker)
+        if (idx === -1) {
+            // Section doesn't exist, append at end
+            const updated = current.trimEnd() + `\n\n## ${section}\n- ${content}\n`
+            await this.writeMemory(updated)
+        } else {
+            // Insert after section heading
+            const afterMarker = idx + marker.length
+            const updated = current.slice(0, afterMarker) + `\n- ${content}` + current.slice(afterMarker)
+            await this.writeMemory(updated)
+        }
+        this.logger.debug(`Memory appended to [${section}]: ${content}`)
+    }
+
+    // --- Tools auto-update from observations ---
+
+    async updateToolsFromObservation(observation) {
+        const tools = await this.readTools()
+        let changed = false
+        let updated = tools
+
+        // Update available actions
+        if (observation.available_actions) {
+            const actionsSection = this._buildActionsSection(observation.available_actions)
+            if (updated.includes('# Available Actions')) {
+                const start = updated.indexOf('# Available Actions')
+                const nextSection = updated.indexOf('\n# ', start + 1)
+                const end = nextSection === -1 ? undefined : nextSection
+                updated = updated.slice(0, start) + actionsSection + (end ? updated.slice(end) : '')
+            } else {
+                updated = actionsSection + '\n' + updated
+            }
+            changed = true
+        }
+
+        // Update discovered objects
+        const nearbyObjects = observation.nearbyObjects || observation.nearby_objects || []
+        if (nearbyObjects.length > 0) {
+            for (const obj of nearbyObjects) {
+                const objLine = `- ${obj.id}: ${obj.type}${obj.interactive ? ', interactive' : ''}, at (${obj.pos?.x?.toFixed(0) ?? '?'}, ${obj.pos?.z?.toFixed(0) ?? '?'})`
+                if (!updated.includes(obj.id)) {
+                    // Add to Discovered Objects section
+                    const marker = '# Discovered Objects'
+                    const idx = updated.indexOf(marker)
+                    if (idx !== -1) {
+                        const afterMarker = idx + marker.length
+                        updated = updated.slice(0, afterMarker) + '\n' + objLine + updated.slice(afterMarker)
+                    } else {
+                        updated += `\n# Discovered Objects\n${objLine}\n`
+                    }
+                    changed = true
+                }
+            }
+        }
+
+        if (changed) {
+            await this.writeTools(updated)
+        }
+    }
+
+    _buildActionsSection(actions) {
+        const lines = actions.map(a => {
+            if (typeof a === 'string') return `- ${a}`
+            return `- ${a.name}: ${a.description || ''}`
+        })
+        return `# Available Actions\n${lines.join('\n')}\n`
+    }
+
+    // --- Helpers ---
+
+    async _read(filename) {
+        try {
+            return await readFile(join(this.dataDir, filename), 'utf-8')
+        } catch {
+            return ''
+        }
+    }
+
+    async _write(filename, content) {
+        await writeFile(join(this.dataDir, filename), content, 'utf-8')
+    }
+
+    async _ensureFile(filename, defaultContent) {
+        const path = join(this.dataDir, filename)
+        try {
+            await readFile(path)
+        } catch {
+            await writeFile(path, defaultContent, 'utf-8')
+            this.logger.info(`Created ${filename}`)
+        }
+    }
+}
