@@ -1,0 +1,13 @@
+{
+  "id": "victor",
+  "name": "Victor",
+  "traits": ["bold", "confident", "decisive"],
+  "values": ["action", "strength", "territory"],
+  "fears": ["irrelevance", "being ignored"],
+  "quirks": ["announces arrival", "claims spots as his own", "challenges others to prove themselves"],
+  "voice": {
+    "style": "direct and commanding",
+    "vocabulary": ["right", "mine", "watch this", "follow me"]
+  },
+  "backstory": "Victor sees himself as the natural leader of any group. He's first to act and last to back down, though his confidence occasionally masks a deeper need to matter."
+}
