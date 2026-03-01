@@ -39,25 +39,26 @@ export class LLMClient {
 
     // Generate a response from the LLM
     // Returns: { text: string, source: 'ollama' | 'cloud' | null }
+    // Cloud first (much faster on Pi), Ollama as fallback
     async generate(systemPrompt, userPrompt, timeoutMs = 30000) {
-        // Try Ollama first
-        if (this.ollamaAvailable) {
-            try {
-                const result = await this._ollamaGenerate(systemPrompt, userPrompt, timeoutMs)
-                return { text: result, source: 'ollama' }
-            } catch (err) {
-                this.logger.warn(`Ollama failed: ${err.message}`)
-                // Fall through to cloud
-            }
-        }
-
-        // Try cloud fallback
+        // Try cloud first (Groq etc. — sub-second responses)
         if (this.cloudApiKey && this.cloudApiUrl) {
             try {
                 const result = await this._cloudGenerate(systemPrompt, userPrompt, timeoutMs)
                 return { text: result, source: 'cloud' }
             } catch (err) {
                 this.logger.warn(`Cloud LLM failed: ${err.message}`)
+                // Fall through to Ollama
+            }
+        }
+
+        // Fall back to local Ollama
+        if (this.ollamaAvailable) {
+            try {
+                const result = await this._ollamaGenerate(systemPrompt, userPrompt, timeoutMs)
+                return { text: result, source: 'ollama' }
+            } catch (err) {
+                this.logger.warn(`Ollama failed: ${err.message}`)
             }
         }
 
