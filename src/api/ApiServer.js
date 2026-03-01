@@ -92,7 +92,7 @@ export class ApiServer {
             connected: socket?.isConnected() || false,
             tickCount: heartbeat?.tickCount || 0,
             uptime: heartbeat?.uptimeSeconds() || 0,
-            recentActions: workingMemory?.getAll().filter(e => e.type === 'action').slice(-5) || [],
+            recentActions: workingMemory?.events?.filter(e => e.type === 'action').slice(-5) || [],
         })
     }
 
