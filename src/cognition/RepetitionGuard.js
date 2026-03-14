@@ -80,14 +80,31 @@ export class RepetitionGuard {
             }
         }
 
-        // 6. Speech repetition — flag repeated phrases
+        // 6. Speech repetition — fuzzy keyword matching to catch paraphrased repeats
         if (this._recentSpeech.length >= 2) {
             const last = this._recentSpeech[this._recentSpeech.length - 1]
-            const repeated = this._recentSpeech.filter(s => s === last).length
-            if (repeated >= 2) {
+            const lastKw = this._extractKeywords(last)
+
+            // Exact match
+            const exactRepeats = this._recentSpeech.filter(s => s === last).length
+            if (exactRepeats >= 2) {
                 warnings.push(`You already said "${last}" recently. Say something completely different.`)
             }
-            // Also flag generic/similar phrases (starts with same 3+ words)
+
+            // Fuzzy match — 60% keyword overlap = "same idea"
+            if (lastKw.size >= 2) {
+                const fuzzyRepeats = this._recentSpeech.slice(0, -1).filter(s => {
+                    const kw = this._extractKeywords(s)
+                    if (kw.size < 2) return false
+                    const overlap = [...lastKw].filter(w => kw.has(w)).length
+                    return overlap / Math.min(lastKw.size, kw.size) >= 0.6
+                }).length
+                if (fuzzyRepeats >= 1 && exactRepeats < 2) {
+                    warnings.push('Your recent speech sounds very similar to something you already said. Say something with a completely different idea and different words.')
+                }
+            }
+
+            // Flag generic openings (starts with same 3+ words)
             const lastWords = last.split(/\s+/).slice(0, 3).join(' ')
             if (lastWords.length > 5) {
                 const similar = this._recentSpeech.filter(s => s.startsWith(lastWords)).length
@@ -137,6 +154,25 @@ export class RepetitionGuard {
             }
         }
         return null
+    }
+
+    // Extract meaningful keywords from speech (stop-word removal)
+    _extractKeywords(text) {
+        const stops = new Set([
+            'i', 'me', 'my', 'the', 'a', 'an', 'is', 'am', 'are', 'was', 'were',
+            'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did',
+            'will', 'would', 'could', 'should', 'shall', 'can', 'may', 'might',
+            'to', 'of', 'in', 'for', 'on', 'with', 'at', 'by', 'from', 'up',
+            'about', 'into', 'through', 'after', 'over', 'between', 'out',
+            'and', 'but', 'or', 'nor', 'not', 'no', 'so', 'if', 'then',
+            'that', 'this', 'it', 'its', 'what', 'which', 'who', 'whom',
+            'there', 'here', 'when', 'where', 'why', 'how', 'all', 'each',
+            'some', 'any', 'just', 'very', 'quite', 'really', 'now', 'well',
+            'also', 'than', 'too', 'only', 'right', 'let', 'see', 'hmm',
+            'going', 'got', 'get', 'like', 'know', 'think', 'look', 'come',
+        ])
+        const words = text.toLowerCase().replace(/[^a-z\s]/g, '').split(/\s+/).filter(w => w.length > 2)
+        return new Set(words.filter(w => !stops.has(w)))
     }
 
     clear() {

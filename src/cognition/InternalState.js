@@ -132,17 +132,24 @@ export class InternalState {
             : a > -0.2 ? 'moderate' : a > -0.5 ? 'low' : 'very low'
 
         // Evocative descriptions — give the LLM something to act on
+        // Granular grid to minimise the "neutral catch-all" bucket
         let description
-        if (v > 0.3 && a > 0.3) description = 'A surge of energy and satisfaction — things are going well'
-        else if (v > 0.3 && a <= 0.3) description = 'A quiet contentment — things feel right'
-        else if (v > 0.15 && a > 0.3) description = 'Feeling alert and engaged — something has your attention'
-        else if (v < -0.25 && a > 0.3) description = 'Something feels wrong — restless, uneasy, on edge'
-        else if (v < -0.25 && a <= -0.2) description = 'Feeling drained and discouraged — nothing is working'
-        else if (v < -0.1 && a > 0.2) description = 'A nagging discomfort — things could be better'
-        else if (v < -0.1) description = 'A subtle unease — something is off'
-        else if (a > 0.5) description = 'Buzzing with energy — the environment is stimulating'
-        else if (a < -0.3) description = 'Everything is quiet and still — understimulated'
-        else description = 'Feeling steady — nothing remarkable'
+        if (v > 0.3 && a > 0.5) description = 'A rush of excitement — everything is clicking'
+        else if (v > 0.3 && a > 0.2) description = 'A surge of energy and satisfaction — things are going well'
+        else if (v > 0.3) description = 'A quiet contentment — things feel right'
+        else if (v > 0.1 && a > 0.4) description = 'Feeling alert and engaged — something has your attention'
+        else if (v > 0.1 && a > 0.15) description = 'A comfortable focus — present and attentive'
+        else if (v > 0.1) description = 'A gentle ease — nothing wrong, mildly pleasant'
+        else if (v > -0.05 && a > 0.4) description = 'Buzzing with energy — the environment is stimulating'
+        else if (v > -0.05 && a > 0.15) description = 'Feeling awake and aware — taking things in'
+        else if (v > -0.05 && a > -0.15) description = 'Feeling steady — calm, present, unremarkable'
+        else if (v > -0.05) description = 'Everything is quiet and still — understimulated'
+        else if (v > -0.2 && a > 0.3) description = 'A nagging discomfort — restless, things could be better'
+        else if (v > -0.2 && a > 0) description = 'A subtle unease — something is slightly off'
+        else if (v > -0.2) description = 'Feeling flat and disengaged — low energy, mild discontent'
+        else if (v <= -0.2 && a > 0.3) description = 'Something feels wrong — uneasy, on edge'
+        else if (v <= -0.2 && a > -0.2) description = 'A growing frustration — things are not going well'
+        else description = 'Feeling drained and discouraged — nothing is working'
 
         return {
             valence: this.valence,

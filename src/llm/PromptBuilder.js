@@ -92,6 +92,11 @@ ${toolsContent || '(none yet)'}`
             parts.push(`LAST ACTION RESULT:\n${r.action || 'unknown'} ${status}${r.message ? ': ' + r.message : ''}`)
         }
 
+        // Recently disappeared objects — hard warning to prevent hallucination
+        if (extras.recentlyDisappeared?.length > 0) {
+            parts.push(`GONE: The following objects have DISAPPEARED and are NO LONGER HERE: ${extras.recentlyDisappeared.join(', ')}. Do NOT mention, interact with, or speak about them.`)
+        }
+
         // Repetition warnings
         if (extras.repetitionWarnings) {
             parts.push('NOTICE:\n' + extras.repetitionWarnings.join('\n'))
