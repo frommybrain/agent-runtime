@@ -8,6 +8,11 @@
 // Environmental signals, action outcomes, social events, and novelty all nudge these values.
 // High arousal moments are encoded more strongly in memory (salience).
 // The LLM receives these as context, not directives.
+//
+// v0.3: checkpoint/restore for crash recovery — state persists across restarts.
+
+import { readFile, writeFile, mkdir } from 'node:fs/promises'
+import { join } from 'node:path'
 
 export class InternalState {
     constructor(config, logger) {
@@ -19,6 +24,7 @@ export class InternalState {
         this.signalPullRate = config.signalPullRate || 0.15
         this._history = []  // track recent state for sleep reflection
         this._maxHistory = 50
+        this._checkpointPath = join(config.dataDir, 'state-checkpoint.json')
     }
 
     // Called each tick with context from the current cycle
@@ -166,6 +172,40 @@ export class InternalState {
 
     clearHistory() {
         this._history = []
+    }
+
+    // Save current state to disk (crash recovery)
+    async checkpoint() {
+        try {
+            const data = {
+                valence: this.valence,
+                arousal: this.arousal,
+                timestamp: Date.now(),
+            }
+            await writeFile(this._checkpointPath, JSON.stringify(data), 'utf-8')
+        } catch (err) {
+            this.logger.error(`State checkpoint failed: ${err.message}`)
+        }
+    }
+
+    // Restore state from last checkpoint (called on startup)
+    async restore() {
+        try {
+            const raw = await readFile(this._checkpointPath, 'utf-8')
+            const data = JSON.parse(raw)
+            // Only restore if checkpoint is less than 1 hour old
+            const ageMs = Date.now() - (data.timestamp || 0)
+            if (ageMs < 60 * 60 * 1000) {
+                this.valence = this._clamp(data.valence || 0)
+                this.arousal = this._clamp(data.arousal || 0)
+                this.logger.info(`State restored from checkpoint (age: ${Math.round(ageMs / 1000)}s) — v=${this.valence.toFixed(2)} a=${this.arousal.toFixed(2)}`)
+                return true
+            }
+            this.logger.info(`State checkpoint too old (${Math.round(ageMs / 60000)}min), starting fresh`)
+        } catch {
+            // No checkpoint file — first run
+        }
+        return false
     }
 
     _nudgeValence(delta) {

@@ -13,6 +13,10 @@ export class Think {
         this.dailyLog = dailyLog
         this.workingMemory = workingMemory
         this.logger = logger
+
+        // Token budget: ~4 chars per token, 8k context with 200 reserved for output
+        this._maxInputChars = 7800 * 4  // ~7800 tokens for input
+        this._lastPromptChars = 0       // tracked for metrics
     }
 
     // extras: { internalState, deltaNarrative, lastActionResult, repetitionWarnings, tickCount, uptimeMinutes, salience }
@@ -34,8 +38,20 @@ export class Think {
         const systemPrompt = this.promptBuilder.buildSystemPrompt(memory, skills, tools)
         const userPrompt = this.promptBuilder.buildUserPrompt(situation, recentLog, recentMemory, extras)
 
+        // 2b. Token budget check — truncate memory files if over budget
+        let finalSystemPrompt = systemPrompt
+        const totalChars = systemPrompt.length + userPrompt.length
+        this._lastPromptChars = totalChars
+        if (totalChars > this._maxInputChars) {
+            const overBy = totalChars - this._maxInputChars
+            this.logger.warn(`Prompt over budget by ~${Math.round(overBy / 4)} tokens — truncating memory context`)
+            // Rebuild with truncated memory (skills and tools take priority over old memories)
+            const truncatedMemory = memory.slice(0, Math.max(200, memory.length - overBy))
+            finalSystemPrompt = this.promptBuilder.buildSystemPrompt(truncatedMemory, skills, tools)
+        }
+
         // 3. Call LLM
-        const { text, source } = await this.llm.generate(systemPrompt, userPrompt)
+        const { text, source } = await this.llm.generate(finalSystemPrompt, userPrompt)
 
         if (!text) {
             this.logger.warn('LLM returned nothing, using fallback')
