@@ -121,7 +121,7 @@ export class InternalState {
         const v = this.valence
         const a = this.arousal
         const vLabel = v > 0.4 ? 'very positive' : v > 0.15 ? 'positive'
-            : v > -0.15 ? 'neutral' : v > -0.4 ? 'negative' : 'very negative'
+            : v > -0.1 ? 'neutral' : v > -0.35 ? 'negative' : 'very negative'
         const aLabel = a > 0.5 ? 'very high' : a > 0.2 ? 'elevated'
             : a > -0.2 ? 'moderate' : a > -0.5 ? 'low' : 'very low'
 
@@ -130,10 +130,10 @@ export class InternalState {
         if (v > 0.3 && a > 0.3) description = 'A surge of energy and satisfaction — things are going well'
         else if (v > 0.3 && a <= 0.3) description = 'A quiet contentment — things feel right'
         else if (v > 0.15 && a > 0.3) description = 'Feeling alert and engaged — something has your attention'
-        else if (v < -0.3 && a > 0.3) description = 'Something feels wrong — restless, uneasy, on edge'
-        else if (v < -0.3 && a <= -0.2) description = 'Feeling drained and discouraged — nothing is working'
-        else if (v < -0.15 && a > 0.2) description = 'A nagging discomfort — things could be better'
-        else if (v < -0.15) description = 'A subtle unease — something is off'
+        else if (v < -0.25 && a > 0.3) description = 'Something feels wrong — restless, uneasy, on edge'
+        else if (v < -0.25 && a <= -0.2) description = 'Feeling drained and discouraged — nothing is working'
+        else if (v < -0.1 && a > 0.2) description = 'A nagging discomfort — things could be better'
+        else if (v < -0.1) description = 'A subtle unease — something is off'
         else if (a > 0.5) description = 'Buzzing with energy — the environment is stimulating'
         else if (a < -0.3) description = 'Everything is quiet and still — understimulated'
         else description = 'Feeling steady — nothing remarkable'
