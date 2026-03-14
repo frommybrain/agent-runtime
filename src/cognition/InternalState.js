@@ -75,11 +75,12 @@ export class InternalState {
                 const target = (s.abundance - 0.5) * 0.4
                 this.valence += (target - this.valence) * pull * 0.3
             }
-            // Arbitrary numeric signals — gently pull arousal up
+            // Arbitrary numeric signals in 0..1 range — gently pull arousal up
+            // Skip large values (e.g. bpm: 120) — those are data, not affect signals
             for (const [key, val] of Object.entries(s)) {
                 if (['vitality', 'resonance', 'warmth', 'abundance'].includes(key)) continue
-                if (typeof val === 'number') {
-                    this.arousal += (Math.abs(val) * 0.3 - this.arousal) * pull * 0.2
+                if (typeof val === 'number' && val >= 0 && val <= 1) {
+                    this.arousal += (val * 0.3 - this.arousal) * pull * 0.2
                 }
             }
         }
