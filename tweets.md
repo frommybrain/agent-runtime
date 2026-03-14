@@ -398,3 +398,81 @@ Fix: hard cap at 120 characters per memory entry. Both in the decision handler a
 13 more issues documented for later. The difference between a demo and a thesis is this: every write is guarded, every LLM output is validated, every file has a backup.
 
 v0.3 asked "will it still work in August?" v0.3.1 asks "will it still work correctly?"
+
+### Milestone 5 — v0.3.2: Soak Test Results + Anti-Repetition Overhaul (2026-03-14)
+
+Ran a 45-minute soak test on v0.3.1. 13 environmental phases. Object persistence gauntlet. Here's what we found and fixed 🧵
+
+### Tweet M5-1 — The Soak Report Card
+
+45 minutes, ~340 ticks, 13 phases including object appearance/disappearance/return. Results:
+
+- Sleep cycles: fired on schedule, consolidation succeeded
+- Action validation: zero invalid actions
+- Hallucinations: down from rampant to 3 instances (all "pillar" mentioned after removal)
+- Emotional tracking: worked, but flatlined in the neutral band
+- Speech: still repetitive — "Interesting" and "Right" over and over
+
+3 hallucinations is 3 too many. And "Feeling steady" described 70% of ticks. Time to fix both.
+
+### Tweet M5-2 — Ghost Object Tracking
+
+3 hallucinations survived v0.3.1. Root cause: the LLM sees "pillar" disappear from Nearby Objects but nothing explicitly says "it's gone."
+
+Fix: track recently-disappeared objects for 10 ticks after they vanish. Inject an explicit warning into the user prompt:
+
+```
+GONE: The following objects have DISAPPEARED and are
+NO LONGER HERE: pillar-01. Do NOT mention, interact
+with, or speak about them.
+```
+
+Belt, suspenders, and a warning sign.
+
+### Tweet M5-3 — Fuzzy Speech Dedup
+
+The agent kept saying variations of the same thing: "Interesting, let me explore" → "Right, interesting, I'll look around" → "Let me check that out, interesting."
+
+Exact-match dedup doesn't catch paraphrasing. Added keyword-based fuzzy matching:
+
+1. Extract keywords from each utterance (stop-word removal)
+2. Compare keyword sets between recent speech
+3. 60%+ overlap = "same idea" → warning fired
+
+Same approach we used for memory dedup. If it works for facts, it works for speech.
+
+### Tweet M5-4 — Emotional Flatline Fix
+
+The internal state `describe()` method had 9 descriptions covering the full valence×arousal grid. Problem: the neutral catch-all covered a HUGE range (v: -0.1 to 0.15, a: -0.3 to 0.5).
+
+In the soak test, "Feeling steady — nothing remarkable" described 70%+ of ticks. The agent felt nothing most of the time.
+
+Fix: expanded from 9 to 16 descriptions. Narrowed the neutral band to v: -0.05 to 0.05, a: -0.15 to 0.15. Added mid-range states like "comfortable focus," "awake and aware," "flat and disengaged."
+
+The agent now has emotional resolution where it matters most — in the middle, where it spends most of its time.
+
+### Tweet M5-5 — Working Memory Efficiency
+
+Each cognitive tick generated 2 working memory events: one for the action, one for the result. 12-slot buffer = only 6 ticks of context.
+
+Fix: action_result events now merge into the preceding action event. One slot per tick instead of two. Buffer increased from 12 → 20 slots.
+
+The agent now remembers 20 ticks of context instead of 6. That's the difference between "what just happened" and "what I've been doing for the last few minutes."
+
+### Tweet M5-6 — Object Position Awareness
+
+Objects in the world had positions, but the agent couldn't see them. The perceiver was skipping `pos` and `distance` fields on objects.
+
+Fix: objects now narrate their distance or coordinates. "pillar-01 3.2 away" instead of just "pillar-01". Spatial awareness matters for an agent that moves.
+
+### Tweet M5-7 — The v0.3.2 Scorecard
+
+6 fixes shipped:
+1. ✅ Disappeared-object tracking (10-tick fade + explicit GONE warning)
+2. ✅ Fuzzy speech dedup (keyword overlap, 60% threshold)
+3. ✅ Emotional descriptions expanded (9 → 16, neutral band narrowed 4x)
+4. ✅ Working memory merged events (2 slots/tick → 1, buffer 12 → 20)
+5. ✅ Object position narration (distance + coordinates)
+6. ✅ Version bump to v0.3.2
+
+Ready for the next soak test. The question: can we get hallucinations to zero and speech repetition under control?

@@ -50,6 +50,14 @@ export function perceive(observation, worldEvents) {
         const objects = nearbyObjects.map(o => {
             const parts = [o.id || o.name || o.type]
             if (o.type && o.id && o.type !== o.id) parts.push(`(${o.type})`)
+            if (o.distance !== undefined) {
+                parts.push(`${typeof o.distance === 'number' ? o.distance.toFixed(1) : o.distance} away`)
+            } else if (o.pos) {
+                const coords = Object.entries(o.pos)
+                    .map(([k, v]) => `${k}:${typeof v === 'number' ? v.toFixed(1) : v}`)
+                    .join(', ')
+                parts.push(`at (${coords})`)
+            }
             if (o.interactive) parts.push('[interactive]')
             // Include extra properties (state, value, level, etc.)
             for (const [k, v] of Object.entries(o)) {
