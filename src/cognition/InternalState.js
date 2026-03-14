@@ -30,15 +30,11 @@ export class InternalState {
         this.valence *= (1 - this.decayRate)
         this.arousal *= (1 - this.decayRate)
 
-        // 2. Action results — one-time nudges (events, not continuous)
-        //    Success is routine and should barely register.
-        //    Failure is noteworthy and should dip valence.
-        if (context.actionResult) {
-            if (context.actionResult.success) {
-                this._nudgeValence(0.03)
-            } else {
-                this._nudgeValence(-0.1)
-            }
+        // 2. Action results — only failure matters.
+        //    Success is the default state and should not nudge valence.
+        //    Failure is noteworthy and dips valence.
+        if (context.actionResult && !context.actionResult.success) {
+            this._nudgeValence(-0.15)
         }
 
         // 3. Environmental changes — novelty = arousal spike (one-time per tick)
