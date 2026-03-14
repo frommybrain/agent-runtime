@@ -15,7 +15,8 @@ export class InternalState {
         this.arousal = 0
         this.logger = logger
 
-        this.decayRate = config.stateDecayRate || 0.05
+        this.decayRate = config.stateDecayRate || 0.1
+        this.signalPullRate = config.signalPullRate || 0.15
         this._history = []  // track recent state for sleep reflection
         this._maxHistory = 50
     }
@@ -29,61 +30,71 @@ export class InternalState {
         this.valence *= (1 - this.decayRate)
         this.arousal *= (1 - this.decayRate)
 
-        // 2. Action results affect valence (success feels good, failure feels bad)
+        // 2. Action results — one-time nudges (events, not continuous)
+        //    Success is routine and should barely register.
+        //    Failure is noteworthy and should dip valence.
         if (context.actionResult) {
             if (context.actionResult.success) {
-                this._nudgeValence(0.1)
+                this._nudgeValence(0.03)
             } else {
-                this._nudgeValence(-0.15)
+                this._nudgeValence(-0.1)
             }
         }
 
-        // 3. Environmental changes affect arousal (novelty = stimulation)
+        // 3. Environmental changes — novelty = arousal spike (one-time per tick)
         if (context.deltas?.length > 0) {
             const intensity = Math.min(context.deltas.length / 5, 1)
-            this._nudgeArousal(intensity * 0.3)
+            this._nudgeArousal(intensity * 0.2)
         }
 
-        // 4. Environment signals (cosmology / sensor data)
+        // 4. Continuous signals — ATTRACTORS, not additive nudges.
+        //    Signals pull state toward an equilibrium. Resonance 0.8 pulls arousal
+        //    toward 0.8. When resonance drops, arousal decays naturally via decay rate.
+        //    This prevents pinning to ±1.0 from sustained signals.
         if (context.environmentSignals) {
             const s = context.environmentSignals
+            const pull = this.signalPullRate
+
             if (s.vitality !== undefined) {
-                // Low vitality → negative valence drift
-                this._nudgeValence((s.vitality - 0.5) * 0.1)
+                // Vitality maps to valence: 0→-0.5, 0.5→0, 1→+0.5
+                const target = (s.vitality - 0.5)
+                this.valence += (target - this.valence) * pull
             }
             if (s.resonance !== undefined) {
-                // High resonance → arousal boost
-                this._nudgeArousal(s.resonance * 0.2)
+                // Resonance pulls arousal toward its value
+                const target = s.resonance
+                this.arousal += (target - this.arousal) * pull
             }
             if (s.warmth !== undefined) {
-                // Warmth → positive valence
-                this._nudgeValence(s.warmth * 0.1)
+                // Warmth pulls valence positive (0→0, 1→+0.5)
+                const target = s.warmth * 0.5
+                this.valence += (target - this.valence) * pull * 0.5
             }
             if (s.abundance !== undefined) {
-                // High abundance → slight positive valence
-                this._nudgeValence((s.abundance - 0.5) * 0.05)
+                // Abundance gently pulls valence (0→-0.2, 0.5→0, 1→+0.2)
+                const target = (s.abundance - 0.5) * 0.4
+                this.valence += (target - this.valence) * pull * 0.3
             }
-            // Handle arbitrary numeric signals — any signal nudges arousal slightly
+            // Arbitrary numeric signals — gently pull arousal up
             for (const [key, val] of Object.entries(s)) {
                 if (['vitality', 'resonance', 'warmth', 'abundance'].includes(key)) continue
                 if (typeof val === 'number') {
-                    // Unknown signals nudge arousal proportional to their magnitude
-                    this._nudgeArousal(Math.abs(val) * 0.05)
+                    this.arousal += (Math.abs(val) * 0.3 - this.arousal) * pull * 0.2
                 }
             }
         }
 
-        // 5. Social events — being spoken to is stimulating
+        // 5. Social events — one-time nudges (events, not continuous)
         if (context.worldEvents?.length > 0) {
             for (const evt of context.worldEvents) {
                 const data = evt.data || evt
                 if (data.event === 'agent_speech') {
-                    this._nudgeArousal(0.15)
-                    this._nudgeValence(0.05)
-                } else if (data.event === 'agent_joined') {
                     this._nudgeArousal(0.1)
+                    this._nudgeValence(0.03)
+                } else if (data.event === 'agent_joined') {
+                    this._nudgeArousal(0.08)
                 } else if (data.event === 'agent_left') {
-                    this._nudgeValence(-0.05)
+                    this._nudgeValence(-0.03)
                 }
             }
         }
