@@ -72,7 +72,15 @@ export class RepetitionGuard {
         const altWarning = this._checkAlternating()
         if (altWarning) warnings.push(altWarning)
 
-        // 5. Speech repetition — flag repeated phrases
+        // 5. Speech frequency — cap at ~30% of recent actions
+        if (total >= 5 && counts['speak']) {
+            const speechPct = counts['speak'] / total
+            if (speechPct > 0.35) {
+                warnings.push(`You're talking too much (${Math.round(speechPct * 100)}% of actions are speech). Act more, talk less.`)
+            }
+        }
+
+        // 6. Speech repetition — flag repeated phrases
         if (this._recentSpeech.length >= 2) {
             const last = this._recentSpeech[this._recentSpeech.length - 1]
             const repeated = this._recentSpeech.filter(s => s === last).length
