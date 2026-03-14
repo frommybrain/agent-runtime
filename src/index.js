@@ -21,7 +21,7 @@ async function main() {
     const config = loadConfig()
     const logger = new Logger(config)
 
-    logger.info(`=== Agent Runtime v0.2 ===`)
+    logger.info(`=== Agent Runtime v0.3 ===`)
     logger.info(`Agent: ${config.agentId}`)
     logger.info(`Server: ${config.serverUrl}`)
     logger.info(`LLM: ${config.ollamaModel} @ ${config.ollamaHost}`)
@@ -54,9 +54,10 @@ async function main() {
     await memoryFiles.init()
     await dailyLog.init()
     await llmClient.init()
+    await internalState.restore()  // crash recovery: reload last emotional state
 
     const think = new Think(llmClient, promptBuilder, memoryFiles, dailyLog, workingMemory, logger)
-    const sleepCycle = new SleepCycle(think, memoryFiles, dailyLog, workingMemory, internalState, config, logger)
+    const sleepCycle = new SleepCycle(think, memoryFiles, dailyLog, workingMemory, internalState, repetitionGuard, config, logger)
     const heartbeat = new Heartbeat(
         socket, think, workingMemory, memoryFiles, dailyLog, sleepCycle,
         internalState, deltaDetector, repetitionGuard,
@@ -67,7 +68,7 @@ async function main() {
     const apiState = {
         persona, heartbeat, sleepCycle, memoryFiles, dailyLog,
         workingMemory, socket, promptBuilder, internalState,
-        deltaDetector, repetitionGuard,
+        deltaDetector, repetitionGuard, think,
     }
     const api = new ApiServer(config.apiPort, apiState, logger)
     api.start()
@@ -110,6 +111,7 @@ async function main() {
         sleepCycle.stop()
         api.stop()
         await dailyLog.append('=== AGENT STOPPED ===')
+        await dailyLog.stop()  // flush buffer to disk
         socket.close()
         process.exit(0)
     }

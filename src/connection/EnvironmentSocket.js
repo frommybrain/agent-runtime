@@ -16,6 +16,7 @@ export class EnvironmentSocket {
         this._pendingAction = null
         this._reconnectTimer = null
         this._worldEvents = []  // buffer for incoming WORLD_EVENT messages
+        this._reconnectAttempts = 0  // for exponential backoff
     }
 
     connect() {
@@ -30,6 +31,7 @@ export class EnvironmentSocket {
             this.ws.on('open', () => {
                 clearTimeout(timeout)
                 this.connected = true
+                this._reconnectAttempts = 0  // reset backoff on successful connection
                 this.logger.info('Connected')
             })
 
@@ -153,7 +155,13 @@ export class EnvironmentSocket {
 
     _scheduleReconnect() {
         if (this._reconnectTimer) return
-        this.logger.info(`Reconnecting in ${this.reconnectMs}ms...`)
+        // Exponential backoff: 5s → 10s → 20s → 40s → 60s → ... cap at 5 min
+        const backoff = Math.min(
+            this.reconnectMs * Math.pow(2, this._reconnectAttempts),
+            5 * 60 * 1000
+        )
+        this._reconnectAttempts++
+        this.logger.info(`Reconnecting in ${Math.round(backoff / 1000)}s (attempt ${this._reconnectAttempts})...`)
         this._reconnectTimer = setTimeout(async () => {
             this._reconnectTimer = null
             try {
@@ -161,7 +169,7 @@ export class EnvironmentSocket {
             } catch {
                 this._scheduleReconnect()
             }
-        }, this.reconnectMs)
+        }, backoff)
     }
 
     close() {

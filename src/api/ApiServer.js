@@ -11,6 +11,7 @@ import { createServer } from 'node:http'
 //   POST /sleep            — trigger sleep cycle now
 //   POST /wake             — wake from sleep early
 //   PUT  /persona          — hot-swap persona (JSON body)
+//   GET  /metrics          — runtime metrics for long-term observability
 //   GET  /events           — SSE stream of all runtime events
 
 export class ApiServer {
@@ -18,7 +19,7 @@ export class ApiServer {
         this.port = port
         this.state = state
         this.logger = logger
-        this._sseClients = new Set()
+        this._sseClients = new Map()  // res → { ping, connectedAt }
         this._server = null
     }
 
@@ -33,8 +34,9 @@ export class ApiServer {
     }
 
     stop() {
-        for (const client of this._sseClients) {
-            try { client.end() } catch {}
+        for (const [res, meta] of this._sseClients) {
+            clearInterval(meta.ping)
+            try { res.end() } catch {}
         }
         this._sseClients.clear()
         this._server?.close()
@@ -43,8 +45,14 @@ export class ApiServer {
     // Broadcast an event to all SSE clients
     emit(eventName, data) {
         const payload = `event: ${eventName}\ndata: ${JSON.stringify(data)}\n\n`
-        for (const client of this._sseClients) {
-            try { client.write(payload) } catch { this._sseClients.delete(client) }
+        for (const [res, meta] of this._sseClients) {
+            try {
+                res.write(payload)
+                meta.lastWrite = Date.now()
+            } catch {
+                clearInterval(meta.ping)
+                this._sseClients.delete(res)
+            }
         }
     }
 
@@ -72,6 +80,7 @@ export class ApiServer {
             if (req.method === 'POST' && path === '/sleep') return await this._postSleep(req, res)
             if (req.method === 'POST' && path === '/wake') return await this._postWake(req, res)
             if (req.method === 'PUT' && path === '/persona') return await this._putPersona(req, res)
+            if (req.method === 'GET' && path === '/metrics') return await this._getMetrics(req, res)
             if (req.method === 'GET' && path === '/events') return this._getEvents(req, res)
 
             this._json(res, 404, { error: 'Not found' })
@@ -166,6 +175,52 @@ export class ApiServer {
         this._json(res, 200, { ok: true, persona: body.name })
     }
 
+    async _getMetrics(req, res) {
+        const { heartbeat, sleepCycle, workingMemory, internalState, repetitionGuard, memoryFiles, dailyLog } = this.state
+        const mem = process.memoryUsage()
+
+        // File sizes
+        const [memoryContent, skillsContent, toolsContent] = await Promise.all([
+            memoryFiles.readMemory(),
+            memoryFiles.readSkills(),
+            memoryFiles.readTools(),
+        ])
+
+        this._json(res, 200, {
+            timestamp: Date.now(),
+            uptime: heartbeat?.uptimeSeconds() || 0,
+            tickCount: heartbeat?.tickCount || 0,
+            heartbeatMs: heartbeat?.currentIntervalMs || null,
+            sleeping: sleepCycle?.isSleeping() || false,
+            // Emotional state
+            valence: internalState?.valence || 0,
+            arousal: internalState?.arousal || 0,
+            // Memory sizes (bytes)
+            fileSizes: {
+                memory: memoryContent.length,
+                skills: skillsContent.length,
+                tools: toolsContent.length,
+            },
+            // Buffer utilization
+            buffers: {
+                workingMemory: workingMemory?.events?.length || 0,
+                workingMemoryMax: workingMemory?.maxSize || 0,
+                repetitionHistory: repetitionGuard?.history?.length || 0,
+                logBuffer: dailyLog?._buffer?.length || 0,
+            },
+            // Action diversity
+            actionDiversity: repetitionGuard?.diversityScore() || 0,
+            // Prompt size (last tick)
+            lastPromptChars: this.state.think?._lastPromptChars || 0,
+            // SSE clients
+            sseClients: this._sseClients.size,
+            // Node.js heap
+            heapUsedMB: Math.round(mem.heapUsed / 1024 / 1024 * 10) / 10,
+            heapTotalMB: Math.round(mem.heapTotal / 1024 / 1024 * 10) / 10,
+            rssMB: Math.round(mem.rss / 1024 / 1024 * 10) / 10,
+        })
+    }
+
     _getEvents(req, res) {
         res.writeHead(200, {
             'Content-Type': 'text/event-stream',
@@ -182,16 +237,35 @@ export class ApiServer {
             internalState: internalState?.describe(),
         })}\n\n`)
 
-        this._sseClients.add(res)
-        this.logger.info(`SSE client connected (total: ${this._sseClients.size})`)
+        const meta = {
+            connectedAt: Date.now(),
+            lastWrite: Date.now(),
+            ping: null,
+        }
 
-        // Heartbeat ping every 15s to keep connection alive
-        const ping = setInterval(() => {
-            try { res.write(': ping\n\n') } catch { clearInterval(ping) }
+        // Heartbeat ping every 15s — also checks for stale connections
+        meta.ping = setInterval(() => {
+            // Remove stale clients (no successful write in 5 min)
+            if (Date.now() - meta.lastWrite > 5 * 60 * 1000) {
+                this.logger.info('SSE client stale — removing')
+                clearInterval(meta.ping)
+                this._sseClients.delete(res)
+                try { res.end() } catch {}
+                return
+            }
+            try {
+                res.write(': ping\n\n')
+            } catch {
+                clearInterval(meta.ping)
+                this._sseClients.delete(res)
+            }
         }, 15000)
 
+        this._sseClients.set(res, meta)
+        this.logger.info(`SSE client connected (total: ${this._sseClients.size})`)
+
         req.on('close', () => {
-            clearInterval(ping)
+            clearInterval(meta.ping)
             this._sseClients.delete(res)
             this.logger.info(`SSE client disconnected (total: ${this._sseClients.size})`)
         })

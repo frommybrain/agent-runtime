@@ -38,6 +38,10 @@ export class Heartbeat {
         this._startedAt = null
         this._lastActionResult = null   // feedback from previous tick
         this.api = null  // set by index.js after ApiServer is created
+        this._lastCheckpointAt = 0      // for periodic state checkpoint
+        this._checkpointIntervalMs = config.checkpointIntervalMs || 5 * 60 * 1000  // 5 min
+        this._lastGCCheckAt = Date.now()
+        this._gcCheckIntervalMs = 60 * 60 * 1000  // check GC every hour
     }
 
     uptimeSeconds() {
@@ -218,6 +222,22 @@ export class Heartbeat {
             // Check if it's time to sleep
             if (this.sleepCycle) {
                 this.sleepCycle.checkSleepTime()
+            }
+
+            // ── 10. MAINTENANCE ─────────────────────────────────────
+            // Fallback GC: if sleep hasn't fired and GC is overdue, run it now
+            if (Date.now() - this._lastGCCheckAt > this._gcCheckIntervalMs) {
+                this._lastGCCheckAt = Date.now()
+                if (this.dailyLog.isGCOverdue(24)) {
+                    this.logger.info('Fallback GC: sleep cycle missed, running GC now')
+                    this.dailyLog.garbageCollect().catch(() => {})
+                }
+            }
+
+            // Periodic state checkpoint (crash recovery)
+            if (Date.now() - this._lastCheckpointAt > this._checkpointIntervalMs) {
+                this._lastCheckpointAt = Date.now()
+                this.internalState.checkpoint().catch(() => {})
             }
 
         } catch (err) {
