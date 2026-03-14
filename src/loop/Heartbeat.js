@@ -146,6 +146,17 @@ export class Heartbeat {
                 }
             }
 
+            // ── 4c. VALIDATE SPEECH PARAMS ──────────────────────────
+            // LLMs sometimes return speak without a valid message string.
+            if (decision.action === 'speak') {
+                if (!decision.params?.message || typeof decision.params.message !== 'string' || !decision.params.message.trim()) {
+                    this.logger.warn('Speak action with empty/invalid message — converting to wait')
+                    decision.action = 'wait'
+                    decision.params = {}
+                    decision.reason = '(corrected: speak had no valid message)'
+                }
+            }
+
             this.logger.info(`[tick ${this.tickCount}] ${decision.action} (${decision.source}) — ${decision.reason} [v=${stateDesc.valence.toFixed(2)} a=${stateDesc.arousal.toFixed(2)}]`)
 
             // ── 5. ACT ───────────────────────────────────────────────
