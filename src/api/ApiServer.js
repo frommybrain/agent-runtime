@@ -4,7 +4,7 @@ import { createServer } from 'node:http'
 // No dependencies — pure Node built-ins
 //
 // Endpoints:
-//   GET  /status           — agent state snapshot
+//   GET  /status           — agent state snapshot (now includes internal state)
 //   GET  /memory           — all three memory files
 //   POST /memory/remember  — inject a memory entry
 //   GET  /logs/today       — today's daily log
@@ -16,7 +16,7 @@ import { createServer } from 'node:http'
 export class ApiServer {
     constructor(port, state, logger) {
         this.port = port
-        this.state = state   // { persona, heartbeat, sleepCycle, memoryFiles, dailyLog, workingMemory, socket }
+        this.state = state
         this.logger = logger
         this._sseClients = new Set()
         this._server = null
@@ -84,7 +84,8 @@ export class ApiServer {
     // ---- Handlers ----
 
     async _getStatus(req, res) {
-        const { persona, heartbeat, sleepCycle, workingMemory, socket } = this.state
+        const { persona, heartbeat, sleepCycle, workingMemory, socket, internalState } = this.state
+        const stateDesc = internalState?.describe() || null
         this._json(res, 200, {
             agent: persona?.name || 'unknown',
             id: persona?.id || 'unknown',
@@ -92,6 +93,8 @@ export class ApiServer {
             connected: socket?.isConnected() || false,
             tickCount: heartbeat?.tickCount || 0,
             uptime: heartbeat?.uptimeSeconds() || 0,
+            heartbeatMs: heartbeat?.currentIntervalMs || null,
+            internalState: stateDesc,
             recentActions: workingMemory?.events?.filter(e => e.type === 'action').slice(-5) || [],
         })
     }
@@ -172,8 +175,12 @@ export class ApiServer {
         })
 
         // Send current status on connect
-        const { persona, sleepCycle } = this.state
-        res.write(`event: connected\ndata: ${JSON.stringify({ agent: persona?.name, sleeping: sleepCycle?.isSleeping() })}\n\n`)
+        const { persona, sleepCycle, internalState } = this.state
+        res.write(`event: connected\ndata: ${JSON.stringify({
+            agent: persona?.name,
+            sleeping: sleepCycle?.isSleeping(),
+            internalState: internalState?.describe(),
+        })}\n\n`)
 
         this._sseClients.add(res)
         this.logger.info(`SSE client connected (total: ${this._sseClients.size})`)

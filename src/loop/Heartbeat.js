@@ -1,21 +1,42 @@
-// Core OBSERVE → THINK → ACT loop
-// Runs every heartbeatIntervalMs, guards against overlapping ticks
+// Core cognitive loop: SENSE → FEEL → THINK → ACT → REFLECT
+//
+// Adaptive heartbeat: interval adjusts based on arousal and environmental activity.
+// High arousal / lots of changes → faster ticking (more engaged).
+// Low arousal / nothing happening → slower ticking (conserving energy).
+//
+// Each tick now:
+// 1. Observes the environment
+// 2. Detects what changed (delta detection)
+// 3. Updates internal state (valence/arousal from environment + action results)
+// 4. Thinks (with full cognitive context: state, deltas, repetition, action feedback)
+// 5. Acts and captures the result
+// 6. Logs with salience weighting (important moments encoded more strongly)
+// 7. Records action for repetition detection
+// 8. Adapts heartbeat interval
 
 export class Heartbeat {
-    constructor(socket, think, workingMemory, memoryFiles, dailyLog, sleepCycle, config, logger) {
+    constructor(socket, think, workingMemory, memoryFiles, dailyLog, sleepCycle, internalState, deltaDetector, repetitionGuard, config, logger) {
         this.socket = socket
         this.think = think
         this.workingMemory = workingMemory
         this.memoryFiles = memoryFiles
         this.dailyLog = dailyLog
         this.sleepCycle = sleepCycle
-        this.intervalMs = config.heartbeatIntervalMs
+        this.internalState = internalState
+        this.deltaDetector = deltaDetector
+        this.repetitionGuard = repetitionGuard
         this.logger = logger
+
+        this.baseIntervalMs = config.heartbeatIntervalMs
+        this.minIntervalMs = config.heartbeatMinMs || 4000
+        this.maxIntervalMs = config.heartbeatMaxMs || 15000
+        this.currentIntervalMs = this.baseIntervalMs
 
         this._timer = null
         this._ticking = false
         this.tickCount = 0
         this._startedAt = null
+        this._lastActionResult = null   // feedback from previous tick
         this.api = null  // set by index.js after ApiServer is created
     }
 
@@ -26,15 +47,15 @@ export class Heartbeat {
 
     start() {
         this._startedAt = Date.now()
-        this.logger.info(`Heartbeat started (${this.intervalMs}ms interval)`)
-        this._timer = setInterval(() => this._tick(), this.intervalMs)
+        this.logger.info(`Heartbeat started (${this.baseIntervalMs}ms base, adaptive ${this.minIntervalMs}-${this.maxIntervalMs}ms)`)
+        this._scheduleNext()
         // Run first tick immediately
         this._tick()
     }
 
     stop() {
         if (this._timer) {
-            clearInterval(this._timer)
+            clearTimeout(this._timer)
             this._timer = null
         }
         this.logger.info('Heartbeat stopped')
@@ -54,7 +75,7 @@ export class Heartbeat {
         this.tickCount++
 
         try {
-            // 1. OBSERVE
+            // ── 1. SENSE ──────────────────────────────────────────────
             const observation = await this.socket.observe()
             if (!observation) {
                 this.logger.warn('Empty observation')
@@ -64,7 +85,8 @@ export class Heartbeat {
             // Drain any buffered world events (speech, etc.)
             const worldEvents = this.socket.drainWorldEvents()
 
-            // Log heard speech to working memory
+            // Log heard speech to working memory (with salience from current arousal)
+            const salience = this.internalState.salience()
             for (const evt of worldEvents) {
                 const data = evt.data || evt
                 if (data.event === 'agent_speech') {
@@ -72,7 +94,7 @@ export class Heartbeat {
                         type: 'speech_heard',
                         speaker: data.agentId,
                         message: data.message,
-                    })
+                    }, salience)
                     await this.dailyLog.append(`Heard ${data.agentId} say: "${data.message}"`)
                 }
             }
@@ -80,22 +102,60 @@ export class Heartbeat {
             // Update tools.md from observation (auto-discover objects/actions)
             await this.memoryFiles.updateToolsFromObservation(observation)
 
-            // 2. THINK
-            const decision = await this.think.decide(observation, worldEvents)
+            // ── 2. DETECT CHANGE ──────────────────────────────────────
+            const deltas = this.deltaDetector.detect(observation)
+            const deltaNarrative = this.deltaDetector.narrate(deltas)
 
-            this.logger.info(`[tick ${this.tickCount}] ${decision.action} (${decision.source}) — ${decision.reason}`)
+            // ── 3. FEEL ───────────────────────────────────────────────
+            this.internalState.update({
+                actionResult: this._lastActionResult,
+                deltas,
+                environmentSignals: observation.signals,
+                worldEvents,
+            })
 
-            // 3. ACT
+            // ── 4. THINK ──────────────────────────────────────────────
+            const stateDesc = this.internalState.describe()
+            const repetitionWarnings = this.repetitionGuard.check()
+
+            const decision = await this.think.decide(observation, worldEvents, {
+                internalState: stateDesc,
+                deltaNarrative: deltaNarrative || undefined,
+                lastActionResult: this._lastActionResult,
+                repetitionWarnings: repetitionWarnings || undefined,
+                tickCount: this.tickCount,
+                uptimeMinutes: Math.floor(this.uptimeSeconds() / 60),
+                salience,
+            })
+
+            this.logger.info(`[tick ${this.tickCount}] ${decision.action} (${decision.source}) — ${decision.reason} [v=${stateDesc.valence.toFixed(2)} a=${stateDesc.arousal.toFixed(2)}]`)
+
+            // ── 5. ACT ───────────────────────────────────────────────
             const result = await this.socket.act(decision.action, decision.params)
 
-            // 4. LOG
+            // Store action result for next tick's feedback loop
+            this._lastActionResult = {
+                action: decision.action,
+                params: decision.params,
+                success: result?.success !== false,
+                message: result?.message || '',
+            }
+
+            // ── 6. REFLECT (log with salience) ───────────────────────
             this.workingMemory.push({
                 type: 'action',
                 action: `${decision.action}(${JSON.stringify(decision.params)})`,
                 reason: decision.reason,
-            })
+            }, salience)
 
-            const logLine = `${decision.action}(${JSON.stringify(decision.params)}) — ${decision.reason} [${decision.source}]`
+            // Log the action result too
+            this.workingMemory.push({
+                type: 'action_result',
+                success: this._lastActionResult.success,
+                message: this._lastActionResult.message,
+            }, salience)
+
+            const logLine = `${decision.action}(${JSON.stringify(decision.params)}) — ${decision.reason} [${decision.source}] → ${this._lastActionResult.success ? 'ok' : 'failed'}`
             await this.dailyLog.append(logLine)
 
             // Log speech separately for clarity
@@ -103,10 +163,13 @@ export class Heartbeat {
                 this.workingMemory.push({
                     type: 'speech_sent',
                     message: decision.params.message,
-                })
+                }, salience)
             }
 
-            // Emit tick event to SSE clients
+            // ── 7. RECORD (repetition tracking) ─────────────────────
+            this.repetitionGuard.record(decision.action, decision.params)
+
+            // ── 8. EMIT ──────────────────────────────────────────────
             this.api?.emit('tick', {
                 tick: this.tickCount,
                 action: decision.action,
@@ -114,8 +177,14 @@ export class Heartbeat {
                 reason: decision.reason,
                 source: decision.source,
                 result: result?.message,
+                internalState: stateDesc,
+                deltas: deltas.length,
+                intervalMs: this.currentIntervalMs,
                 timestamp: Date.now(),
             })
+
+            // ── 9. ADAPT HEARTBEAT ───────────────────────────────────
+            this._adaptInterval()
 
             // Check if it's time to sleep
             if (this.sleepCycle) {
@@ -128,5 +197,27 @@ export class Heartbeat {
         } finally {
             this._ticking = false
         }
+    }
+
+    // Adapt heartbeat interval based on arousal and activity
+    // High arousal → faster ticks (more engaged, responsive)
+    // Low arousal → slower ticks (conserving, resting)
+    _adaptInterval() {
+        const arousal = Math.abs(this.internalState.arousal)
+        // Map arousal 0..1 to interval max..min
+        const range = this.maxIntervalMs - this.minIntervalMs
+        const target = this.maxIntervalMs - (arousal * range)
+        // Smooth transition (don't jump instantly)
+        this.currentIntervalMs = Math.round(this.currentIntervalMs * 0.7 + target * 0.3)
+        this.currentIntervalMs = Math.max(this.minIntervalMs, Math.min(this.maxIntervalMs, this.currentIntervalMs))
+    }
+
+    _scheduleNext() {
+        this._timer = setTimeout(() => {
+            this._tick()
+            if (this._timer !== null) {
+                this._scheduleNext()
+            }
+        }, this.currentIntervalMs)
     }
 }

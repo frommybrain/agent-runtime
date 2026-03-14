@@ -1,17 +1,22 @@
 // Sleep cycle manager
 // 4 hours active → 1 hour sleep (configurable)
-// During sleep: LLM consolidates memory, extracts skills, refreshes tools, garbage collects
+// During sleep: LLM consolidates memory, extracts skills, refreshes tools,
+// reflects on internal state history, optionally evolves persona, garbage collects.
+
+import { readFile, writeFile } from 'node:fs/promises'
 
 export class SleepCycle {
-    constructor(think, memoryFiles, dailyLog, workingMemory, config, logger) {
+    constructor(think, memoryFiles, dailyLog, workingMemory, internalState, config, logger) {
         this.think = think
         this.memoryFiles = memoryFiles
         this.dailyLog = dailyLog
         this.workingMemory = workingMemory
+        this.internalState = internalState
         this.logger = logger
 
         this.activeHours = config.activeHoursBeforeSleep
         this.sleepMinutes = config.sleepDurationMinutes
+        this.personaPath = config.personaPath
         this.sleeping = false
 
         this._wakeTime = Date.now()
@@ -43,11 +48,11 @@ export class SleepCycle {
         this.workingMemory.push({ type: 'sleep', message: 'SLEEP STARTED' })
 
         try {
-            // Run consolidation passes
             const stats = {
                 memoryConsolidated: false,
                 skillsExtracted: false,
                 toolsRefreshed: false,
+                selfReflected: false,
                 logsDeleted: 0,
             }
 
@@ -60,13 +65,17 @@ export class SleepCycle {
             // Pass 3: Refresh tools.md (clean up duplicates)
             stats.toolsRefreshed = await this._refreshTools()
 
-            // Pass 4: Garbage collect old daily logs
+            // Pass 4: Self-reflection — review behaviour and optionally evolve persona
+            stats.selfReflected = await this._selfReflect()
+
+            // Pass 5: Garbage collect old daily logs
             stats.logsDeleted = await this.dailyLog.garbageCollect()
 
-            // Pass 5: Clear working memory
+            // Pass 6: Clear working memory + internal state history
             this.workingMemory.clear()
+            this.internalState.clearHistory()
 
-            const summary = `Consolidation complete: memory=${stats.memoryConsolidated}, skills=${stats.skillsExtracted}, tools=${stats.toolsRefreshed}, logs_deleted=${stats.logsDeleted}`
+            const summary = `Consolidation complete: memory=${stats.memoryConsolidated}, skills=${stats.skillsExtracted}, tools=${stats.toolsRefreshed}, reflected=${stats.selfReflected}, logs_deleted=${stats.logsDeleted}`
             this.logger.info(summary)
             await this.dailyLog.append(summary)
 
@@ -95,18 +104,25 @@ export class SleepCycle {
 
         if (!todayLog.trim()) return false
 
+        // Include salient events — high-arousal moments should be prioritised
+        const salientEvents = this.workingMemory.salientEvents(0.6)
+        const salientNote = salientEvents.length > 0
+            ? `\n\nIMPORTANT MOMENTS (high salience — encode these more strongly):\n${salientEvents.map(e => `- [${e.time}] ${e.type}: ${e.action || e.message || JSON.stringify(e)}`).join('\n')}`
+            : ''
+
         const prompt = `You are a memory consolidation system. Review this agent's memory file and today's activity log.
 Your job:
 1. Merge redundant entries
 2. Remove stale or irrelevant entries
 3. Add important new facts from today's log that aren't already in memory
-4. Keep the same markdown format with sections: ## Relationships, ## Learned Facts, ## Important Memories
-5. Cap total entries at ~50
-6. Move any procedural knowledge ("how to do X") to a separate note — don't include it here
+4. Pay special attention to high-salience moments — these were emotionally significant and should be remembered
+5. Keep the same markdown format with sections: ## Relationships, ## Learned Facts, ## Important Memories
+6. Cap total entries at ~50
+7. Move any procedural knowledge ("how to do X") to a separate note — don't include it here
 
 Return ONLY the updated memory.md content, nothing else.`
 
-        const userPrompt = `CURRENT MEMORY:\n${memory}\n\nTODAY'S LOG:\n${todayLog}`
+        const userPrompt = `CURRENT MEMORY:\n${memory}\n\nTODAY'S LOG:\n${todayLog}${salientNote}`
 
         const result = await this.think.consolidate(prompt, userPrompt)
         if (result && result.trim().length > 10) {
@@ -160,6 +176,122 @@ Return ONLY the updated tools.md content, nothing else.`
             this.logger.info('Tools refreshed')
             return true
         }
+        return false
+    }
+
+    // Self-reflection: review recent behaviour, internal state patterns,
+    // and optionally propose persona evolution.
+    // This is the OHMAR Part 4 insight: "Should I evolve?"
+    async _selfReflect() {
+        const memory = await this.memoryFiles.readMemory()
+        const todayLog = await this.dailyLog.readToday()
+        const stateHistory = this.internalState.historySummary()
+
+        if (!todayLog.trim()) return false
+
+        // Load current persona
+        let persona
+        try {
+            const raw = await readFile(this.personaPath, 'utf-8')
+            persona = JSON.parse(raw)
+        } catch {
+            this.logger.warn('Could not load persona for self-reflection')
+            return false
+        }
+
+        const prompt = `You are a self-reflection system for an autonomous agent named ${persona.name}.
+
+Review the agent's recent behaviour, emotional patterns, and memories. Then decide: should the agent's personality evolve?
+
+Rules:
+- Evolution should be subtle — small shifts, not dramatic rewrites
+- Changes must be grounded in actual experiences (from the log)
+- Core identity (name, backstory) should NOT change
+- Traits, quirks, values, fears, and voice CAN shift slightly based on experience
+- If nothing warrants change, respond with {"evolve": false}
+- If change is warranted, respond with {"evolve": true, "changes": {...}, "reason": "why"}
+
+The "changes" object should contain only the fields to update, using the same structure as the persona.
+For example: {"changes": {"quirks": ["speaks slowly when uncertain", "hums when exploring"]}, "reason": "developed a habit of humming during exploration"}
+
+Respond with JSON only.`
+
+        const userPrompt = `CURRENT PERSONA:
+${JSON.stringify(persona, null, 2)}
+
+INTERNAL STATE SUMMARY:
+${stateHistory}
+
+TODAY'S ACTIVITY:
+${todayLog}
+
+CURRENT MEMORIES:
+${memory}
+
+Should ${persona.name} evolve? Respond with JSON.`
+
+        const result = await this.think.consolidate(prompt, userPrompt)
+        if (!result) return false
+
+        try {
+            // Parse JSON from response
+            let jsonStr = result.trim()
+            const fenceMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/)
+            if (fenceMatch) jsonStr = fenceMatch[1].trim()
+            const braceStart = jsonStr.indexOf('{')
+            const braceEnd = jsonStr.lastIndexOf('}')
+            if (braceStart !== -1 && braceEnd > braceStart) {
+                jsonStr = jsonStr.slice(braceStart, braceEnd + 1)
+            }
+
+            const reflection = JSON.parse(jsonStr)
+
+            if (!reflection.evolve) {
+                this.logger.info('Self-reflection: no evolution needed')
+                await this.dailyLog.append('Self-reflection: no evolution needed')
+                return true
+            }
+
+            // Apply changes to persona
+            if (reflection.changes && typeof reflection.changes === 'object') {
+                const before = JSON.stringify(persona)
+
+                // Never change name, id, or backstory
+                delete reflection.changes.name
+                delete reflection.changes.id
+                delete reflection.changes.backstory
+
+                // Merge changes
+                for (const [key, val] of Object.entries(reflection.changes)) {
+                    persona[key] = val
+                }
+
+                // Add evolution log entry
+                if (!persona.evolution) persona.evolution = []
+                persona.evolution.push({
+                    date: new Date().toISOString(),
+                    reason: reflection.reason || 'self-reflection',
+                    changes: reflection.changes,
+                })
+                // Keep evolution log manageable
+                if (persona.evolution.length > 20) {
+                    persona.evolution = persona.evolution.slice(-20)
+                }
+
+                // Write updated persona
+                await writeFile(this.personaPath, JSON.stringify(persona, null, 2), 'utf-8')
+
+                const summary = `Self-reflection: evolved — ${reflection.reason || 'subtle shift'}`
+                this.logger.info(summary)
+                await this.dailyLog.append(summary)
+                await this.dailyLog.append(`Evolution changes: ${JSON.stringify(reflection.changes)}`)
+
+                return true
+            }
+        } catch (err) {
+            this.logger.warn(`Self-reflection parse error: ${err.message}`)
+        }
+
         return false
     }
 
