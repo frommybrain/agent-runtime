@@ -1,7 +1,8 @@
-import { readFile, writeFile, mkdir } from 'node:fs/promises'
+import { readFile, writeFile, copyFile, mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
 
 // Manages the three persistent knowledge files: memory.md, skills.md, tools.md
+// v0.3.1: backup + restore for consolidation safety
 
 export class MemoryFiles {
     constructor(config, logger) {
@@ -55,6 +56,12 @@ export class MemoryFiles {
     // --- Append (used during waking hours for incremental updates) ---
 
     async appendToMemory(section, content) {
+        // v0.3.1: Hard length cap — prevent LLM from writing essays into memory
+        if (content.length > 150) {
+            content = content.slice(0, 150)
+            this.logger.debug(`Memory entry truncated to 150 chars`)
+        }
+
         const current = await this.readMemory()
 
         // Dedup: exact substring match (minus [salient] tag)
@@ -182,15 +189,15 @@ export class MemoryFiles {
         // Rebuild discovered objects from current observation — only show what's
         // actually nearby RIGHT NOW. Stale objects cause hallucination.
         const nearbyObjects = observation.nearbyObjects || observation.nearby_objects || []
-        const objectsSection = '# Nearby Objects\n' + (
+        const objectsSection = '# Nearby Objects (GROUND TRUTH — if something is not listed here, it is not present)\n' + (
             nearbyObjects.length > 0
                 ? nearbyObjects.map(obj =>
                     `- ${obj.id}: ${obj.type}${obj.interactive ? ', interactive' : ''}, at (${obj.pos?.x?.toFixed(0) ?? '?'}, ${obj.pos?.z?.toFixed(0) ?? '?'})`
                 ).join('\n') + '\n'
-                : '(nothing nearby)\n'
+                : '(nothing nearby — the area is empty)\n'
         )
         // Replace or append the objects section
-        const objMarker = updated.match(/# (?:Discovered|Nearby) Objects/)
+        const objMarker = updated.match(/# (?:Discovered|Nearby) Objects[^\n]*/)
         if (objMarker) {
             const start = updated.indexOf(objMarker[0])
             updated = updated.slice(0, start) + objectsSection
@@ -223,6 +230,74 @@ export class MemoryFiles {
             return `- ${a.name}: ${a.description || ''}`
         })
         return `# Available Actions\n${lines.join('\n')}\n`
+    }
+
+    // --- Backup / Restore (for consolidation safety) ---
+
+    // Create a .bak copy before destructive LLM overwrites
+    async backup(filename) {
+        const src = join(this.dataDir, filename)
+        const dst = join(this.dataDir, `${filename}.bak`)
+        try {
+            await copyFile(src, dst)
+        } catch {
+            // Source doesn't exist yet — nothing to back up
+        }
+    }
+
+    // Restore from backup if the current file is corrupted
+    async restore(filename) {
+        const bak = join(this.dataDir, `${filename}.bak`)
+        const dst = join(this.dataDir, filename)
+        try {
+            await copyFile(bak, dst)
+            this.logger.warn(`Restored ${filename} from backup`)
+            return true
+        } catch {
+            this.logger.error(`No backup available for ${filename}`)
+            return false
+        }
+    }
+
+    // Validate that LLM output looks like valid memory.md
+    validateMemoryContent(content) {
+        if (!content || content.trim().length < 20) return false
+        // Must have at least one markdown header
+        if (!content.includes('# ')) return false
+        // Must have at least one list entry (or be a valid empty structure)
+        const hasEntries = content.includes('- ')
+        const hasExpectedSections = content.includes('## ')
+        return hasEntries || hasExpectedSections
+    }
+
+    // Validate that LLM output looks like valid skills.md
+    validateSkillsContent(content) {
+        if (!content || content.trim().length < 10) return false
+        if (!content.includes('# ')) return false
+        return true
+    }
+
+    // Safe write: backup → validate → write, or restore on failure
+    async safeWriteMemory(content) {
+        await this.backup('memory.md')
+        if (this.validateMemoryContent(content)) {
+            await this.writeMemory(content)
+            return true
+        }
+        this.logger.warn('Memory consolidation output failed validation — restoring backup')
+        await this.restore('memory.md')
+        return false
+    }
+
+    async safeWriteSkills(content) {
+        await this.backup('skills.md')
+        if (this.validateSkillsContent(content)) {
+            await this.writeSkills(content)
+            return true
+        }
+        this.logger.warn('Skills extraction output failed validation — restoring backup')
+        await this.restore('skills.md')
+        return false
     }
 
     // --- Helpers ---

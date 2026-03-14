@@ -9,7 +9,7 @@
 // - Persona drift guard: measures distance from original, blocks runaway evolution
 // - Flushes daily log buffer before consolidation
 
-import { readFile, writeFile } from 'node:fs/promises'
+import { readFile, writeFile, copyFile } from 'node:fs/promises'
 
 export class SleepCycle {
     constructor(think, memoryFiles, dailyLog, workingMemory, internalState, repetitionGuard, config, logger) {
@@ -24,11 +24,30 @@ export class SleepCycle {
         this.activeHours = config.activeHoursBeforeSleep
         this.sleepMinutes = config.sleepDurationMinutes
         this.personaPath = config.personaPath
+        this.dataDir = config.dataDir
         this.sleeping = false
 
         this._wakeTime = Date.now()
         this._sleepTimer = null
-        this._originalPersona = null  // loaded on first sleep for drift comparison
+        this._originalPersona = null  // loaded from immutable baseline file
+    }
+
+    // Load the immutable original persona baseline.
+    // On first-ever boot, saves a copy that never changes.
+    // On subsequent boots (including after crashes), loads from that file.
+    async loadOriginalPersona(currentPersona) {
+        const { join } = await import('node:path')
+        const baselinePath = join(this.dataDir, 'persona-baseline.json')
+        try {
+            const raw = await readFile(baselinePath, 'utf-8')
+            this._originalPersona = this._extractComparableFields(JSON.parse(raw))
+            this.logger.info('Drift guard: loaded immutable persona baseline')
+        } catch {
+            // First ever boot — save the current persona as the baseline
+            await writeFile(baselinePath, JSON.stringify(currentPersona, null, 2), 'utf-8')
+            this._originalPersona = this._extractComparableFields(currentPersona)
+            this.logger.info('Drift guard: saved initial persona baseline')
+        }
     }
 
     isSleeping() {
@@ -62,7 +81,6 @@ export class SleepCycle {
             const stats = {
                 memoryConsolidated: false,
                 skillsExtracted: false,
-                toolsRefreshed: false,
                 selfReflected: false,
                 logsDeleted: 0,
             }
@@ -79,21 +97,22 @@ export class SleepCycle {
             // Pass 2: Extract skills from memory → skills.md
             stats.skillsExtracted = await this._extractSkills()
 
-            // Pass 3: Refresh tools.md (clean up duplicates)
-            stats.toolsRefreshed = await this._refreshTools()
+            // Pass 3 (REMOVED in v0.3.1): _refreshTools() was destructive — the LLM
+            // could corrupt the ground truth header in tools.md. Since tools.md is
+            // rebuilt from the live observation every tick, LLM cleanup is redundant.
 
-            // Pass 4: Self-reflection — review behaviour and optionally evolve persona
+            // Pass 3: Self-reflection — review behaviour and optionally evolve persona
             stats.selfReflected = await this._selfReflect()
 
-            // Pass 5: Garbage collect old daily logs
+            // Pass 4: Garbage collect old daily logs
             stats.logsDeleted = await this.dailyLog.garbageCollect()
 
-            // Pass 6: Clear volatile state
+            // Pass 5: Clear volatile state
             this.workingMemory.clear()
             this.internalState.clearHistory()
             if (this.repetitionGuard) this.repetitionGuard.clear()
 
-            const summary = `Consolidation complete: memory=${stats.memoryConsolidated}, skills=${stats.skillsExtracted}, tools=${stats.toolsRefreshed}, reflected=${stats.selfReflected}, logs_deleted=${stats.logsDeleted}`
+            const summary = `Consolidation complete: memory=${stats.memoryConsolidated}, skills=${stats.skillsExtracted}, reflected=${stats.selfReflected}, logs_deleted=${stats.logsDeleted}`
             this.logger.info(summary)
             await this.dailyLog.append(summary)
 
@@ -145,59 +164,57 @@ Return ONLY the updated memory.md content, nothing else.`
 
         const result = await this.think.consolidate(prompt, userPrompt)
         if (result && result.trim().length > 10) {
-            await this.memoryFiles.writeMemory(result.trim())
-            this.logger.info('Memory consolidated')
-            return true
+            const written = await this.memoryFiles.safeWriteMemory(result.trim())
+            if (written) {
+                this.logger.info('Memory consolidated')
+            } else {
+                this.logger.warn('Memory consolidation rejected — backup restored')
+                await this.dailyLog.append('Memory consolidation REJECTED — LLM output failed validation, backup restored')
+            }
+            return written
         }
         return false
     }
 
     async _extractSkills() {
-        const memory = await this.memoryFiles.readMemory()
         const skills = await this.memoryFiles.readSkills()
         const todayLog = await this.dailyLog.readForConsolidation(100)
 
-        const prompt = `You are a skill extraction system. Review this agent's memory and recent activity log.
-Your job:
-1. Find procedural knowledge — things the agent learned HOW to do (e.g., "to use the terminal, first interact then type commands")
-2. Merge these into the skills file, organized by category
-3. Keep existing skills that are still relevant
-4. Remove outdated or incorrect skills
-5. Keep the same markdown format
-6. Cap total entries at ~30
+        if (!todayLog.trim()) return false
+
+        const prompt = `You are a skill extraction system for an autonomous agent.
+
+STRICT RULES:
+- ONLY extract skills that are DIRECTLY evidenced in the activity log below
+- A skill must describe a specific action sequence the agent actually performed (e.g., "interact with terminal-01 to get status info")
+- DO NOT invent, embellish, or generalise beyond what the log shows
+- DO NOT create categories like "Territory Management" or "Leadership" — these are hallucinations
+- If no clear procedural knowledge exists in the log, return the existing skills unchanged
+- Each skill entry must be one short line (max 80 chars)
+- Cap total entries at ~20
+- Keep the same markdown format
 
 Return ONLY the updated skills.md content, nothing else.`
 
-        const userPrompt = `CURRENT SKILLS:\n${skills}\n\nMEMORY:\n${memory}\n\nRECENT ACTIVITY:\n${todayLog}`
+        const userPrompt = `CURRENT SKILLS:\n${skills}\n\nRECENT ACTIVITY LOG (this is the ONLY source of truth):\n${todayLog}`
 
         const result = await this.think.consolidate(prompt, userPrompt)
         if (result && result.trim().length > 10) {
-            await this.memoryFiles.writeSkills(result.trim())
-            this.logger.info('Skills extracted')
-            return true
+            const written = await this.memoryFiles.safeWriteSkills(result.trim())
+            if (written) {
+                this.logger.info('Skills extracted')
+            } else {
+                this.logger.warn('Skills extraction rejected — backup restored')
+                await this.dailyLog.append('Skills extraction REJECTED — LLM output failed validation, backup restored')
+            }
+            return written
         }
         return false
     }
 
-    async _refreshTools() {
-        const tools = await this.memoryFiles.readTools()
-
-        const prompt = `You are a tools cleanup system. Review this tools file and clean it up:
-1. Remove duplicate entries in "Nearby Objects"
-2. Ensure "Available Actions" is clean and well-formatted
-3. Remove any entries that look like errors or garbage
-4. Keep the markdown format with sections: # Available Actions, # Nearby Objects
-
-Return ONLY the updated tools.md content, nothing else.`
-
-        const result = await this.think.consolidate(prompt, `CURRENT TOOLS:\n${tools}`)
-        if (result && result.trim().length > 10) {
-            await this.memoryFiles.writeTools(result.trim())
-            this.logger.info('Tools refreshed')
-            return true
-        }
-        return false
-    }
+    // _refreshTools() REMOVED in v0.3.1 — tools.md is rebuilt from live
+    // observations every tick. LLM cleanup was redundant and could corrupt
+    // the ground truth header, causing section duplication.
 
     // Self-reflection: review recent behaviour, internal state patterns,
     // and optionally propose persona evolution.
@@ -219,8 +236,10 @@ Return ONLY the updated tools.md content, nothing else.`
             return false
         }
 
-        // Load original persona for drift comparison (first time only)
+        // v0.3.1: _originalPersona is now loaded from immutable baseline file at startup
+        // via loadOriginalPersona(). If somehow not loaded, fall back to current.
         if (!this._originalPersona) {
+            this.logger.warn('Drift guard: no baseline loaded — using current persona (unsafe)')
             this._originalPersona = this._extractComparableFields(persona)
         }
 
@@ -295,6 +314,25 @@ Should ${persona.name} evolve? Respond with JSON.`
                 delete reflection.changes.name
                 delete reflection.changes.id
                 delete reflection.changes.backstory
+
+                // v0.3.1: Type validation — reject changes that would corrupt persona structure
+                const arrayFields = new Set(['traits', 'values', 'fears', 'quirks'])
+                for (const [key, val] of Object.entries(reflection.changes)) {
+                    if (arrayFields.has(key) && !Array.isArray(val)) {
+                        this.logger.warn(`Persona evolution rejected: "${key}" must be array, got ${typeof val}`)
+                        await this.dailyLog.append(`Persona evolution REJECTED — "${key}" had wrong type (${typeof val})`)
+                        return false
+                    }
+                    if (key === 'voice' && (typeof val !== 'object' || val === null)) {
+                        this.logger.warn(`Persona evolution rejected: "voice" must be object`)
+                        return false
+                    }
+                }
+
+                // Backup persona before overwriting
+                try {
+                    await copyFile(this.personaPath, this.personaPath + '.bak')
+                } catch { /* first run, no file to back up */ }
 
                 // Merge changes
                 for (const [key, val] of Object.entries(reflection.changes)) {
