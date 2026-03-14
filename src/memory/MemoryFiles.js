@@ -8,6 +8,7 @@ export class MemoryFiles {
         this.dataDir = config.dataDir
         this.agentId = config.agentId
         this.logger = logger
+        this._lastToolsHash = null  // skip redundant tools.md writes
     }
 
     async init() {
@@ -56,11 +57,26 @@ export class MemoryFiles {
     async appendToMemory(section, content) {
         const current = await this.readMemory()
 
-        // Dedup: skip if this content (minus [salient] tag) already exists
+        // Dedup: exact substring match (minus [salient] tag)
         const bare = content.replace(/\s*\[salient\]\s*$/, '').trim().toLowerCase()
         if (current.toLowerCase().includes(bare)) {
-            this.logger.debug(`Memory dedup — skipping "${content}" (already exists)`)
+            this.logger.debug(`Memory dedup — skipping "${content}" (exact match)`)
             return
+        }
+
+        // Fuzzy dedup: extract key words and check if a similar entry exists
+        const keywords = this._extractKeywords(bare)
+        if (keywords.length >= 2) {
+            const existingLines = current.split('\n').filter(l => l.startsWith('- '))
+            for (const line of existingLines) {
+                const lineKeywords = this._extractKeywords(line.slice(2).toLowerCase())
+                const overlap = keywords.filter(k => lineKeywords.includes(k)).length
+                const similarity = overlap / Math.max(keywords.length, lineKeywords.length)
+                if (similarity >= 0.7) {
+                    this.logger.debug(`Memory dedup — skipping "${content}" (similar to "${line.slice(2).trim()}")`)
+                    return
+                }
+            }
         }
 
         const marker = `## ${section}`
@@ -76,6 +92,70 @@ export class MemoryFiles {
             await this.writeMemory(updated)
         }
         this.logger.debug(`Memory appended to [${section}]: ${content}`)
+    }
+
+    // Extract meaningful keywords (strip stop words) for fuzzy dedup
+    _extractKeywords(text) {
+        const stopWords = new Set([
+            'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
+            'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could',
+            'should', 'may', 'might', 'can', 'to', 'of', 'in', 'for', 'on', 'with',
+            'at', 'by', 'from', 'it', 'its', 'this', 'that', 'and', 'or', 'but',
+            'not', 'no', 'i', 'my', 'me', 'we', 'our', 'you', 'your', 'they',
+            'them', 'their', 'he', 'she', 'his', 'her', 'so', 'if', 'then',
+            'than', 'too', 'very', 'just', 'about', 'up', 'out', 'some', 'also',
+        ])
+        return text
+            .replace(/[^a-z0-9\s]/g, '')
+            .split(/\s+/)
+            .filter(w => w.length > 2 && !stopWords.has(w))
+    }
+
+    // --- Pre-consolidation dedup ---
+    // Strips near-duplicate entries from memory.md before the LLM sees it.
+    // The LLM can't be trusted to merge duplicates — it keeps everything.
+
+    async deduplicateMemory() {
+        const content = await this.readMemory()
+        const lines = content.split('\n')
+        const seen = []  // { keywords: string[], line: string }
+        const output = []
+        let removed = 0
+
+        for (const line of lines) {
+            if (!line.startsWith('- ')) {
+                output.push(line)
+                continue
+            }
+
+            const text = line.slice(2).replace(/\s*\[salient\]\s*$/, '').trim().toLowerCase()
+            const keywords = this._extractKeywords(text)
+
+            // Check against already-seen entries
+            let isDuplicate = false
+            if (keywords.length >= 2) {
+                for (const existing of seen) {
+                    const overlap = keywords.filter(k => existing.keywords.includes(k)).length
+                    const similarity = overlap / Math.max(keywords.length, existing.keywords.length)
+                    if (similarity >= 0.7) {
+                        isDuplicate = true
+                        removed++
+                        break
+                    }
+                }
+            }
+
+            if (!isDuplicate) {
+                seen.push({ keywords, line })
+                output.push(line)
+            }
+        }
+
+        if (removed > 0) {
+            await this.writeMemory(output.join('\n'))
+            this.logger.info(`Memory dedup: removed ${removed} near-duplicate entries`)
+        }
+        return removed
     }
 
     // --- Tools auto-update from observations ---
@@ -119,9 +199,22 @@ export class MemoryFiles {
         }
         changed = true
 
-        if (changed) {
+        // Only write if content actually changed (saves ~10,800 disk writes/day)
+        const hash = this._quickHash(updated)
+        if (hash !== this._lastToolsHash) {
+            this._lastToolsHash = hash
             await this.writeTools(updated)
         }
+    }
+
+    // Fast string hash for change detection (djb2)
+    _quickHash(str) {
+        let hash = 5381
+        for (let i = 0; i < str.length; i++) {
+            hash = ((hash << 5) + hash) + str.charCodeAt(i)
+            hash = hash & hash  // Convert to 32bit integer
+        }
+        return hash
     }
 
     _buildActionsSection(actions) {

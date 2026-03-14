@@ -2,16 +2,23 @@
 // 4 hours active → 1 hour sleep (configurable)
 // During sleep: LLM consolidates memory, extracts skills, refreshes tools,
 // reflects on internal state history, optionally evolves persona, garbage collects.
+//
+// v0.3 changes:
+// - Uses readForConsolidation() to cap LLM context input
+// - Clears repetition guard during sleep
+// - Persona drift guard: measures distance from original, blocks runaway evolution
+// - Flushes daily log buffer before consolidation
 
 import { readFile, writeFile } from 'node:fs/promises'
 
 export class SleepCycle {
-    constructor(think, memoryFiles, dailyLog, workingMemory, internalState, config, logger) {
+    constructor(think, memoryFiles, dailyLog, workingMemory, internalState, repetitionGuard, config, logger) {
         this.think = think
         this.memoryFiles = memoryFiles
         this.dailyLog = dailyLog
         this.workingMemory = workingMemory
         this.internalState = internalState
+        this.repetitionGuard = repetitionGuard
         this.logger = logger
 
         this.activeHours = config.activeHoursBeforeSleep
@@ -21,6 +28,7 @@ export class SleepCycle {
 
         this._wakeTime = Date.now()
         this._sleepTimer = null
+        this._originalPersona = null  // loaded on first sleep for drift comparison
     }
 
     isSleeping() {
@@ -47,6 +55,9 @@ export class SleepCycle {
 
         this.workingMemory.push({ type: 'sleep', message: 'SLEEP STARTED' })
 
+        // Flush daily log buffer before consolidation reads it
+        await this.dailyLog.flush()
+
         try {
             const stats = {
                 memoryConsolidated: false,
@@ -54,6 +65,12 @@ export class SleepCycle {
                 toolsRefreshed: false,
                 selfReflected: false,
                 logsDeleted: 0,
+            }
+
+            // Pass 0: Pre-consolidation dedup — strip near-duplicates before LLM sees them
+            const dedupRemoved = await this.memoryFiles.deduplicateMemory()
+            if (dedupRemoved > 0) {
+                await this.dailyLog.append(`Pre-consolidation dedup: removed ${dedupRemoved} near-duplicates`)
             }
 
             // Pass 1: Consolidate memory.md
@@ -71,9 +88,10 @@ export class SleepCycle {
             // Pass 5: Garbage collect old daily logs
             stats.logsDeleted = await this.dailyLog.garbageCollect()
 
-            // Pass 6: Clear working memory + internal state history
+            // Pass 6: Clear volatile state
             this.workingMemory.clear()
             this.internalState.clearHistory()
+            if (this.repetitionGuard) this.repetitionGuard.clear()
 
             const summary = `Consolidation complete: memory=${stats.memoryConsolidated}, skills=${stats.skillsExtracted}, tools=${stats.toolsRefreshed}, reflected=${stats.selfReflected}, logs_deleted=${stats.logsDeleted}`
             this.logger.info(summary)
@@ -100,7 +118,8 @@ export class SleepCycle {
 
     async _consolidateMemory() {
         const memory = await this.memoryFiles.readMemory()
-        const todayLog = await this.dailyLog.readToday()
+        // Use capped log to prevent context overflow (max 200 lines, not entire day)
+        const todayLog = await this.dailyLog.readForConsolidation(200)
 
         if (!todayLog.trim()) return false
 
@@ -110,11 +129,11 @@ export class SleepCycle {
             ? `\n\nIMPORTANT MOMENTS (high salience — encode these more strongly):\n${salientEvents.map(e => `- [${e.time}] ${e.type}: ${e.action || e.message || JSON.stringify(e)}`).join('\n')}`
             : ''
 
-        const prompt = `You are a memory consolidation system. Review this agent's memory file and today's activity log.
+        const prompt = `You are a memory consolidation system. Review this agent's memory file and recent activity log.
 Your job:
 1. Merge redundant entries
 2. Remove stale or irrelevant entries
-3. Add important new facts from today's log that aren't already in memory
+3. Add important new facts from the log that aren't already in memory
 4. Pay special attention to high-salience moments — these were emotionally significant and should be remembered
 5. Keep the same markdown format with sections: ## Relationships, ## Learned Facts, ## Important Memories
 6. Cap total entries at ~50
@@ -122,7 +141,7 @@ Your job:
 
 Return ONLY the updated memory.md content, nothing else.`
 
-        const userPrompt = `CURRENT MEMORY:\n${memory}\n\nTODAY'S LOG:\n${todayLog}${salientNote}`
+        const userPrompt = `CURRENT MEMORY:\n${memory}\n\nRECENT ACTIVITY:\n${todayLog}${salientNote}`
 
         const result = await this.think.consolidate(prompt, userPrompt)
         if (result && result.trim().length > 10) {
@@ -136,19 +155,20 @@ Return ONLY the updated memory.md content, nothing else.`
     async _extractSkills() {
         const memory = await this.memoryFiles.readMemory()
         const skills = await this.memoryFiles.readSkills()
-        const todayLog = await this.dailyLog.readToday()
+        const todayLog = await this.dailyLog.readForConsolidation(100)
 
-        const prompt = `You are a skill extraction system. Review this agent's memory and today's activity log.
+        const prompt = `You are a skill extraction system. Review this agent's memory and recent activity log.
 Your job:
 1. Find procedural knowledge — things the agent learned HOW to do (e.g., "to use the terminal, first interact then type commands")
 2. Merge these into the skills file, organized by category
 3. Keep existing skills that are still relevant
 4. Remove outdated or incorrect skills
 5. Keep the same markdown format
+6. Cap total entries at ~30
 
 Return ONLY the updated skills.md content, nothing else.`
 
-        const userPrompt = `CURRENT SKILLS:\n${skills}\n\nMEMORY:\n${memory}\n\nTODAY'S LOG:\n${todayLog}`
+        const userPrompt = `CURRENT SKILLS:\n${skills}\n\nMEMORY:\n${memory}\n\nRECENT ACTIVITY:\n${todayLog}`
 
         const result = await this.think.consolidate(prompt, userPrompt)
         if (result && result.trim().length > 10) {
@@ -163,10 +183,10 @@ Return ONLY the updated skills.md content, nothing else.`
         const tools = await this.memoryFiles.readTools()
 
         const prompt = `You are a tools cleanup system. Review this tools file and clean it up:
-1. Remove duplicate entries in "Discovered Objects"
+1. Remove duplicate entries in "Nearby Objects"
 2. Ensure "Available Actions" is clean and well-formatted
 3. Remove any entries that look like errors or garbage
-4. Keep the markdown format with sections: # Available Actions, # Discovered Objects
+4. Keep the markdown format with sections: # Available Actions, # Nearby Objects
 
 Return ONLY the updated tools.md content, nothing else.`
 
@@ -181,10 +201,10 @@ Return ONLY the updated tools.md content, nothing else.`
 
     // Self-reflection: review recent behaviour, internal state patterns,
     // and optionally propose persona evolution.
-    // This is the OHMAR Part 4 insight: "Should I evolve?"
+    // Includes drift guard: blocks evolution if persona has diverged too far from original.
     async _selfReflect() {
         const memory = await this.memoryFiles.readMemory()
-        const todayLog = await this.dailyLog.readToday()
+        const todayLog = await this.dailyLog.readForConsolidation(150)
         const stateHistory = this.internalState.historySummary()
 
         if (!todayLog.trim()) return false
@@ -199,6 +219,22 @@ Return ONLY the updated tools.md content, nothing else.`
             return false
         }
 
+        // Load original persona for drift comparison (first time only)
+        if (!this._originalPersona) {
+            this._originalPersona = this._extractComparableFields(persona)
+        }
+
+        // Check drift before allowing evolution
+        const driftScore = this._measureDrift(persona)
+        const maxDrift = 0.6  // 60% divergence threshold
+        const driftBlocked = driftScore >= maxDrift
+
+        if (driftBlocked) {
+            this.logger.warn(`Persona drift too high (${(driftScore * 100).toFixed(0)}%) — evolution blocked this cycle`)
+            await this.dailyLog.append(`Self-reflection: evolution BLOCKED — drift ${(driftScore * 100).toFixed(0)}% exceeds ${(maxDrift * 100).toFixed(0)}% threshold`)
+            return true
+        }
+
         const prompt = `You are a self-reflection system for an autonomous agent named ${persona.name}.
 
 Review the agent's recent behaviour, emotional patterns, and memories. Then decide: should the agent's personality evolve?
@@ -208,6 +244,7 @@ Rules:
 - Changes must be grounded in actual experiences (from the log)
 - Core identity (name, backstory) should NOT change
 - Traits, quirks, values, fears, and voice CAN shift slightly based on experience
+- You may ADD one new trait/quirk or MODIFY one existing one, but never remove more than one per cycle
 - If nothing warrants change, respond with {"evolve": false}
 - If change is warranted, respond with {"evolve": true, "changes": {...}, "reason": "why"}
 
@@ -222,7 +259,7 @@ ${JSON.stringify(persona, null, 2)}
 INTERNAL STATE SUMMARY:
 ${stateHistory}
 
-TODAY'S ACTIVITY:
+RECENT ACTIVITY:
 ${todayLog}
 
 CURRENT MEMORIES:
@@ -254,8 +291,6 @@ Should ${persona.name} evolve? Respond with JSON.`
 
             // Apply changes to persona
             if (reflection.changes && typeof reflection.changes === 'object') {
-                const before = JSON.stringify(persona)
-
                 // Never change name, id, or backstory
                 delete reflection.changes.name
                 delete reflection.changes.id
@@ -272,6 +307,7 @@ Should ${persona.name} evolve? Respond with JSON.`
                     date: new Date().toISOString(),
                     reason: reflection.reason || 'self-reflection',
                     changes: reflection.changes,
+                    driftScore: this._measureDrift(persona),
                 })
                 // Keep evolution log manageable
                 if (persona.evolution.length > 20) {
@@ -281,7 +317,8 @@ Should ${persona.name} evolve? Respond with JSON.`
                 // Write updated persona
                 await writeFile(this.personaPath, JSON.stringify(persona, null, 2), 'utf-8')
 
-                const summary = `Self-reflection: evolved — ${reflection.reason || 'subtle shift'}`
+                const newDrift = this._measureDrift(persona)
+                const summary = `Self-reflection: evolved — ${reflection.reason || 'subtle shift'} (drift: ${(newDrift * 100).toFixed(0)}%)`
                 this.logger.info(summary)
                 await this.dailyLog.append(summary)
                 await this.dailyLog.append(`Evolution changes: ${JSON.stringify(reflection.changes)}`)
@@ -293,6 +330,58 @@ Should ${persona.name} evolve? Respond with JSON.`
         }
 
         return false
+    }
+
+    // --- Persona Drift Guard ---
+
+    // Extract fields that can evolve for comparison
+    _extractComparableFields(persona) {
+        return {
+            traits: [...(persona.traits || [])],
+            values: [...(persona.values || [])],
+            fears: [...(persona.fears || [])],
+            quirks: [...(persona.quirks || [])],
+            voiceStyle: persona.voice?.style || '',
+        }
+    }
+
+    // Measure how far the current persona has drifted from the original
+    // Returns 0..1 (0 = identical, 1 = completely different)
+    _measureDrift(currentPersona) {
+        if (!this._originalPersona) return 0
+
+        const original = this._originalPersona
+        const current = this._extractComparableFields(currentPersona)
+
+        let totalDrift = 0
+        let fieldCount = 0
+
+        // Compare array fields: what fraction of original items are still present?
+        for (const field of ['traits', 'values', 'fears', 'quirks']) {
+            const orig = new Set(original[field].map(s => s.toLowerCase()))
+            const curr = new Set(current[field].map(s => s.toLowerCase()))
+
+            if (orig.size === 0) continue
+            fieldCount++
+
+            // How many original items survived?
+            let surviving = 0
+            for (const item of orig) {
+                if (curr.has(item)) surviving++
+            }
+            const retention = surviving / orig.size
+            totalDrift += (1 - retention)
+        }
+
+        // Compare voice style (simple string similarity)
+        if (original.voiceStyle) {
+            fieldCount++
+            if (current.voiceStyle !== original.voiceStyle) {
+                totalDrift += 0.5  // Changed voice = partial drift
+            }
+        }
+
+        return fieldCount > 0 ? totalDrift / fieldCount : 0
     }
 
     stop() {
