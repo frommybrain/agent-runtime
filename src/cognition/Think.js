@@ -52,7 +52,7 @@ export class Think {
         }
 
         // 5. Handle memory write if present — use salience for encoding strength
-        if (parsed.remember) {
+        if (parsed.remember && typeof parsed.remember.content === 'string' && parsed.remember.content.trim()) {
             const salience = extras.salience || 0.5
             const content = salience > 0.7
                 ? `${parsed.remember.content} [salient]`
