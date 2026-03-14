@@ -99,25 +99,25 @@ export class MemoryFiles {
             changed = true
         }
 
-        // Update discovered objects
+        // Rebuild discovered objects from current observation — only show what's
+        // actually nearby RIGHT NOW. Stale objects cause hallucination.
         const nearbyObjects = observation.nearbyObjects || observation.nearby_objects || []
-        if (nearbyObjects.length > 0) {
-            for (const obj of nearbyObjects) {
-                const objLine = `- ${obj.id}: ${obj.type}${obj.interactive ? ', interactive' : ''}, at (${obj.pos?.x?.toFixed(0) ?? '?'}, ${obj.pos?.z?.toFixed(0) ?? '?'})`
-                if (!updated.includes(obj.id)) {
-                    // Add to Discovered Objects section
-                    const marker = '# Discovered Objects'
-                    const idx = updated.indexOf(marker)
-                    if (idx !== -1) {
-                        const afterMarker = idx + marker.length
-                        updated = updated.slice(0, afterMarker) + '\n' + objLine + updated.slice(afterMarker)
-                    } else {
-                        updated += `\n# Discovered Objects\n${objLine}\n`
-                    }
-                    changed = true
-                }
-            }
+        const objectsSection = '# Nearby Objects\n' + (
+            nearbyObjects.length > 0
+                ? nearbyObjects.map(obj =>
+                    `- ${obj.id}: ${obj.type}${obj.interactive ? ', interactive' : ''}, at (${obj.pos?.x?.toFixed(0) ?? '?'}, ${obj.pos?.z?.toFixed(0) ?? '?'})`
+                ).join('\n') + '\n'
+                : '(nothing nearby)\n'
+        )
+        // Replace or append the objects section
+        const objMarker = updated.match(/# (?:Discovered|Nearby) Objects/)
+        if (objMarker) {
+            const start = updated.indexOf(objMarker[0])
+            updated = updated.slice(0, start) + objectsSection
+        } else {
+            updated += '\n' + objectsSection
         }
+        changed = true
 
         if (changed) {
             await this.writeTools(updated)
