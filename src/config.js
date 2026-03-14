@@ -32,7 +32,8 @@ export function loadConfig() {
         maxDailyLogAgeDays: 7,
 
         // Internal state
-        stateDecayRate: parseFloat(process.env.STATE_DECAY_RATE || '0.05'),
+        stateDecayRate: parseFloat(process.env.STATE_DECAY_RATE || '0.1'),
+        signalPullRate: parseFloat(process.env.SIGNAL_PULL_RATE || '0.15'),
 
         // Repetition guard
         repetitionHistorySize: parseInt(process.env.REPETITION_HISTORY || '20'),
