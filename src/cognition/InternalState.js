@@ -56,8 +56,8 @@ export class InternalState {
             const pull = this.signalPullRate
 
             if (s.vitality !== undefined) {
-                // Vitality maps to valence: 0→-0.5, 0.5→0, 1→+0.5
-                const target = (s.vitality - 0.5)
+                // Vitality is the primary valence driver: 0→-0.8, 0.5→0, 1→+0.8
+                const target = (s.vitality - 0.5) * 1.6
                 this.valence += (target - this.valence) * pull
             }
             if (s.resonance !== undefined) {
@@ -66,14 +66,14 @@ export class InternalState {
                 this.arousal += (target - this.arousal) * pull
             }
             if (s.warmth !== undefined) {
-                // Warmth pulls valence positive (0→0, 1→+0.5)
-                const target = s.warmth * 0.5
-                this.valence += (target - this.valence) * pull * 0.5
+                // Warmth: centered like vitality. 0→-0.3, 0.5→0, 1→+0.3
+                const target = (s.warmth - 0.5) * 0.6
+                this.valence += (target - this.valence) * pull * 0.7
             }
             if (s.abundance !== undefined) {
-                // Abundance gently pulls valence (0→-0.2, 0.5→0, 1→+0.2)
+                // Abundance: gentle. 0→-0.2, 0.5→0, 1→+0.2
                 const target = (s.abundance - 0.5) * 0.4
-                this.valence += (target - this.valence) * pull * 0.3
+                this.valence += (target - this.valence) * pull * 0.4
             }
             // Arbitrary numeric signals in 0..1 range — gently pull arousal up
             // Skip large values (e.g. bpm: 120) — those are data, not affect signals
@@ -122,17 +122,32 @@ export class InternalState {
 
     // Describe internal state for the LLM — sensation, not instruction
     describe() {
-        const vLabel = this.valence > 0.3 ? 'positive'
-            : this.valence < -0.3 ? 'negative' : 'neutral'
-        const aLabel = this.arousal > 0.3 ? 'high'
-            : this.arousal < -0.3 ? 'low' : 'moderate'
+        const v = this.valence
+        const a = this.arousal
+        const vLabel = v > 0.4 ? 'very positive' : v > 0.15 ? 'positive'
+            : v > -0.15 ? 'neutral' : v > -0.4 ? 'negative' : 'very negative'
+        const aLabel = a > 0.5 ? 'very high' : a > 0.2 ? 'elevated'
+            : a > -0.2 ? 'moderate' : a > -0.5 ? 'low' : 'very low'
+
+        // Evocative descriptions — give the LLM something to act on
+        let description
+        if (v > 0.3 && a > 0.3) description = 'A surge of energy and satisfaction — things are going well'
+        else if (v > 0.3 && a <= 0.3) description = 'A quiet contentment — things feel right'
+        else if (v > 0.15 && a > 0.3) description = 'Feeling alert and engaged — something has your attention'
+        else if (v < -0.3 && a > 0.3) description = 'Something feels wrong — restless, uneasy, on edge'
+        else if (v < -0.3 && a <= -0.2) description = 'Feeling drained and discouraged — nothing is working'
+        else if (v < -0.15 && a > 0.2) description = 'A nagging discomfort — things could be better'
+        else if (v < -0.15) description = 'A subtle unease — something is off'
+        else if (a > 0.5) description = 'Buzzing with energy — the environment is stimulating'
+        else if (a < -0.3) description = 'Everything is quiet and still — understimulated'
+        else description = 'Feeling steady — nothing remarkable'
 
         return {
             valence: this.valence,
             arousal: this.arousal,
             valenceLabel: vLabel,
             arousalLabel: aLabel,
-            description: `Feeling ${vLabel} with ${aLabel} energy`,
+            description,
         }
     }
 

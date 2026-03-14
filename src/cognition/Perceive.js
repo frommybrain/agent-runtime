@@ -71,8 +71,9 @@ export function perceive(observation, worldEvents) {
     // --- Recent speech from observation (server-included) ---
     const recentSpeech = observation.recentSpeech || []
     for (const speech of recentSpeech) {
+        const speaker = speech.from || speech.agentId || 'someone'
         const ago = speech.secondsAgo ? ` (${speech.secondsAgo}s ago)` : ''
-        lines.push(`${speech.from} said: "${speech.message}"${ago}`)
+        lines.push(`${speaker} said: "${speech.message}"`)
     }
 
     // --- World events (speech, terminal output, custom events) ---
