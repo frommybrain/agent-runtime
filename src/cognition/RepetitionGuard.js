@@ -9,6 +9,7 @@ export class RepetitionGuard {
         this.maxHistory = config.repetitionHistorySize || 20
         this.logger = logger
         this.history = []
+        this._recentSpeech = []  // track recent speech for repetition detection
     }
 
     // Record an action after it's chosen
@@ -20,6 +21,11 @@ export class RepetitionGuard {
         })
         if (this.history.length > this.maxHistory) {
             this.history.shift()
+        }
+        // Track speech content separately
+        if (action === 'speak' && params?.message) {
+            this._recentSpeech.push(params.message.toLowerCase().trim())
+            if (this._recentSpeech.length > 10) this._recentSpeech.shift()
         }
     }
 
@@ -66,6 +72,23 @@ export class RepetitionGuard {
         const altWarning = this._checkAlternating()
         if (altWarning) warnings.push(altWarning)
 
+        // 5. Speech repetition — flag repeated phrases
+        if (this._recentSpeech.length >= 2) {
+            const last = this._recentSpeech[this._recentSpeech.length - 1]
+            const repeated = this._recentSpeech.filter(s => s === last).length
+            if (repeated >= 2) {
+                warnings.push(`You already said "${last}" recently. Say something completely different.`)
+            }
+            // Also flag generic/similar phrases (starts with same 3+ words)
+            const lastWords = last.split(/\s+/).slice(0, 3).join(' ')
+            if (lastWords.length > 5) {
+                const similar = this._recentSpeech.filter(s => s.startsWith(lastWords)).length
+                if (similar >= 3) {
+                    warnings.push(`Your recent speech keeps starting with "${lastWords}..." — vary your language.`)
+                }
+            }
+        }
+
         return warnings.length > 0 ? warnings : null
     }
 
@@ -110,5 +133,6 @@ export class RepetitionGuard {
 
     clear() {
         this.history = []
+        this._recentSpeech = []
     }
 }

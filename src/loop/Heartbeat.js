@@ -128,6 +128,24 @@ export class Heartbeat {
                 salience,
             })
 
+            // ── 4b. VALIDATE ACTION ─────────────────────────────────
+            // Hard constraint: if the environment specifies available_actions,
+            // the agent MUST use one of them. LLMs sometimes hallucinate actions
+            // from previous contexts (e.g. move_to in synth mode).
+            if (observation.available_actions?.length > 0) {
+                const validActions = new Set(
+                    observation.available_actions.map(a => typeof a === 'string' ? a : a.name)
+                )
+                if (!validActions.has(decision.action)) {
+                    this.logger.warn(`Action "${decision.action}" not available — correcting to valid action`)
+                    // Pick first available action as safe fallback
+                    const fallback = observation.available_actions[0]
+                    decision.action = typeof fallback === 'string' ? fallback : fallback.name
+                    decision.params = {}
+                    decision.reason = `(corrected: original action not in available_actions)`
+                }
+            }
+
             this.logger.info(`[tick ${this.tickCount}] ${decision.action} (${decision.source}) — ${decision.reason} [v=${stateDesc.valence.toFixed(2)} a=${stateDesc.arousal.toFixed(2)}]`)
 
             // ── 5. ACT ───────────────────────────────────────────────
