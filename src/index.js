@@ -10,6 +10,9 @@ import { DailyLog } from './memory/DailyLog.js'
 import { LLMClient } from './llm/LLMClient.js'
 import { PromptBuilder } from './llm/PromptBuilder.js'
 import { Think } from './cognition/Think.js'
+import { InternalState } from './cognition/InternalState.js'
+import { DeltaDetector } from './cognition/DeltaDetector.js'
+import { RepetitionGuard } from './cognition/RepetitionGuard.js'
 import { Heartbeat } from './loop/Heartbeat.js'
 import { SleepCycle } from './loop/SleepCycle.js'
 import { ApiServer } from './api/ApiServer.js'
@@ -18,10 +21,11 @@ async function main() {
     const config = loadConfig()
     const logger = new Logger(config)
 
-    logger.info(`=== Agent Runtime v0.1 ===`)
+    logger.info(`=== Agent Runtime v0.2 ===`)
     logger.info(`Agent: ${config.agentId}`)
     logger.info(`Server: ${config.serverUrl}`)
     logger.info(`LLM: ${config.ollamaModel} @ ${config.ollamaHost}`)
+    logger.info(`Heartbeat: ${config.heartbeatIntervalMs}ms base (adaptive ${config.heartbeatMinMs}-${config.heartbeatMaxMs}ms)`)
 
     // Load persona
     let persona
@@ -42,16 +46,29 @@ async function main() {
     const llmClient = new LLMClient(config, logger)
     const promptBuilder = new PromptBuilder(persona)
 
+    // New cognitive modules
+    const internalState = new InternalState(config, logger)
+    const deltaDetector = new DeltaDetector(logger)
+    const repetitionGuard = new RepetitionGuard(config, logger)
+
     await memoryFiles.init()
     await dailyLog.init()
     await llmClient.init()
 
     const think = new Think(llmClient, promptBuilder, memoryFiles, dailyLog, workingMemory, logger)
-    const sleepCycle = new SleepCycle(think, memoryFiles, dailyLog, workingMemory, config, logger)
-    const heartbeat = new Heartbeat(socket, think, workingMemory, memoryFiles, dailyLog, sleepCycle, config, logger)
+    const sleepCycle = new SleepCycle(think, memoryFiles, dailyLog, workingMemory, internalState, config, logger)
+    const heartbeat = new Heartbeat(
+        socket, think, workingMemory, memoryFiles, dailyLog, sleepCycle,
+        internalState, deltaDetector, repetitionGuard,
+        config, logger
+    )
 
     // Start API server — shared state object passed in
-    const apiState = { persona, heartbeat, sleepCycle, memoryFiles, dailyLog, workingMemory, socket, promptBuilder }
+    const apiState = {
+        persona, heartbeat, sleepCycle, memoryFiles, dailyLog,
+        workingMemory, socket, promptBuilder, internalState,
+        deltaDetector, repetitionGuard,
+    }
     const api = new ApiServer(config.apiPort, apiState, logger)
     api.start()
 

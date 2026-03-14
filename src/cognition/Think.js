@@ -1,5 +1,6 @@
 // Orchestrates: perceive → build prompt → call LLM → parse response
-// Falls back to FallbackBrain if LLM fails
+// Now accepts cognitive context (internal state, deltas, action results, repetition)
+// and passes it through to the prompt builder.
 
 import { perceive } from './Perceive.js'
 import { fallbackDecision } from './FallbackBrain.js'
@@ -14,7 +15,8 @@ export class Think {
         this.logger = logger
     }
 
-    async decide(observation, worldEvents) {
+    // extras: { internalState, deltaNarrative, lastActionResult, repetitionWarnings, tickCount, uptimeMinutes, salience }
+    async decide(observation, worldEvents, extras = {}) {
         // 1. Perceive — turn raw observation into natural language
         const situation = perceive(observation, worldEvents)
         this.logger.debug(`Perceived: ${situation.split('\n')[0]}...`)
@@ -30,7 +32,7 @@ export class Think {
         const recentMemory = this.workingMemory.recent(5)
 
         const systemPrompt = this.promptBuilder.buildSystemPrompt(memory, skills, tools)
-        const userPrompt = this.promptBuilder.buildUserPrompt(situation, recentLog, recentMemory)
+        const userPrompt = this.promptBuilder.buildUserPrompt(situation, recentLog, recentMemory, extras)
 
         // 3. Call LLM
         const { text, source } = await this.llm.generate(systemPrompt, userPrompt)
@@ -49,11 +51,15 @@ export class Think {
             return this._wrapFallback(observation)
         }
 
-        // 5. Handle memory write if present
+        // 5. Handle memory write if present — use salience for encoding strength
         if (parsed.remember) {
+            const salience = extras.salience || 0.5
+            const content = salience > 0.7
+                ? `${parsed.remember.content} [salient]`
+                : parsed.remember.content
             await this.memoryFiles.appendToMemory(
                 parsed.remember.section || 'Learned Facts',
-                parsed.remember.content
+                content
             )
             this.logger.info(`Remembered: [${parsed.remember.section}] ${parsed.remember.content}`)
         }
