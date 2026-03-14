@@ -42,6 +42,7 @@ export class Heartbeat {
         this._checkpointIntervalMs = config.checkpointIntervalMs || 5 * 60 * 1000  // 5 min
         this._lastGCCheckAt = Date.now()
         this._gcCheckIntervalMs = 60 * 60 * 1000  // check GC every hour
+        this._recentlyDisappeared = []  // objects gone in the last few ticks
     }
 
     uptimeSeconds() {
@@ -110,6 +111,16 @@ export class Heartbeat {
             const deltas = this.deltaDetector.detect(observation)
             const deltaNarrative = this.deltaDetector.narrate(deltas)
 
+            // Track recently disappeared objects (fade after 10 ticks)
+            for (const d of deltas) {
+                if (d.type === 'disappeared' && d.category === 'object') {
+                    this._recentlyDisappeared.push({ id: d.id, tick: this.tickCount })
+                }
+            }
+            this._recentlyDisappeared = this._recentlyDisappeared.filter(
+                d => this.tickCount - d.tick < 10
+            )
+
             // ── 3. FEEL ───────────────────────────────────────────────
             this.internalState.update({
                 actionResult: this._lastActionResult,
@@ -127,6 +138,8 @@ export class Heartbeat {
                 deltaNarrative: deltaNarrative || undefined,
                 lastActionResult: this._lastActionResult,
                 repetitionWarnings: repetitionWarnings || undefined,
+                recentlyDisappeared: this._recentlyDisappeared.length > 0
+                    ? this._recentlyDisappeared.map(d => d.id) : undefined,
                 tickCount: this.tickCount,
                 uptimeMinutes: Math.floor(this.uptimeSeconds() / 60),
                 salience,
