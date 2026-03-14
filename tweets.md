@@ -275,3 +275,126 @@ The soak test ran on v0.2 code. Everything from v0.3 (DailyLog buffer, crash rec
 But even on v0.2: sleep cycles, emotional tracking, adaptive heartbeat, action validation, and phase transitions all held up across 514 ticks. The foundation is solid.
 
 Next: deploy v0.3, run another soak, see if memory dedup and the stability fixes make a difference.
+
+### Milestone 3 — Object Persistence: The Ghost Terminal (2026-03-14)
+
+The agent kept talking about "terminal-01" even in phases where it didn't exist.
+
+Root cause: two sources of truth, one stale.
+
+`tools.md` is rebuilt every tick from the current observation. When terminal-01 disappears, tools says "(nothing nearby)" — correct.
+
+But `memory.md` permanently stores facts: "Terminal-01 is an interactive device." The LLM sees both. An 8B model can't reconcile the contradiction. It trusts the memory and hallucinates the object.
+
+This is the memory persistence paradox: the agent needs long-term memory to learn, but stale facts become hallucination fuel.
+
+### Tweet M3-1 — The Fix: Ground Truth Annotations
+
+Two changes:
+
+1. Nearby Objects section now explicitly says "GROUND TRUTH — if something is not listed here, it is not present"
+2. New prompt rule: "ONLY interact with objects listed under Nearby Objects RIGHT NOW — your memories may reference objects that no longer exist"
+
+Soft prompts fail with 8B models. But when the ground truth is labeled as ground truth, even small models can distinguish "I remember this" from "I see this right now."
+
+### Tweet M3-2 — Test Design: The Object Gauntlet
+
+Redesigned the soak test with an object persistence gauntlet. 6 unique objects that appear, disappear, and return across 13 phases:
+
+- Phase 1: pillar appears
+- Phase 4: pillar removed, only pond remains
+- Phase 5: everything gone
+- Phase 6: entirely new objects (monolith, lantern)
+- Phase 8: pillar RETURNS after 4 phases away
+- Phase 12: only lantern remains
+
+The report now tracks every speech and interact that mentions an absent object. If the agent says "pillar" when pillar isn't there — that's a counted hallucination.
+
+Hard measurement > vibes.
+
+### Milestone 4 — v0.3.1: The 3-Month Readiness Audit (2026-03-14)
+
+Audited every source file for a thesis-level installation: one agent running continuously for 3 months.
+
+Found 20 issues. 7 were no-ship blockers. Fixed all 7 in one session. Here's the thread 🧵
+
+### Tweet M4-1 — The Memory Corruption Bug
+
+Sleep consolidation passes the entire memory.md to an 8B LLM and writes back whatever it returns. The only guard: `result.length > 10`.
+
+If the LLM returns garbled markdown? Memory is permanently gone. No backup. No validation. No rollback.
+
+Over 3 months with 6 sleep cycles/day: 540 chances to corrupt memory.
+
+Fix: backup → validate → write. If the output doesn't have markdown headers and list entries, restore from backup. Every consolidation write is now atomic.
+
+### Tweet M4-2 — The Tools.md Time Bomb
+
+During sleep, `_refreshTools()` asked the LLM to "clean up" tools.md. But tools.md is rebuilt from the live observation every tick.
+
+The LLM would reformat the header `# Nearby Objects (GROUND TRUTH...)` to something like `## Objects Nearby`. The regex match fails. A second Nearby Objects section gets appended. Then a third. Forever.
+
+Fix: deleted the entire method. If it's rebuilt every tick, don't let the LLM touch it during sleep. Redundant cleanup that was actively destructive.
+
+### Tweet M4-3 — Persona Corruption
+
+The agent evolves its personality during sleep. The LLM returns JSON changes that get merged into the persona file.
+
+What if the LLM returns `{"traits": "bold"}` instead of `{"traits": ["bold"]}`? The persona file is written. Next tick: `persona.traits.join(', ')` → crash. Every tick. Unrecoverable without manual editing.
+
+Fix: type-check every field before merging. Arrays must be arrays. Objects must be objects. Backup the persona file before any write.
+
+### Tweet M4-4 — Drift Baseline Shift
+
+The persona drift guard compares current personality against the "original." But `_originalPersona` was loaded on the first sleep cycle, not on boot.
+
+After a crash-restart: the drifted persona IS the original. After 10 restarts over a summer: the 60% drift threshold means nothing — the baseline keeps shifting.
+
+Fix: save an immutable `persona-baseline.json` on first-ever boot. Load from that file on every subsequent startup. The original is the original, forever.
+
+### Tweet M4-5 — The Hallucination Engine
+
+Skills extraction asks the LLM: "find procedural knowledge the agent learned."
+
+The agent doesn't learn procedures. It does `move_to`, `interact`, `speak`. But the LLM invents them anyway:
+
+```
+## Territory Management
+### Claiming Territory
+- Move to a new location and assert dominance
+```
+
+None of this happened. The LLM hallucinated an entire skill tree. And it gets fed back into every tick's prompt as "MY SKILLS."
+
+Fix: constrained the prompt to ONLY extract from the activity log with strict rules. "DO NOT invent, embellish, or generalise." Added validation + backup.
+
+### Tweet M4-6 — Memory Truncation Was Backwards
+
+When the prompt exceeds the token budget, memory gets truncated. The old code: `memory.slice(0, memory.length - overBy)`.
+
+memory.md sections: Relationships → Learned Facts → Important Memories.
+
+So "Important Memories" — the most valuable section — gets cut first. Every time.
+
+Fix: now specifically truncates the middle of "Learned Facts" (the largest, least critical section). Important Memories and Relationships are protected.
+
+### Tweet M4-7 — The Slow Leak
+
+Nothing stopped the LLM from writing a 500-character paragraph as a "learned fact." Over months, individual memory entries become novels and blow the token budget, triggering truncation, which cuts other memories to make room for the bloated one.
+
+Fix: hard cap at 120 characters per memory entry. Both in the decision handler and in the append method. Two layers of defense.
+
+### Tweet M4-8 — The Scorecard
+
+7 critical fixes in v0.3.1:
+1. ✅ Memory backup + validation before consolidation writes
+2. ✅ Removed destructive _refreshTools()
+3. ✅ Persona evolution type validation + backup
+4. ✅ Immutable persona baseline for drift guard
+5. ✅ Skills extraction constrained to log evidence only
+6. ✅ Smart truncation (protects Important Memories)
+7. ✅ Memory entry length cap (120 chars)
+
+13 more issues documented for later. The difference between a demo and a thesis is this: every write is guarded, every LLM output is validated, every file has a backup.
+
+v0.3 asked "will it still work in August?" v0.3.1 asks "will it still work correctly?"

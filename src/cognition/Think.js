@@ -38,15 +38,16 @@ export class Think {
         const systemPrompt = this.promptBuilder.buildSystemPrompt(memory, skills, tools)
         const userPrompt = this.promptBuilder.buildUserPrompt(situation, recentLog, recentMemory, extras)
 
-        // 2b. Token budget check — truncate memory files if over budget
+        // 2b. Token budget check — truncate memory if over budget.
+        // v0.3.1: Truncate "Learned Facts" (middle section, largest) rather than
+        // slicing from the end, which would cut "Important Memories" first.
         let finalSystemPrompt = systemPrompt
         const totalChars = systemPrompt.length + userPrompt.length
         this._lastPromptChars = totalChars
         if (totalChars > this._maxInputChars) {
             const overBy = totalChars - this._maxInputChars
-            this.logger.warn(`Prompt over budget by ~${Math.round(overBy / 4)} tokens — truncating memory context`)
-            // Rebuild with truncated memory (skills and tools take priority over old memories)
-            const truncatedMemory = memory.slice(0, Math.max(200, memory.length - overBy))
+            this.logger.warn(`Prompt over budget by ~${Math.round(overBy / 4)} tokens — truncating Learned Facts`)
+            const truncatedMemory = this._truncateLearnedFacts(memory, overBy)
             finalSystemPrompt = this.promptBuilder.buildSystemPrompt(truncatedMemory, skills, tools)
         }
 
@@ -68,16 +69,16 @@ export class Think {
         }
 
         // 5. Handle memory write if present — use salience for encoding strength
+        // v0.3.1: Cap entry length to prevent LLM from writing novels into memory
         if (parsed.remember && typeof parsed.remember.content === 'string' && parsed.remember.content.trim()) {
             const salience = extras.salience || 0.5
-            const content = salience > 0.7
-                ? `${parsed.remember.content} [salient]`
-                : parsed.remember.content
+            let content = parsed.remember.content.trim().slice(0, 120)  // hard cap: 120 chars
+            if (salience > 0.7) content += ' [salient]'
             await this.memoryFiles.appendToMemory(
                 parsed.remember.section || 'Learned Facts',
                 content
             )
-            this.logger.info(`Remembered: [${parsed.remember.section}] ${parsed.remember.content}`)
+            this.logger.info(`Remembered: [${parsed.remember.section}] ${content}`)
         }
 
         return {
@@ -118,6 +119,43 @@ export class Think {
             this.logger.debug(`JSON parse failed: ${jsonStr.slice(0, 80)}`)
             return null
         }
+    }
+
+    // Truncate memory by removing entries from "Learned Facts" (the largest,
+    // least critical section) rather than slicing from the end which would
+    // destroy "Important Memories" first.
+    _truncateLearnedFacts(memory, overBy) {
+        const marker = '## Learned Facts'
+        const idx = memory.indexOf(marker)
+        if (idx === -1) {
+            // No Learned Facts section — fall back to end truncation
+            return memory.slice(0, Math.max(200, memory.length - overBy))
+        }
+
+        // Find the next section after Learned Facts
+        const afterMarker = idx + marker.length
+        const nextSection = memory.indexOf('\n## ', afterMarker)
+        const sectionEnd = nextSection === -1 ? memory.length : nextSection
+
+        // Extract the section's entries
+        const before = memory.slice(0, afterMarker)
+        const section = memory.slice(afterMarker, sectionEnd)
+        const after = memory.slice(sectionEnd)
+
+        // Remove entries from the START of Learned Facts (oldest first)
+        const lines = section.split('\n')
+        let removed = 0
+        const kept = []
+        for (const line of lines) {
+            if (removed < overBy && line.startsWith('- ')) {
+                removed += line.length + 1
+            } else {
+                kept.push(line)
+            }
+        }
+
+        const truncNote = removed > 0 ? `\n(${lines.filter(l => l.startsWith('- ')).length - kept.filter(l => l.startsWith('- ')).length} older facts omitted for context budget)\n` : ''
+        return before + truncNote + kept.join('\n') + after
     }
 
     _wrapFallback(observation) {
