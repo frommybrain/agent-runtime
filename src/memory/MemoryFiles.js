@@ -17,6 +17,10 @@ export class MemoryFiles {
         await this._ensureFile('memory.md', `# ${this.agentId}'s Memory\n\n## Relationships\n\n## Learned Facts\n\n## Important Memories\n`)
         await this._ensureFile('skills.md', `# ${this.agentId}'s Skills\n`)
         await this._ensureFile('tools.md', `# Available Actions\n\n# Discovered Objects\n`)
+
+        // Fix header if agent identity changed (e.g. pip → victor)
+        await this._fixHeader('memory.md', `# ${this.agentId}'s Memory`)
+        await this._fixHeader('skills.md', `# ${this.agentId}'s Skills`)
     }
 
     // --- Read ---
@@ -51,6 +55,14 @@ export class MemoryFiles {
 
     async appendToMemory(section, content) {
         const current = await this.readMemory()
+
+        // Dedup: skip if this content (minus [salient] tag) already exists
+        const bare = content.replace(/\s*\[salient\]\s*$/, '').trim().toLowerCase()
+        if (current.toLowerCase().includes(bare)) {
+            this.logger.debug(`Memory dedup — skipping "${content}" (already exists)`)
+            return
+        }
+
         const marker = `## ${section}`
         const idx = current.indexOf(marker)
         if (idx === -1) {
@@ -141,6 +153,17 @@ export class MemoryFiles {
         } catch {
             await writeFile(path, defaultContent, 'utf-8')
             this.logger.info(`Created ${filename}`)
+        }
+    }
+
+    async _fixHeader(filename, expectedHeader) {
+        const content = await this._read(filename)
+        if (!content) return
+        const firstLine = content.split('\n')[0]
+        if (firstLine.startsWith('# ') && firstLine !== expectedHeader) {
+            const updated = expectedHeader + content.slice(firstLine.length)
+            await this._write(filename, updated)
+            this.logger.info(`Fixed header in ${filename}: "${firstLine}" → "${expectedHeader}"`)
         }
     }
 }

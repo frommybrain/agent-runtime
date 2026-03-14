@@ -20,6 +20,7 @@
 import { WebSocketServer } from 'ws'
 import { mkdirSync, createWriteStream } from 'node:fs'
 import { createInterface } from 'node:readline'
+import { request } from 'node:http'
 
 const PORT = 4001
 
@@ -53,6 +54,7 @@ const worldState = {
     objects: [],
     signals: null,    // null = no cosmology, object = cosmology active
     agents: [],       // other agents nearby
+    pendingSpeech: [], // speech events queued for next observation
 }
 
 function buildObservation() {
@@ -75,7 +77,7 @@ function buildObservation() {
             { name: 'speak', params: 'message', description: 'Say something' },
             { name: 'wait', description: 'Do nothing this tick' },
         ],
-        recentSpeech: [],
+        recentSpeech: worldState.pendingSpeech.splice(0),  // drain pending speech into observation
     }
 
     // Add interact action if there are interactive objects
@@ -154,6 +156,8 @@ wss.on('connection', (ws) => {
                 const obs = buildObservation()
                 send(ws, { type: 'OBSERVATION', data: obs })
                 log('sys', 'TICK', { tick: tickCount, objects: worldState.objects.length, signals: !!worldState.signals, mode: useSynthMode ? 'synth' : 'spatial' })
+                // Poll agent /status every 5 ticks to log internal state
+                if (tickCount % 5 === 0) pollAgentStatus()
                 break
 
             case 'ACT':
@@ -204,6 +208,35 @@ function sendWorldEvent(event) {
     log('out', 'WORLD_EVENT', event)
 }
 
+// ── Status Polling ───────────────────────────────────────────────────
+const AGENT_STATUS_URL = process.env.AGENT_STATUS_URL || 'http://victor.local:5000/status'
+
+function pollAgentStatus() {
+    const url = new URL(AGENT_STATUS_URL)
+    const req = request({ hostname: url.hostname, port: url.port, path: url.pathname, timeout: 3000 }, (res) => {
+        let data = ''
+        res.on('data', chunk => { data += chunk })
+        res.on('end', () => {
+            try {
+                const status = JSON.parse(data)
+                const is = status.internalState || {}
+                console.log(`  📊 v=${is.valence?.toFixed(2)} a=${is.arousal?.toFixed(2)} [${is.valenceLabel}/${is.arousalLabel}] hb=${status.heartbeatMs}ms`)
+                log('sys', 'AGENT_STATUS', {
+                    tick: tickCount,
+                    valence: is.valence,
+                    arousal: is.arousal,
+                    valenceLabel: is.valenceLabel,
+                    arousalLabel: is.arousalLabel,
+                    heartbeatMs: status.heartbeatMs,
+                    tickCount: status.tickCount,
+                })
+            } catch {}
+        })
+    })
+    req.on('error', () => {})  // silently ignore if agent unreachable
+    req.end()
+}
+
 // ── Keyboard Controls ────────────────────────────────────────────────
 const rl = createInterface({ input: process.stdin, output: process.stdout })
 
@@ -245,14 +278,19 @@ rl.on('line', (input) => {
             }
             break
 
-        case 's':
+        case 's': {
+            const speechMsg = ['hello there', 'what are you doing?', 'have you seen the artifact?', 'something feels different today'][Math.floor(Math.random() * 4)]
+            // Queue into observation so agent can see it
+            worldState.pendingSpeech.push({ agentId: 'stranger', message: speechMsg })
+            // Also send as world event for the arousal/social nudge
             sendWorldEvent({
                 event: 'agent_speech',
                 agentId: 'stranger',
-                message: ['hello there', 'what are you doing?', 'have you seen the artifact?', 'something feels different today'][Math.floor(Math.random() * 4)],
+                message: speechMsg,
             })
-            console.log('  ✓ Speech event sent')
+            console.log(`  ✓ Speech: "${speechMsg}"`)
             break
+        }
 
         case 'c':
             if (worldState.signals) {
