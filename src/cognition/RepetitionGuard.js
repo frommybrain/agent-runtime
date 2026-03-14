@@ -62,6 +62,10 @@ export class RepetitionGuard {
             }
         }
 
+        // 4. Alternating pattern detection (A→B→A→B or A→B→C→A→B→C)
+        const altWarning = this._checkAlternating()
+        if (altWarning) warnings.push(altWarning)
+
         return warnings.length > 0 ? warnings : null
     }
 
@@ -80,6 +84,28 @@ export class RepetitionGuard {
             }
         }
         return `${action}:${JSON.stringify(normalized)}`
+    }
+
+    // Detect alternating/cycling patterns like A→B→A→B or A→B→C→A→B→C
+    _checkAlternating() {
+        if (this.history.length < 6) return null
+        const recent = this.history.slice(-8).map(h => h.action)
+
+        // Check cycle lengths 2 and 3
+        for (const len of [2, 3]) {
+            if (recent.length < len * 2) continue
+            const tail = recent.slice(-len * 3)  // look at last 3 cycles worth
+            let matches = 0
+            for (let i = len; i < tail.length; i++) {
+                if (tail[i] === tail[i - len]) matches++
+            }
+            const possible = tail.length - len
+            if (possible > 0 && matches / possible >= 0.8) {
+                const cycle = recent.slice(-len).join(' → ')
+                return `You are stuck in a repeating cycle: ${cycle}. Break out of this loop.`
+            }
+        }
+        return null
     }
 
     clear() {
