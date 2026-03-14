@@ -11,8 +11,10 @@ export function loadConfig() {
         reconnectIntervalMs: 5000,
         identifyTimeoutMs: 10000,
 
-        // Heartbeat
+        // Heartbeat (adaptive)
         heartbeatIntervalMs: parseInt(process.env.HEARTBEAT_MS || '8000'),
+        heartbeatMinMs: parseInt(process.env.HEARTBEAT_MIN_MS || '4000'),
+        heartbeatMaxMs: parseInt(process.env.HEARTBEAT_MAX_MS || '15000'),
         maxThinkTimeMs: 30000,
 
         // LLM
@@ -28,6 +30,12 @@ export function loadConfig() {
         dataDir: process.env.DATA_DIR || './data',
         workingMemorySize: 12,
         maxDailyLogAgeDays: 7,
+
+        // Internal state
+        stateDecayRate: parseFloat(process.env.STATE_DECAY_RATE || '0.05'),
+
+        // Repetition guard
+        repetitionHistorySize: parseInt(process.env.REPETITION_HISTORY || '20'),
 
         // Sleep cycle
         activeHoursBeforeSleep: parseFloat(process.env.ACTIVE_HOURS_BEFORE_SLEEP || '4'),

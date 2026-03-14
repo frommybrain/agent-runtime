@@ -1,4 +1,6 @@
-// Assembles system + user prompts for the LLM from persona + knowledge files + observations
+// Assembles system + user prompts for the LLM.
+// Now includes: internal state, delta narrative, action results,
+// repetition warnings, and time awareness.
 
 export class PromptBuilder {
     constructor(persona) {
@@ -36,6 +38,8 @@ RULES:
 - Be curious about your environment, explore, interact with things
 - If another agent speaks to you, consider responding
 - When you learn something new, include a "remember" field
+- Your internal state describes how you feel — let it influence your choices naturally
+- Pay attention to changes in your environment — they may be worth investigating
 
 RESPONSE FORMAT:
 {"action": "action_name", "params": {...}, "reason": "why you chose this"}
@@ -55,8 +59,39 @@ THINGS I CAN DO:
 ${toolsContent || '(none yet)'}`
     }
 
-    buildUserPrompt(perceivedSituation, recentLogLines, workingMemoryLines) {
+    // extras: { internalState, deltaNarrative, lastActionResult, repetitionWarnings, tickCount, uptimeMinutes }
+    buildUserPrompt(perceivedSituation, recentLogLines, workingMemoryLines, extras = {}) {
         const parts = []
+
+        // Time awareness
+        if (extras.tickCount !== undefined || extras.uptimeMinutes !== undefined) {
+            const time = new Date().toLocaleTimeString()
+            const uptime = extras.uptimeMinutes !== undefined ? `${extras.uptimeMinutes} minutes` : 'unknown'
+            parts.push(`TIME: ${time} (awake for ${uptime}, tick #${extras.tickCount || '?'})`)
+        }
+
+        // Internal state — sensation, not instruction
+        if (extras.internalState) {
+            const s = extras.internalState
+            parts.push(`INTERNAL STATE:\n${s.description} (valence: ${s.valence.toFixed(2)}, arousal: ${s.arousal.toFixed(2)})`)
+        }
+
+        // What changed since last tick
+        if (extras.deltaNarrative) {
+            parts.push(extras.deltaNarrative)
+        }
+
+        // Result of last action — consequence feedback
+        if (extras.lastActionResult) {
+            const r = extras.lastActionResult
+            const status = r.success ? 'succeeded' : 'failed'
+            parts.push(`LAST ACTION RESULT:\n${r.action || 'unknown'} ${status}${r.message ? ': ' + r.message : ''}`)
+        }
+
+        // Repetition warnings
+        if (extras.repetitionWarnings) {
+            parts.push('NOTICE:\n' + extras.repetitionWarnings.join('\n'))
+        }
 
         if (workingMemoryLines?.length > 0) {
             parts.push('RECENT ACTIONS:\n' + workingMemoryLines.join('\n'))
