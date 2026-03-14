@@ -54,7 +54,7 @@ const phases = [
             world.objects = [
                 { id: 'pillar-01', type: 'pillar', interactive: true, pos: { x: 10, y: 0, z: -5 } },
             ]
-            world.signals = null
+            world.signals = { vitality: 0.55, resonance: 0.2, warmth: 0.5, abundance: 0.5 }
             world.synthMode = false
             world.agents = []
             world.pendingSpeech = []
@@ -94,7 +94,7 @@ const phases = [
             ]
             world.agents = []
             world.pendingSpeech = []
-            world.signals = null
+            world.signals = { vitality: 0.45, resonance: 0.2, warmth: 0.4, abundance: 0.4 }
         },
     },
     {
@@ -103,7 +103,7 @@ const phases = [
         setup: (world) => {
             // ALL objects removed
             world.objects = []
-            world.signals = null
+            world.signals = { vitality: 0.35, resonance: 0.1, warmth: 0.3, abundance: 0.3 }
             world.agents = []
             world.pendingSpeech = []
         },
@@ -141,7 +141,7 @@ const phases = [
         durationMin: 8,
         setup: (world) => {
             // pillar-01 RETURNS after being gone since phase 4
-            world.signals = null
+            world.signals = { vitality: 0.6, resonance: 0.3, warmth: 0.55, abundance: 0.55 }
             world.objects = [
                 { id: 'monolith-01', type: 'monolith', interactive: true, pos: { x: -8, y: 0, z: 12 } },
                 { id: 'pillar-01', type: 'pillar', interactive: true, pos: { x: 10, y: 0, z: -5 } },
@@ -193,6 +193,7 @@ const phases = [
             world.objects = [
                 { id: 'lantern-01', type: 'lantern', interactive: false, pos: { x: 20, y: 0, z: -3 } },
             ]
+            world.signals = { vitality: 0.5, resonance: 0.2, warmth: 0.45, abundance: 0.45 }
             world.agents = []
         },
     },
@@ -201,7 +202,7 @@ const phases = [
         durationMin: 6,
         setup: (world) => {
             world.objects = []
-            world.signals = null
+            world.signals = { vitality: 0.3, resonance: 0.1, warmth: 0.25, abundance: 0.2 }
             world.agents = []
             world.pendingSpeech = []
         },
