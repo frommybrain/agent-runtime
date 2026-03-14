@@ -476,3 +476,55 @@ Fix: objects now narrate their distance or coordinates. "pillar-01 3.2 away" ins
 6. ✅ Version bump to v0.3.2
 
 Ready for the next soak test. The question: can we get hallucinations to zero and speech repetition under control?
+
+### Milestone 6 — v0.3.3: Second Soak Test + Valence Flatline Fix (2026-03-14)
+
+Second 45-minute soak test on v0.3.2. Hallucinations dropped from 3 → 1. But valence flatlined at exactly 0.000 for 70%+ of ticks. Here's what happened and what we fixed 🧵
+
+### Tweet M6-1 — The Valence Flatline
+
+Valence sat at 0.000 from tick 52 onwards — for the entire rest of the test. The expanded emotional descriptions couldn't help because the underlying value was stuck at zero.
+
+Root cause: successful actions had NO effect on valence. Only failures mattered (-0.15). With no environment signals in half the phases, valence decayed to 0 and stayed there. The agent was successfully exploring, interacting, discovering — and feeling *nothing*.
+
+### Tweet M6-2 — The Fix: Asymmetric Reward
+
+Success should feel mildly positive. Failure should feel sharply negative. This is negativity bias — it's how biological systems work.
+
+```js
+if (!context.actionResult.success) {
+    this._nudgeValence(-0.15)     // failure: sharp
+} else {
+    this._nudgeValence(0.02)      // success: mild
+    if (context.actionResult.action === 'interact') {
+        this._nudgeValence(0.04)  // exploration: rewarding
+    }
+}
+```
+
+The agent now generates its own positive valence through successful action. It doesn't need the environment to tell it to feel good — doing things well is its own reward.
+
+### Tweet M6-3 — The Last Hallucination
+
+1 hallucination remained: tick 138, "Pillar's stability has piqued my interest" — 46 ticks after pillar was removed. The 10-tick GONE warning had expired 36 ticks earlier. The agent was drawing on stale memory facts.
+
+Fix: extended the GONE window from 10 → 30 ticks (~4 minutes). Objects now haunt the agent's conscience for much longer after disappearing. If 30 ticks isn't enough, the next defense is memory pruning during sleep.
+
+### Tweet M6-4 — Soak Test Realism
+
+Half the test phases sent NO environment signals (null vitality, null warmth). In a real installation, the environment always sends signals. This made the test unrealistically harsh for the valence system.
+
+Fix: every phase now has baseline signals. Calm exploration gets vitality 0.55 (slightly positive). Empty world gets vitality 0.35 (slightly negative). Stress phases are genuinely stressful. The test now models a real environment, not a void.
+
+### Tweet M6-5 — v0.3.3 Scorecard
+
+Second soak test (v0.3.2) results:
+- Hallucinations: 3 → 1 (GONE tracking working, window too short)
+- Emotional variety: improved (3 distinct states vs 1), but valence flatlined
+- Speech: less repetitive (fuzzy dedup working), but still gravitates to similar constructions
+- Action mix: move_to dominated at 61%, interact dropped to 9%
+
+3 fixes in v0.3.3:
+1. ✅ Asymmetric valence rewards (success +0.02, interact +0.04, failure -0.15)
+2. ✅ GONE window extended 10 → 30 ticks
+3. ✅ Soak test: baseline signals for all phases

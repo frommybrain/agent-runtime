@@ -118,7 +118,7 @@ export class Heartbeat {
                 }
             }
             this._recentlyDisappeared = this._recentlyDisappeared.filter(
-                d => this.tickCount - d.tick < 10
+                d => this.tickCount - d.tick < 30
             )
 
             // ── 3. FEEL ───────────────────────────────────────────────

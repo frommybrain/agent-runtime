@@ -36,11 +36,19 @@ export class InternalState {
         this.valence *= (1 - this.decayRate)
         this.arousal *= (1 - this.decayRate)
 
-        // 2. Action results — only failure matters.
-        //    Success is the default state and should not nudge valence.
-        //    Failure is noteworthy and dips valence.
-        if (context.actionResult && !context.actionResult.success) {
-            this._nudgeValence(-0.15)
+        // 2. Action results — asymmetric: failure is sharp, success is gentle.
+        //    Without this, valence decays to 0 and flatlines in signal-free environments.
+        if (context.actionResult) {
+            if (!context.actionResult.success) {
+                this._nudgeValence(-0.15)
+            } else {
+                // Mild positive: keeps valence slightly above zero when acting successfully
+                this._nudgeValence(0.02)
+                // Exploration reward: interact is discovery, it should feel good
+                if (context.actionResult.action === 'interact') {
+                    this._nudgeValence(0.04)
+                }
+            }
         }
 
         // 3. Environmental changes — novelty = arousal spike (one-time per tick)
