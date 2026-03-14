@@ -21,7 +21,7 @@ async function main() {
     const config = loadConfig()
     const logger = new Logger(config)
 
-    logger.info(`=== Agent Runtime v0.3 ===`)
+    logger.info(`=== Agent Runtime v0.3.1 ===`)
     logger.info(`Agent: ${config.agentId}`)
     logger.info(`Server: ${config.serverUrl}`)
     logger.info(`LLM: ${config.ollamaModel} @ ${config.ollamaHost}`)
@@ -58,6 +58,7 @@ async function main() {
 
     const think = new Think(llmClient, promptBuilder, memoryFiles, dailyLog, workingMemory, logger)
     const sleepCycle = new SleepCycle(think, memoryFiles, dailyLog, workingMemory, internalState, repetitionGuard, config, logger)
+    await sleepCycle.loadOriginalPersona(persona)  // immutable drift baseline
     const heartbeat = new Heartbeat(
         socket, think, workingMemory, memoryFiles, dailyLog, sleepCycle,
         internalState, deltaDetector, repetitionGuard,
