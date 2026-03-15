@@ -21,7 +21,7 @@ async function main() {
     const config = loadConfig()
     const logger = new Logger(config)
 
-    logger.info(`=== Agent Runtime v0.3.6 ===`)
+    logger.info(`=== Agent Runtime v0.3.7 ===`)
     logger.info(`Agent: ${config.agentId}`)
     logger.info(`Server: ${config.serverUrl}`)
     logger.info(`LLM: ${config.ollamaModel} @ ${config.ollamaHost}`)
@@ -54,7 +54,7 @@ async function main() {
     await memoryFiles.init()
     await dailyLog.init()
     await llmClient.init()
-    await internalState.restore()  // crash recovery: reload last emotional state
+    const checkpoint = await internalState.restore()  // crash recovery: reload last emotional state
 
     const think = new Think(llmClient, promptBuilder, memoryFiles, dailyLog, workingMemory, logger)
     const sleepCycle = new SleepCycle(think, memoryFiles, dailyLog, workingMemory, internalState, repetitionGuard, config, logger)
@@ -64,6 +64,12 @@ async function main() {
         internalState, deltaDetector, repetitionGuard,
         config, logger
     )
+
+    // Restore tick counter from checkpoint (prevents reset on restart)
+    if (checkpoint?.tickCount) {
+        heartbeat.tickCount = checkpoint.tickCount
+        logger.info(`Tick counter restored: ${checkpoint.tickCount}`)
+    }
 
     // Start API server — shared state object passed in
     const apiState = {

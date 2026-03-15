@@ -10,6 +10,8 @@ export class MemoryFiles {
         this.agentId = config.agentId
         this.logger = logger
         this._lastToolsHash = null  // skip redundant tools.md writes
+        // Read cache — avoids re-reading static files every tick
+        this._cache = { memory: null, skills: null, tools: null }
     }
 
     async init() {
@@ -28,29 +30,41 @@ export class MemoryFiles {
     // --- Read ---
 
     async readMemory() {
-        return this._read('memory.md')
+        if (this._cache.memory !== null) return this._cache.memory
+        const content = await this._read('memory.md')
+        this._cache.memory = content
+        return content
     }
 
     async readSkills() {
-        return this._read('skills.md')
+        if (this._cache.skills !== null) return this._cache.skills
+        const content = await this._read('skills.md')
+        this._cache.skills = content
+        return content
     }
 
     async readTools() {
-        return this._read('tools.md')
+        if (this._cache.tools !== null) return this._cache.tools
+        const content = await this._read('tools.md')
+        this._cache.tools = content
+        return content
     }
 
     // --- Write (full replace, used by sleep consolidation) ---
 
     async writeMemory(content) {
         await this._write('memory.md', content)
+        this._cache.memory = content
     }
 
     async writeSkills(content) {
         await this._write('skills.md', content)
+        this._cache.skills = content
     }
 
     async writeTools(content) {
         await this._write('tools.md', content)
+        this._cache.tools = content
     }
 
     // --- Append (used during waking hours for incremental updates) ---
@@ -251,6 +265,9 @@ export class MemoryFiles {
         const dst = join(this.dataDir, filename)
         try {
             await copyFile(bak, dst)
+            // Invalidate cache for restored file
+            const key = filename.replace('.md', '')
+            if (this._cache[key] !== undefined) this._cache[key] = null
             this.logger.warn(`Restored ${filename} from backup`)
             return true
         } catch {

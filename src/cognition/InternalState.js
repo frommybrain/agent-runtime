@@ -205,12 +205,14 @@ export class InternalState {
     }
 
     // Save current state to disk (crash recovery)
-    async checkpoint() {
+    // extra: optional fields to persist alongside valence/arousal (e.g. tickCount)
+    async checkpoint(extra = {}) {
         try {
             const data = {
                 valence: this.valence,
                 arousal: this.arousal,
                 timestamp: Date.now(),
+                ...extra,
             }
             await writeFile(this._checkpointPath, JSON.stringify(data), 'utf-8')
         } catch (err) {
@@ -219,6 +221,7 @@ export class InternalState {
     }
 
     // Restore state from last checkpoint (called on startup)
+    // Returns the full checkpoint data (including extra fields like tickCount) or null
     async restore() {
         try {
             const raw = await readFile(this._checkpointPath, 'utf-8')
@@ -229,13 +232,13 @@ export class InternalState {
                 this.valence = this._clamp(data.valence || 0)
                 this.arousal = this._clamp(data.arousal || 0)
                 this.logger.info(`State restored from checkpoint (age: ${Math.round(ageMs / 1000)}s) — v=${this.valence.toFixed(2)} a=${this.arousal.toFixed(2)}`)
-                return true
+                return data
             }
             this.logger.info(`State checkpoint too old (${Math.round(ageMs / 60000)}min), starting fresh`)
         } catch {
             // No checkpoint file — first run
         }
-        return false
+        return null
     }
 
     _nudgeValence(delta) {
