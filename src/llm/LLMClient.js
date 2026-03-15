@@ -1,7 +1,13 @@
 import { Ollama } from 'ollama'
 
-// LLM client — Cloud primary (Groq), Ollama local fallback
-// v0.3.7: 429 rate limit backoff, periodic Ollama re-check
+// LLM client — Tiered model routing for cost optimization
+//
+// Three tiers:
+//   'quality' — 70B cloud first, Ollama fallback (complex decisions)
+//   'fast'    — Ollama first (free), 8B cloud fallback (routine ticks)
+//   'skip'    — no LLM call (caller should use FallbackBrain)
+//
+// v0.3.8: Tiered routing. v0.3.7: 429 backoff, periodic Ollama re-check
 
 export class LLMClient {
     constructor(config, logger) {
@@ -9,23 +15,26 @@ export class LLMClient {
         this.temperature = config.temperature
         this.maxTokens = config.maxTokens
 
-        // Primary: local Ollama
+        // Local Ollama
         this.ollama = new Ollama({ host: config.ollamaHost })
         this.ollamaModel = config.ollamaModel
 
-        // Fallback: cloud API (Groq, Together, etc.)
+        // Cloud API (Groq, Together, etc.)
         this.cloudApiKey = config.cloudApiKey
         this.cloudApiUrl = config.cloudApiUrl
-        this.cloudModel = config.cloudModel
+        this.cloudModel = config.cloudModel              // 70B quality
+        this.cloudModelFast = config.cloudModelFast      // 8B fast
 
         this.ollamaAvailable = false
-        this._cloudCooldownUntil = 0         // skip cloud until this timestamp
-        this._lastOllamaCheck = 0            // when we last checked Ollama
-        this._ollamaRecheckMs = 5 * 60 * 1000  // re-check every 5 min
+        this._cloudCooldownUntil = 0
+        this._lastOllamaCheck = 0
+        this._ollamaRecheckMs = 5 * 60 * 1000
+
+        // Observability counters
+        this.tierCounts = { skip: 0, fast: 0, quality: 0 }
     }
 
     async init() {
-        // Check if Ollama is running
         try {
             await this.ollama.list()
             this.ollamaAvailable = true
@@ -42,29 +51,63 @@ export class LLMClient {
         }
     }
 
-    // Generate a response from the LLM
-    // Returns: { text: string, source: 'ollama' | 'cloud' | null }
-    // Cloud first (much faster on Pi), Ollama as fallback
-    async generate(systemPrompt, userPrompt, timeoutMs = 30000) {
+    // Generate a response with tier-aware routing
+    // tier: 'quality' (default) | 'fast'
+    // Returns: { text: string, source: 'cloud'|'cloud-fast'|'ollama'|null }
+    async generate(systemPrompt, userPrompt, timeoutMs = 30000, tier = 'quality') {
         // Periodically re-check Ollama if it was unavailable
         if (!this.ollamaAvailable && Date.now() - this._lastOllamaCheck > this._ollamaRecheckMs) {
             await this._recheckOllama()
         }
 
-        // Try cloud first, but respect cooldown
-        if (this.cloudApiKey && this.cloudApiUrl) {
-            if (Date.now() >= this._cloudCooldownUntil) {
-                try {
-                    const result = await this._cloudGenerate(systemPrompt, userPrompt, timeoutMs)
-                    return { text: result, source: 'cloud' }
-                } catch (err) {
-                    this.logger.warn(`Cloud LLM failed: ${err.message}`)
-                    // Fall through to Ollama
-                }
-            } else {
-                const remaining = Math.round((this._cloudCooldownUntil - Date.now()) / 1000)
-                this.logger.debug(`Cloud API cooling down (${remaining}s remaining)`)
+        // Track tier usage
+        this.tierCounts[tier] = (this.tierCounts[tier] || 0) + 1
+
+        if (tier === 'fast') {
+            return this._generateFast(systemPrompt, userPrompt, timeoutMs)
+        }
+
+        return this._generateQuality(systemPrompt, userPrompt, timeoutMs)
+    }
+
+    // Fast tier: Ollama first (free), 8B cloud fallback
+    async _generateFast(systemPrompt, userPrompt, timeoutMs) {
+        // Try free local model first
+        if (this.ollamaAvailable) {
+            try {
+                const result = await this._ollamaGenerate(systemPrompt, userPrompt, timeoutMs)
+                return { text: result, source: 'ollama' }
+            } catch (err) {
+                this.logger.warn(`Ollama failed (fast tier): ${err.message}`)
             }
+        }
+
+        // Fall back to cheap cloud model
+        if (this.cloudApiKey && this.cloudApiUrl && Date.now() >= this._cloudCooldownUntil) {
+            try {
+                const result = await this._cloudGenerate(systemPrompt, userPrompt, timeoutMs, this.cloudModelFast)
+                return { text: result, source: 'cloud-fast' }
+            } catch (err) {
+                this.logger.warn(`Cloud fast failed: ${err.message}`)
+            }
+        }
+
+        return { text: null, source: null }
+    }
+
+    // Quality tier: 70B cloud first, Ollama fallback
+    async _generateQuality(systemPrompt, userPrompt, timeoutMs) {
+        // Try 70B cloud first (faster on Pi than local)
+        if (this.cloudApiKey && this.cloudApiUrl && Date.now() >= this._cloudCooldownUntil) {
+            try {
+                const result = await this._cloudGenerate(systemPrompt, userPrompt, timeoutMs, this.cloudModel)
+                return { text: result, source: 'cloud' }
+            } catch (err) {
+                this.logger.warn(`Cloud LLM failed: ${err.message}`)
+            }
+        } else if (this.cloudApiKey && Date.now() < this._cloudCooldownUntil) {
+            const remaining = Math.round((this._cloudCooldownUntil - Date.now()) / 1000)
+            this.logger.debug(`Cloud API cooling down (${remaining}s remaining)`)
         }
 
         // Fall back to local Ollama
@@ -103,7 +146,7 @@ export class LLMClient {
         }
     }
 
-    async _cloudGenerate(systemPrompt, userPrompt, timeoutMs) {
+    async _cloudGenerate(systemPrompt, userPrompt, timeoutMs, model) {
         const controller = new AbortController()
         const timeout = setTimeout(() => controller.abort(), timeoutMs)
 
@@ -115,7 +158,7 @@ export class LLMClient {
                     'Authorization': `Bearer ${this.cloudApiKey}`,
                 },
                 body: JSON.stringify({
-                    model: this.cloudModel,
+                    model,
                     messages: [
                         { role: 'system', content: systemPrompt },
                         { role: 'user', content: userPrompt },
@@ -141,7 +184,6 @@ export class LLMClient {
         }
     }
 
-    // Re-check Ollama availability (called periodically if it was down)
     async _recheckOllama() {
         this._lastOllamaCheck = Date.now()
         try {

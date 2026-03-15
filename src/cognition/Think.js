@@ -19,8 +19,16 @@ export class Think {
         this._lastPromptChars = 0       // tracked for metrics
     }
 
-    // extras: { internalState, deltaNarrative, lastActionResult, repetitionWarnings, tickCount, uptimeMinutes, salience }
+    // extras: { internalState, deltaNarrative, lastActionResult, repetitionWarnings, tickCount, uptimeMinutes, salience, tier }
     async decide(observation, worldEvents, extras = {}) {
+        const tier = extras.tier || 'quality'
+
+        // Tier 'skip': no LLM call — use fallback brain directly
+        if (tier === 'skip') {
+            this.logger.debug('Tick classified as skip — using fallback brain')
+            return this._wrapFallback(observation)
+        }
+
         // 1. Perceive — turn raw observation into natural language
         const situation = perceive(observation, worldEvents)
         this.logger.debug(`Perceived: ${situation.split('\n')[0]}...`)
@@ -51,8 +59,8 @@ export class Think {
             finalSystemPrompt = this.promptBuilder.buildSystemPrompt(truncatedMemory, skills, tools)
         }
 
-        // 3. Call LLM
-        const { text, source } = await this.llm.generate(finalSystemPrompt, userPrompt)
+        // 3. Call LLM with tier routing
+        const { text, source } = await this.llm.generate(finalSystemPrompt, userPrompt, 30000, tier)
 
         if (!text) {
             this.logger.warn('LLM returned nothing, using fallback')
