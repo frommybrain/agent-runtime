@@ -69,11 +69,12 @@ export function perceive(observation, worldEvents) {
         lines.push(`Nearby: ${objects.join('; ')}.`)
     }
 
-    // --- Environment signals (cosmology, sensor data, field values, etc.) ---
+    // --- Environment signals → felt descriptions ---
+    // Translate raw metrics into experiential language so the agent
+    // describes what it feels, not the metric names themselves.
     if (observation.signals) {
-        const signalLines = Object.entries(observation.signals)
-            .map(([k, v]) => `${k}: ${typeof v === 'number' ? v.toFixed(2) : v}`)
-        lines.push(`Environment: ${signalLines.join(', ')}.`)
+        const desc = _describeSignals(observation.signals)
+        if (desc) lines.push(`Environment: ${desc}`)
     }
 
     // --- Recent speech from observation (server-included) ---
@@ -128,4 +129,51 @@ export function perceive(observation, worldEvents) {
     }
 
     return lines.join('\n')
+}
+
+// Translate raw signal values into natural, felt descriptions.
+// The agent should describe experience, not echo metric names.
+function _describeSignals(signals) {
+    const parts = []
+
+    if (signals.vitality !== undefined) {
+        const v = signals.vitality
+        if (v >= 0.8) parts.push('This place feels alive — buzzing with energy.')
+        else if (v >= 0.6) parts.push('There is a healthy energy here, things feel vibrant.')
+        else if (v >= 0.45) parts.push('The energy here feels ordinary — nothing special.')
+        else if (v >= 0.3) parts.push('The energy feels low, like this place is fading.')
+        else parts.push('This place feels drained, almost lifeless.')
+    }
+
+    if (signals.resonance !== undefined) {
+        const r = signals.resonance
+        if (r >= 0.7) parts.push('There is an intense hum in the air — everything feels deeply connected.')
+        else if (r >= 0.4) parts.push('There is a gentle hum, a sense of things being in tune.')
+        else if (r >= 0.2) parts.push('The atmosphere is quiet and still.')
+        else parts.push('Everything feels disconnected and flat.')
+    }
+
+    if (signals.warmth !== undefined) {
+        const w = signals.warmth
+        if (w >= 0.7) parts.push('A comforting warmth surrounds you.')
+        else if (w >= 0.45) parts.push('The air feels neutral — neither warm nor cold.')
+        else if (w >= 0.25) parts.push('There is a chill in the air.')
+        else parts.push('The cold is biting — unwelcoming.')
+    }
+
+    if (signals.abundance !== undefined) {
+        const a = signals.abundance
+        if (a >= 0.7) parts.push('This place feels rich and full of possibility.')
+        else if (a >= 0.45) parts.push('Things seem adequate — enough, but nothing more.')
+        else if (a >= 0.25) parts.push('There is a sense of scarcity here.')
+        else parts.push('This place feels barren and empty.')
+    }
+
+    // Fall through for any unknown signals — narrate them generically
+    for (const [k, v] of Object.entries(signals)) {
+        if (['vitality', 'resonance', 'warmth', 'abundance'].includes(k)) continue
+        parts.push(`${k}: ${typeof v === 'number' ? v.toFixed(2) : v}`)
+    }
+
+    return parts.join(' ')
 }
