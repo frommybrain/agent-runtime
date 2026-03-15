@@ -258,10 +258,10 @@ export class Heartbeat {
                 }
             }
 
-            // Periodic state checkpoint (crash recovery)
+            // Periodic state checkpoint (crash recovery — includes tickCount)
             if (Date.now() - this._lastCheckpointAt > this._checkpointIntervalMs) {
                 this._lastCheckpointAt = Date.now()
-                this.internalState.checkpoint().catch(() => {})
+                this.internalState.checkpoint({ tickCount: this.tickCount }).catch(() => {})
             }
 
         } catch (err) {

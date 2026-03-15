@@ -93,9 +93,11 @@ export class SleepCycle {
 
             // Pass 1: Consolidate memory.md
             stats.memoryConsolidated = await this._consolidateMemory()
+            await this._sleepDelay(5000)  // spread rate limit load
 
             // Pass 2: Extract skills from memory → skills.md
             stats.skillsExtracted = await this._extractSkills()
+            await this._sleepDelay(5000)
 
             // Pass 3 (REMOVED in v0.3.1): _refreshTools() was destructive — the LLM
             // could corrupt the ground truth header in tools.md. Since tools.md is
@@ -420,6 +422,10 @@ Should ${persona.name} evolve? Respond with JSON.`
         }
 
         return fieldCount > 0 ? totalDrift / fieldCount : 0
+    }
+
+    _sleepDelay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms))
     }
 
     stop() {

@@ -25,7 +25,7 @@ export class RepetitionGuard {
         // Track speech content separately
         if (action === 'speak' && params?.message) {
             this._recentSpeech.push(params.message.toLowerCase().trim())
-            if (this._recentSpeech.length > 10) this._recentSpeech.shift()
+            if (this._recentSpeech.length > 20) this._recentSpeech.shift()
         }
     }
 

@@ -1,7 +1,7 @@
 import { Ollama } from 'ollama'
 
-// LLM client — Ollama primary, optional cloud API fallback
-// Designed for Pi 5 running llama3.2:3b locally
+// LLM client — Cloud primary (Groq), Ollama local fallback
+// v0.3.7: 429 rate limit backoff, periodic Ollama re-check
 
 export class LLMClient {
     constructor(config, logger) {
@@ -19,6 +19,9 @@ export class LLMClient {
         this.cloudModel = config.cloudModel
 
         this.ollamaAvailable = false
+        this._cloudCooldownUntil = 0         // skip cloud until this timestamp
+        this._lastOllamaCheck = 0            // when we last checked Ollama
+        this._ollamaRecheckMs = 5 * 60 * 1000  // re-check every 5 min
     }
 
     async init() {
@@ -26,9 +29,11 @@ export class LLMClient {
         try {
             await this.ollama.list()
             this.ollamaAvailable = true
+            this._lastOllamaCheck = Date.now()
             this.logger.info(`Ollama connected (model: ${this.ollamaModel})`)
         } catch {
             this.ollamaAvailable = false
+            this._lastOllamaCheck = Date.now()
             if (this.cloudApiKey) {
                 this.logger.warn('Ollama unavailable, will use cloud fallback')
             } else {
@@ -41,14 +46,24 @@ export class LLMClient {
     // Returns: { text: string, source: 'ollama' | 'cloud' | null }
     // Cloud first (much faster on Pi), Ollama as fallback
     async generate(systemPrompt, userPrompt, timeoutMs = 30000) {
-        // Try cloud first (Groq etc. — sub-second responses)
+        // Periodically re-check Ollama if it was unavailable
+        if (!this.ollamaAvailable && Date.now() - this._lastOllamaCheck > this._ollamaRecheckMs) {
+            await this._recheckOllama()
+        }
+
+        // Try cloud first, but respect cooldown
         if (this.cloudApiKey && this.cloudApiUrl) {
-            try {
-                const result = await this._cloudGenerate(systemPrompt, userPrompt, timeoutMs)
-                return { text: result, source: 'cloud' }
-            } catch (err) {
-                this.logger.warn(`Cloud LLM failed: ${err.message}`)
-                // Fall through to Ollama
+            if (Date.now() >= this._cloudCooldownUntil) {
+                try {
+                    const result = await this._cloudGenerate(systemPrompt, userPrompt, timeoutMs)
+                    return { text: result, source: 'cloud' }
+                } catch (err) {
+                    this.logger.warn(`Cloud LLM failed: ${err.message}`)
+                    // Fall through to Ollama
+                }
+            } else {
+                const remaining = Math.round((this._cloudCooldownUntil - Date.now()) / 1000)
+                this.logger.debug(`Cloud API cooling down (${remaining}s remaining)`)
             }
         }
 
@@ -112,6 +127,10 @@ export class LLMClient {
             })
 
             if (!response.ok) {
+                if (response.status === 429) {
+                    this._cloudCooldownUntil = Date.now() + 60000
+                    this.logger.warn('Cloud API rate limited (429) — cooling down for 60s')
+                }
                 throw new Error(`Cloud API ${response.status}: ${response.statusText}`)
             }
 
@@ -119,6 +138,18 @@ export class LLMClient {
             return data.choices?.[0]?.message?.content || ''
         } finally {
             clearTimeout(timeout)
+        }
+    }
+
+    // Re-check Ollama availability (called periodically if it was down)
+    async _recheckOllama() {
+        this._lastOllamaCheck = Date.now()
+        try {
+            await this.ollama.list()
+            this.ollamaAvailable = true
+            this.logger.info('Ollama re-check: available again')
+        } catch {
+            // Still unavailable
         }
     }
 

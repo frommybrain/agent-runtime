@@ -44,6 +44,15 @@ export class EnvironmentSocket {
                 this.connected = false
                 this.identified = false
                 this.logger.warn('Disconnected')
+                // Reject pending requests immediately (prevents 5s timeout hang)
+                if (this._pendingObserve) {
+                    this._pendingObserve.reject(new Error('Disconnected'))
+                    this._pendingObserve = null
+                }
+                if (this._pendingAction) {
+                    this._pendingAction.reject(new Error('Disconnected'))
+                    this._pendingAction = null
+                }
                 this._scheduleReconnect()
             })
 
