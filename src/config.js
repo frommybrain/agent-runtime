@@ -22,7 +22,7 @@ export function loadConfig() {
         ollamaModel: process.env.OLLAMA_MODEL || 'qwen3:4b',
         cloudApiKey: process.env.CLOUD_API_KEY || null,
         cloudApiUrl: process.env.CLOUD_API_URL || null,
-        cloudModel: process.env.CLOUD_MODEL || 'llama-3.1-8b-instant',
+        cloudModel: process.env.CLOUD_MODEL || 'llama-3.3-70b-versatile',
         temperature: 0.7,
         maxTokens: 200,
 

@@ -16,15 +16,19 @@ set -euo pipefail
 
 AGENT_ID="${1:-}"
 SERVER_URL="${2:-}"
-OLLAMA_MODEL="${3:-qwen2.5:3b}"
-API_PORT="${4:-5000}"
+GROQ_API_KEY="${3:-}"
+OLLAMA_MODEL="${4:-qwen3:4b}"
+CLOUD_MODEL="${5:-llama-3.3-70b-versatile}"
+API_PORT="${6:-5000}"
 
 if [ -z "$AGENT_ID" ] || [ -z "$SERVER_URL" ]; then
-    echo "Usage: setup-pi.sh <agent_id> <server_url> [model] [api_port]"
-    echo "  agent_id:   pip, bean, mochi, taro, etc."
-    echo "  server_url: ws://YOUR_MAC_IP:4001"
-    echo "  model:      qwen2.5:3b (default)"
-    echo "  api_port:   5000 (default)"
+    echo "Usage: setup-pi.sh <agent_id> <server_url> [groq_api_key] [ollama_model] [cloud_model] [api_port]"
+    echo "  agent_id:      pip, bean, mochi, taro, etc."
+    echo "  server_url:    ws://YOUR_MAC_IP:4001"
+    echo "  groq_api_key:  Groq API key (recommended — cloud primary, Ollama fallback)"
+    echo "  ollama_model:  qwen3:4b (default, local fallback)"
+    echo "  cloud_model:   llama-3.3-70b-versatile (default, Groq primary)"
+    echo "  api_port:      5000 (default)"
     exit 1
 fi
 
@@ -32,7 +36,8 @@ echo "============================================"
 echo "  Agent Runtime — Pi Setup"
 echo "  Agent:  $AGENT_ID"
 echo "  Server: $SERVER_URL"
-echo "  Model:  $OLLAMA_MODEL"
+echo "  Cloud:  ${GROQ_API_KEY:+Groq ($CLOUD_MODEL)}${GROQ_API_KEY:-NONE (Ollama only)}"
+echo "  Local:  $OLLAMA_MODEL (fallback)"
 echo "  API:    port $API_PORT"
 echo "============================================"
 echo ""
@@ -104,11 +109,16 @@ PERSONA_PATH=./personas/$AGENT_ID.json
 SERVER_URL=$SERVER_URL
 OLLAMA_HOST=http://localhost:11434
 OLLAMA_MODEL=$OLLAMA_MODEL
+${GROQ_API_KEY:+CLOUD_API_KEY=$GROQ_API_KEY}
+${GROQ_API_KEY:+CLOUD_API_URL=https://api.groq.com/openai/v1/chat/completions}
+${GROQ_API_KEY:+CLOUD_MODEL=$CLOUD_MODEL}
 HEARTBEAT_MS=8000
 DATA_DIR=./data
 API_PORT=$API_PORT
 LOG_LEVEL=info
 ENVFILE
+# Remove any blank lines from conditional expansion
+sed -i '/^$/d' "$RUNTIME_DIR/.env"
 echo "  .env created for $AGENT_ID"
 
 # --- Step 6: Create systemd service ---
