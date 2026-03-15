@@ -881,3 +881,130 @@ Fix: read cache in MemoryFiles with write-through invalidation. Reads return cac
 8. ✅ DeltaDetector: tracks property mutations on existing objects
 
 Only one backlog item remains: process watchdog (systemd service). Everything else is fixed. The agent is ready for long-duration deployment.
+
+### Milestone 12 — 6-Hour Endurance Test: Launch Day (2026-03-15)
+
+Kicking off the first long-duration soak test on v0.3.7. Everything from the last 11 milestones tested at once. 🧵
+
+### Tweet M12-1 — The Launch
+
+Kicking off a 6-hour soak test on our autonomous agent runtime.
+
+One agent. One Raspberry Pi. 2,700+ expected ticks. Zero human intervention.
+
+Everything we've built over the last 11 versions comes down to this.
+
+### Tweet M12-2 — The Journey
+
+In the last 48 hours we went from v0.3 to v0.3.7. Eleven milestones. Here's the arc:
+
+- v0.3.0: Can it survive months? (stability overhaul)
+- v0.3.1: Can it survive *correctly*? (memory corruption, persona drift)
+- v0.3.3: Can it feel? (valence flatline → asymmetric rewards)
+- v0.3.5: Can it stop parroting metrics? (sensation not data)
+- v0.3.6: Can it learn creativity? (valence punishment for repetition)
+- v0.3.7: Can it run unattended? (rate limits, promise leaks, caching)
+
+Each version answered one question. The 6-hour test asks them all at once.
+
+### Tweet M12-3 — What We're Watching
+
+Key metrics for the run:
+- **Hallucinations**: Should be 0. Been clean for 4 consecutive tests
+- **Speech creativity**: New in v0.3.6 — the agent gets punished through valence for repeating itself. First long-duration test of this system
+- **Rate limits**: Groq 429 handling + Ollama fallback, first real stress test
+- **Memory consolidation**: Multiple sleep cycles merging and pruning memory
+- **Emotional range**: Does valence stay dynamic over 6 hours, or flatline again?
+
+### Tweet M12-4 — The Thesis Test
+
+The core thesis: **sensation, not instruction.**
+
+Don't tell the agent what to do. Let it feel the consequences.
+
+- Repetition → valence drops → world feels duller
+- Creativity → mild reward → world stays vibrant
+- Success → positive nudge → doing things well feels good
+- Failure → sharp penalty → mistakes sting
+
+The agent never sees any of these scores. It only feels the shift.
+
+6 hours will tell us if invisible teaching actually produces behavioural change at scale — or if the agent just learns to feel bad while repeating itself anyway.
+
+### Tweet M12-5 — The Setup
+
+Running on:
+- Groq cloud (llama-3.3-70b-versatile) with local Ollama fallback
+- 13-phase environmental cycle with object persistence gauntlet
+- 6 unique objects that appear, vanish, and return
+- Stress phases, calm phases, empty world, synth mode
+- Sleep cycle every ~15 min (compressed for testing)
+
+Results when it's done. If it crashes at hour 4, that's a result too.
+
+### Milestone 13 — v0.3.8: Tiered Model Routing (2026-03-15)
+
+Running 70B on every tick is like hiring a surgeon to put on a plaster. Most ticks are boring — nothing changed, nobody spoke, the agent's just wandering. Time to get smart about cost. 🧵
+
+### Tweet M13-1 — The Cost Problem
+
+70B cloud: ~$0.0014/request. 8B cloud: ~$0.0001/request. Local Ollama: $0.
+
+At 10,800 ticks/day, all-70B costs ~$15/day ($441/month). For an agent running on a Raspberry Pi, that's not sustainable.
+
+But not every tick deserves a 70B brain. Most are "nothing happened, move somewhere." The question: which ticks actually matter?
+
+### Tweet M13-2 — Three Tiers
+
+Every tick is now classified before the LLM is called:
+
+**Skip** ($0): Zero deltas, no speech, no action feedback. The FallbackBrain picks a safe action. No LLM needed. The agent still acts — it just doesn't think hard about it.
+
+**Fast** (free/cheap): Routine exploration, minor signal changes. Ollama on the Pi (free) first, 8B cloud as fallback. Good enough for "move to that spot."
+
+**Quality** (70B): Objects appeared/disappeared. Someone spoke. High arousal. Repetition warnings. Hallucination risk window. The moments that actually shape behaviour.
+
+### Tweet M13-3 — The Classifier
+
+```js
+_classifyTick(deltas, worldEvents, context) {
+    if (worldEvents.length > 0) return 'quality'
+    if (deltas.some(d => d.type === 'appeared'
+        || d.type === 'disappeared')) return 'quality'
+    if (context.recentlyDisappeared?.length > 0) return 'quality'
+    if (Math.abs(context.internalState?.arousal) > 0.5) return 'quality'
+    if (context.repetitionWarnings?.length > 0) return 'quality'
+    if (deltas.length === 0 && !context.lastActionResult?.message)
+        return 'skip'
+    return 'fast'
+}
+```
+
+Simple. Observable. Tunable. The tier is logged on every tick and emitted in SSE events.
+
+### Tweet M13-4 — Projected Savings
+
+Estimated split for a typical day (10,800 ticks):
+- Skip: ~25% → 2,700 × $0 = $0
+- Fast: ~45% → 4,860 × $0.0001 = $0.49
+- Quality: ~30% → 3,240 × $0.0014 = $4.54
+
+**Total: ~$5/day ($150/month) vs $441/month pure 70B. ~65% cost reduction.**
+
+And that's conservative — in a quiet world with no other agents, skip/fast could handle 80%+ of ticks. In a busy multi-agent world, quality tier gets used more. The cost scales with complexity, not with time.
+
+### Tweet M13-5 — The Pi Advantage
+
+The local Ollama model (qwen3:4b) is slow on the Pi — 5-8 seconds per generation. But for fast-tier ticks, the heartbeat is already at 15 seconds (low arousal = slow heartbeat). The generation time fits inside the interval. And it's completely free.
+
+The tiered routing inverts the priority: quality tier goes cloud-first (speed matters when things are happening), fast tier goes local-first (cost matters when nothing is).
+
+### Tweet M13-6 — v0.3.8 Scorecard
+
+4 changes:
+1. ✅ Tick classifier: skip/fast/quality routing based on tick complexity
+2. ✅ LLMClient: tier-aware generation (Ollama-first for fast, 70B-first for quality)
+3. ✅ Tier counts in /metrics endpoint for cost observability
+4. ✅ Config: CLOUD_MODEL_FAST env var (default: llama-3.1-8b-instant)
+
+The agent thinks as hard as the moment requires. Quiet moments get quiet brains. Important moments get the full model. Cost scales with complexity, not with uptime.

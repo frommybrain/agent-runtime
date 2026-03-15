@@ -210,6 +210,8 @@ export class ApiServer {
             },
             // Action diversity
             actionDiversity: repetitionGuard?.diversityScore() || 0,
+            // Tier distribution (cost observability)
+            tierCounts: this.state.think?.llm?.tierCounts || { skip: 0, fast: 0, quality: 0 },
             // Prompt size (last tick)
             lastPromptChars: this.state.think?._lastPromptChars || 0,
             // SSE clients
