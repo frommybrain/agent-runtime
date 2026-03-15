@@ -1008,3 +1008,75 @@ The tiered routing inverts the priority: quality tier goes cloud-first (speed ma
 4. ✅ Config: CLOUD_MODEL_FAST env var (default: llama-3.1-8b-instant)
 
 The agent thinks as hard as the moment requires. Quiet moments get quiet brains. Important moments get the full model. Cost scales with complexity, not with uptime.
+
+### Milestone 14 — 6-Hour Endurance Test Results (2026-03-15)
+
+6 hours. 1,446 ticks. 23 sleep cycles. 3 complete phase rotations. Here's what happened. 🧵
+
+### Tweet M14-1 — Zero Hallucinations (Again)
+
+5th consecutive clean test. Not a single reference to an absent object across 1,446 ticks and 389 speeches. Objects appeared, disappeared, and returned across 3 full rotations — the agent tracked them all correctly.
+
+The combination of ground truth labels, 30-tick GONE warnings, and the memory/hallucination distinction in the prompt has completely solved this problem. It's done.
+
+### Tweet M14-2 — The Emotional System at Scale
+
+Valence tracked environment perfectly for 6 straight hours:
+
+| Phase | Valence | Arousal | Felt |
+|-------|---------|---------|------|
+| Flourishing | +0.436 | 0.258 | "A surge of energy and satisfaction" |
+| New arrivals | +0.222 | 0.319 | "A comfortable focus" |
+| Empty world | -0.246 | 0.066 | "A growing frustration" |
+| Stress | -0.236 | 0.574 | "Something feels wrong — uneasy, on edge" |
+
+7+ distinct emotional descriptions. Heartbeat: 8.7s during stress, 14.2s during calm. The pattern repeated consistently across all 3 cycles with no drift or flatline. The emotional system is production-ready.
+
+### Tweet M14-3 — Action Distribution Evolution
+
+| Action | v0.3.3 (8hr) | v0.3.5 (45m) | **v0.3.7 (6hr)** |
+|--------|--------------|--------------|-------------------|
+| move_to | 53% | 45.5% | **36.4%** |
+| interact | 12% | 29.9% | **25.3%** |
+| speak | 21% | 19.8% | **26.9%** |
+| wait | 5% | 4.8% | **4.5%** |
+
+move_to at its lowest ever. The agent spends less time wandering, more time engaging. interact held strong at 25% — double what the 8B model ever achieved. Synth mode: 100% synth actions, zero speech. The agent knows what context it's in.
+
+### Tweet M14-4 — The Speech Problem
+
+26.9% speech rate, up from 19.8%. More concerning: the same phrases across 6 hours.
+
+"This emptiness is unsettling" — ticks 116, 122, 176, 375
+"Time to break the cycle" — ticks 238, 249, 256
+"Scout, what do you sense/think about..." — same question structure, over and over
+
+The v0.3.6 creativity scoring catches local repetition (20-speech buffer), but phrases repeated 250 ticks apart are invisible. The agent has no long-term memory of what it's said.
+
+This isn't a filter problem. It's a vocabulary problem — an 8B/70B model with a short context window gravitates toward the same constructions. The creativity penalty makes it feel bad locally, but with no persistent speech memory, the same phrases re-emerge every cycle.
+
+### Tweet M14-5 — The Cost Baseline
+
+The 6-hour run cost **$2.10** — all ticks on llama-3.3-70b-versatile.
+
+$2.10 / 1,446 ticks = $0.00145/tick
+At production rates: ~$15.66/day → $470/month
+
+This is the baseline. v0.3.8 (tiered routing) should cut this by 50-65%. Running a 9-hour overnight test next to measure the difference.
+
+### Tweet M14-6 — 23 Sleep Cycles, Zero Failures
+
+Every sleep cycle completed all passes: dedup → consolidation → skills → self-reflection → GC → clear. Memory stayed lean: 8 entries in, 8 entries out. The consolidation system is pruning as fast as it's learning.
+
+Skills stayed at 0 — the strict "ONLY extract from log evidence" constraint means no hallucinated skill trees. Better zero than fiction.
+
+### Tweet M14-7 — Verdict
+
+The runtime is production-ready for continuous deployment:
+- ✅ Zero hallucinations (5 consecutive tests)
+- ✅ Emotional system stable and responsive over 6 hours
+- ✅ 23 sleep cycles, zero failures
+- ✅ Memory consolidation keeping files lean
+- ✅ No crashes, no disconnects, no unrecoverable errors
+
+Remaining work: cost optimization (v0.3.8 tiered routing, testing next) and speech variety at scale. The foundation is done. Time to run it for real.
