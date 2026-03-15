@@ -833,3 +833,51 @@ The creativity score is emitted in the tick event for observability, but it neve
 This is the first time we're using the agent's emotional system not just to *reflect* the environment, but to *shape behaviour*. The environment teaches the agent how to feel. Now we're teaching it how to speak — through feeling.
 
 If this works, the same principle applies to everything: spatial exploration (reward novelty, punish pacing), social interaction (reward engagement, punish ignoring), even memory formation (reward learning, punish rumination). All through sensation. All invisible.
+
+### Milestone 11 — v0.3.7: Deployment Readiness (2026-03-15)
+
+The cognitive pipeline is done. Now: will it survive weeks without human intervention? Cleared the entire stability backlog in one session. 🧵
+
+### Tweet M11-1 — The 429 Time Bomb
+
+Groq's free tier has rate limits. At 15 req/min during high arousal, the agent could exhaust its quota in 4 minutes. Previous behaviour: generic error → fall through to Ollama → Ollama also fails on Pi if not running → agent goes silent.
+
+Fix: detect 429 specifically, enter 60-second cooldown, auto-route to local Ollama during cooldown. The agent keeps thinking — just slower. When cooldown expires, cloud resumes automatically.
+
+### Tweet M11-2 — The 5-Second Hang
+
+When the WebSocket disconnected mid-request, pending observe/action promises were never rejected. The tick hung for 5 seconds waiting for a timeout that shouldn't have been necessary.
+
+Fix: reject pending promises immediately in the close handler. The tick fails fast, the reconnect logic kicks in, and the next tick proceeds normally. 5 seconds of dead time per disconnect → 0.
+
+### Tweet M11-3 — The Midnight Bug
+
+Daily log entries buffered at 23:59:59 would flush at 00:00:01 — into tomorrow's file. The timestamp said yesterday but the file said today.
+
+Fix: tag each buffer entry with its target filename at creation time. When flush groups entries by file, midnight-boundary entries go to the correct day's log.
+
+### Tweet M11-4 — The Amnesia Bug
+
+Every restart: `tickCount = 0`. The agent has been running for 6 hours and 2000 ticks, crashes, restarts — and thinks it just woke up. Time awareness broken.
+
+Fix: tickCount now persists in the state checkpoint alongside valence/arousal. On restart, restored from the last checkpoint. The agent picks up at tick 2001, not tick 0.
+
+### Tweet M11-5 — The Cache
+
+System prompt reads memory.md, skills.md, and tools.md every tick. At 8-second intervals: 10,800 file reads per day for content that changes maybe 10 times.
+
+Fix: read cache in MemoryFiles with write-through invalidation. Reads return cached content. Writes (including appendToMemory, consolidation, backup restore) update or invalidate the cache. File reads drop from 10,800/day to ~30.
+
+### Tweet M11-6 — v0.3.7 Scorecard
+
+8 fixes shipped:
+1. ✅ 429 rate limit: 60s cooldown + Ollama fallback
+2. ✅ Ollama re-check: every 5 min if initially down
+3. ✅ Promise leak: immediate reject on disconnect
+4. ✅ Day boundary: entries tagged at creation time
+5. ✅ Tick counter: persisted in checkpoint
+6. ✅ Sleep rate limit: 5s delay between consolidation LLM calls
+7. ✅ Prompt caching: write-through read cache
+8. ✅ DeltaDetector: tracks property mutations on existing objects
+
+Only one backlog item remains: process watchdog (systemd service). Everything else is fixed. The agent is ready for long-duration deployment.
