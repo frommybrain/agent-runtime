@@ -7,8 +7,8 @@ import { join } from 'node:path'
 // entries accumulate in a RAM buffer and flush every flushIntervalMs.
 // This drops disk I/O by ~99% and prevents SD card wear on the Pi.
 //
-// readRecentLines() reads from the buffer first (fast, no I/O).
-// The full day's log on disk is an audit trail for thesis records.
+// v0.3.7: Buffer entries tagged with target file at creation time,
+// preventing midnight boundary entries from going into the wrong day.
 
 export class DailyLog {
     constructor(config, logger) {
@@ -17,7 +17,7 @@ export class DailyLog {
         this.flushIntervalMs = config.logFlushIntervalMs || 5 * 60 * 1000  // 5 min default
         this.logger = logger
 
-        // In-memory buffer — entries accumulate here between flushes
+        // In-memory buffer — entries are { line, file } objects
         this._buffer = []
         this._bufferMaxSize = 500  // safety cap
         this._flushTimer = null
@@ -30,11 +30,13 @@ export class DailyLog {
     }
 
     // Append a line — writes to buffer only, no disk I/O
+    // File target is captured now, not at flush time (prevents day boundary bug)
     async append(entry) {
         const time = new Date().toLocaleTimeString('en-US', { hour12: false })
         const line = `[${time}] ${entry}`
+        const file = this._todayFile()
 
-        this._buffer.push(line)
+        this._buffer.push({ line, file })
 
         // Safety: if buffer exceeds max, force flush
         if (this._buffer.length >= this._bufferMaxSize) {
@@ -42,19 +44,30 @@ export class DailyLog {
         }
     }
 
-    // Flush buffer to disk — batched appendFile (no read-then-rewrite)
+    // Flush buffer to disk — grouped by target file (handles midnight boundary)
     async flush() {
         if (this._buffer.length === 0) return
 
-        const lines = this._buffer.splice(0)  // drain buffer
-        const content = lines.join('\n') + '\n'
+        const entries = this._buffer.splice(0)  // drain buffer
 
-        try {
-            await appendFile(this._todayFile(), content, 'utf-8')
-        } catch (err) {
-            this.logger.error(`DailyLog flush failed: ${err.message}`)
-            // Re-add lines to buffer so they're not lost
-            this._buffer.unshift(...lines)
+        // Group entries by their target file
+        const byFile = new Map()
+        for (const { line, file } of entries) {
+            if (!byFile.has(file)) byFile.set(file, [])
+            byFile.get(file).push(line)
+        }
+
+        for (const [file, lines] of byFile) {
+            const content = lines.join('\n') + '\n'
+            try {
+                await appendFile(file, content, 'utf-8')
+            } catch (err) {
+                this.logger.error(`DailyLog flush failed: ${err.message}`)
+                // Re-add lines to buffer so they're not lost
+                for (const line of lines) {
+                    this._buffer.unshift({ line, file })
+                }
+            }
         }
     }
 
@@ -66,23 +79,28 @@ export class DailyLog {
         } catch {
             // File doesn't exist yet
         }
-        // Append unflushed buffer entries
-        if (this._buffer.length > 0) {
-            disk += (disk && !disk.endsWith('\n') ? '\n' : '') + this._buffer.join('\n') + '\n'
+        // Append unflushed buffer entries for today only
+        const todayFile = this._todayFile()
+        const bufferLines = this._buffer
+            .filter(e => e.file === todayFile)
+            .map(e => e.line)
+        if (bufferLines.length > 0) {
+            disk += (disk && !disk.endsWith('\n') ? '\n' : '') + bufferLines.join('\n') + '\n'
         }
         return disk
     }
 
     // Read last N lines — pulls from buffer first (fast), then disk if needed
     async readRecentLines(n = 5) {
+        const bufferLines = this._buffer.map(e => e.line)
         // Buffer has enough recent lines
-        if (this._buffer.length >= n) {
-            return this._buffer.slice(-n)
+        if (bufferLines.length >= n) {
+            return bufferLines.slice(-n)
         }
 
         // Need some from disk too
         const content = await this.readToday()
-        if (!content) return this._buffer.slice(-n)
+        if (!content) return bufferLines.slice(-n)
         const lines = content.trim().split('\n').filter(Boolean)
         return lines.slice(-n)
     }

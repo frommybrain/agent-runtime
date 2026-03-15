@@ -32,6 +32,23 @@ export class DeltaDetector {
         const currObjects = this._idSet(observation.nearbyObjects || observation.nearby_objects)
         this._diffSets(prevObjects, currObjects, 'object', deltas)
 
+        // --- Objects: property changes on existing objects ---
+        const prevObjMap = this._objectMap(prev.nearbyObjects || prev.nearby_objects)
+        const currObjMap = this._objectMap(observation.nearbyObjects || observation.nearby_objects)
+        for (const [id, currObj] of currObjMap) {
+            const prevObj = prevObjMap.get(id)
+            if (!prevObj) continue  // new object — already handled by appeared
+            for (const [key, val] of Object.entries(currObj)) {
+                if (['id', 'name', 'pos', 'distance'].includes(key)) continue
+                if (JSON.stringify(val) !== JSON.stringify(prevObj[key])) {
+                    deltas.push({
+                        type: 'changed', category: 'object_property',
+                        id, property: key, from: prevObj[key], to: val,
+                    })
+                }
+            }
+        }
+
         // --- Own action state changed ---
         if (observation.self?.action !== prev.self?.action) {
             deltas.push({
@@ -112,6 +129,9 @@ export class DeltaDetector {
             if (d.type === 'disappeared') {
                 return `${d.category} "${d.id}" is no longer present`
             }
+            if (d.type === 'changed' && d.category === 'object_property') {
+                return `${d.id}'s ${d.property} changed from ${this._fmt(d.from)} to ${this._fmt(d.to)}`
+            }
             if (d.type === 'changed' && d.category === 'signal') {
                 const dir = d.to > d.from ? 'increased' : 'decreased'
                 return `${d.id} ${dir} (${this._fmt(d.from)} → ${this._fmt(d.to)})`
@@ -140,6 +160,15 @@ export class DeltaDetector {
 
     _idSet(arr) {
         return new Set((arr || []).map(item => item.id || item.name || JSON.stringify(item)))
+    }
+
+    _objectMap(arr) {
+        const map = new Map()
+        for (const obj of (arr || [])) {
+            const id = obj.id || obj.name || obj.type
+            if (id) map.set(id, obj)
+        }
+        return map
     }
 
     _actionSet(actions) {
