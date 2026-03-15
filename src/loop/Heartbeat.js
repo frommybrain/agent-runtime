@@ -129,10 +129,20 @@ export class Heartbeat {
                 worldEvents,
             })
 
-            // ── 4. THINK ──────────────────────────────────────────────
+            // ── 3b. CLASSIFY TICK ────────────────────────────────────
+            // Route to the right model tier based on tick complexity.
+            // Quality (70B) for important moments, fast (Ollama/8B) for
+            // routine, skip (no LLM) when nothing is happening.
             const stateDesc = this.internalState.describe()
             const repetitionWarnings = this.repetitionGuard.check()
+            const tier = this._classifyTick(deltas, worldEvents, {
+                internalState: stateDesc,
+                lastActionResult: this._lastActionResult,
+                recentlyDisappeared: this._recentlyDisappeared,
+                repetitionWarnings,
+            })
 
+            // ── 4. THINK ──────────────────────────────────────────────
             const decision = await this.think.decide(observation, worldEvents, {
                 internalState: stateDesc,
                 deltaNarrative: deltaNarrative || undefined,
@@ -143,6 +153,7 @@ export class Heartbeat {
                 tickCount: this.tickCount,
                 uptimeMinutes: Math.floor(this.uptimeSeconds() / 60),
                 salience,
+                tier,
             })
 
             // ── 4b. VALIDATE ACTION ─────────────────────────────────
@@ -174,7 +185,7 @@ export class Heartbeat {
                 }
             }
 
-            this.logger.info(`[tick ${this.tickCount}] ${decision.action} (${decision.source}) — ${decision.reason} [v=${stateDesc.valence.toFixed(2)} a=${stateDesc.arousal.toFixed(2)}]`)
+            this.logger.info(`[tick ${this.tickCount}] ${decision.action} (${decision.source}/${tier}) — ${decision.reason} [v=${stateDesc.valence.toFixed(2)} a=${stateDesc.arousal.toFixed(2)}]`)
 
             // ── 5. ACT ───────────────────────────────────────────────
             const result = await this.socket.act(decision.action, decision.params)
@@ -232,6 +243,7 @@ export class Heartbeat {
                 params: decision.params,
                 reason: decision.reason,
                 source: decision.source,
+                tier,
                 result: result?.message,
                 internalState: stateDesc,
                 speechCreativity,
@@ -283,6 +295,25 @@ export class Heartbeat {
         // Smooth transition (don't jump instantly)
         this.currentIntervalMs = Math.round(this.currentIntervalMs * 0.7 + target * 0.3)
         this.currentIntervalMs = Math.max(this.minIntervalMs, Math.min(this.maxIntervalMs, this.currentIntervalMs))
+    }
+
+    // Classify tick complexity → route to the right model tier.
+    // 'quality' = 70B cloud (expensive, high-stakes moments)
+    // 'fast'    = Ollama/8B cloud (routine exploration)
+    // 'skip'    = FallbackBrain (nothing happening, no LLM needed)
+    _classifyTick(deltas, worldEvents, context) {
+        // Quality tier: complex situations that need the big model
+        if (worldEvents.length > 0) return 'quality'                    // someone spoke
+        if (deltas.some(d => d.type === 'appeared' || d.type === 'disappeared')) return 'quality'  // world changed
+        if (context.recentlyDisappeared?.length > 0) return 'quality'   // hallucination risk window
+        if (Math.abs(context.internalState?.arousal || 0) > 0.5) return 'quality'  // heightened state
+        if (context.repetitionWarnings?.length > 0) return 'quality'    // needs creative escape
+
+        // Skip tier: nothing happening at all
+        if (deltas.length === 0 && !context.lastActionResult?.message) return 'skip'
+
+        // Fast tier: routine activity (minor deltas, action feedback)
+        return 'fast'
     }
 
     _scheduleNext() {
