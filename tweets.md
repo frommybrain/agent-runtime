@@ -528,3 +528,90 @@ Second soak test (v0.3.2) results:
 1. ✅ Asymmetric valence rewards (success +0.02, interact +0.04, failure -0.15)
 2. ✅ GONE window extended 10 → 30 ticks
 3. ✅ Soak test: baseline signals for all phases
+
+### Milestone 7 — 8-Hour Soak Test: The Overnight Run (2026-03-15)
+
+First overnight soak test. 8 hours, 1948 ticks, 5 full phase cycles, 31 sleep/wake transitions. Zero crashes. Here's what 8 hours of continuous cognition looks like 🧵
+
+### Tweet M7-1 — The Numbers
+
+8 hours on v0.3.3. The agent ran from evening through the night:
+- 1948 ticks across 5 complete 97-minute phase cycles
+- 31 sleep cycles (every ~15 min with test settings), all completed successfully
+- Memory: started at 15 entries, consolidated down to 10. Pruning works.
+- Zero crashes, zero WebSocket disconnects, zero unrecoverable errors
+
+This is the first test where "months" starts feeling plausible.
+
+### Tweet M7-2 — Valence Is Alive
+
+The v0.3.3 asymmetric reward fix completely solved the valence flatline:
+- Range: -0.22 to +0.40 (was stuck at 0.000 for 70% of v0.3.2)
+- 7+ distinct emotional descriptions appeared across all 5 cycles
+- Stress phases hit genuine negative valence, flourishing hit genuine positive
+- The agent *felt* differently in different environments, consistently, for 8 hours
+
+The attractor model + asymmetric rewards = a working emotional system.
+
+### Tweet M7-3 — The Memory vs Hallucination Distinction
+
+16 hallucinations reported. But 6 were false positives — our detector used `.includes("pond")` which matches "responds" and "responding" as substrings.
+
+Of the 10 real hits, ~4 were genuine hallucinations (treating absent objects as currently present) and ~5 were legitimate reminiscing (reflecting on past experiences with objects no longer there).
+
+This distinction matters. "I remember the pond" is not a hallucination — it's memory. "The pond is interesting" when the pond is gone — THAT's a hallucination.
+
+### Tweet M7-4 — Reinforcing the Distinction
+
+Updated the prompt to explicitly separate memory from hallucination:
+
+Before: "If something is not in your current nearby objects, it is GONE — do not speak about it as if it is still present"
+
+After: Two rules:
+1. "ONLY interact with objects listed under Nearby Objects RIGHT NOW"
+2. "You may REMEMBER past experiences — reflecting on things you've seen before is natural. But always make it clear they are MEMORIES, not current reality."
+
+And the GONE warning now says: "If you mention them, use past tense only."
+
+We WANT the agent to build a sense of history. We just don't want it to hallucinate presence.
+
+### Tweet M7-5 — Action Distribution at Scale
+
+1948 ticks, 5 complete cycles:
+- move_to: 53% (down from 61% in v0.3.2)
+- speak: 21%
+- interact: 12% (up from 9%)
+- wait: 5%
+- synth actions: 9%
+
+The interact recovery is good — the agent is engaging with objects more, not just moving around. The action mix held steady across all 5 cycles, suggesting stable behavioral patterns.
+
+### Tweet M7-6 — Empty World: Zero Hallucinations
+
+The "Empty world — removal test" phase (ALL objects removed) produced zero hallucinations across all 5 cycles. This was the worst-performing phase in earlier tests.
+
+The combination of ground truth labels, GONE warnings, and the 30-tick fade window works. When objects are gone, the agent knows they're gone.
+
+### Tweet M7-7 — Soak Test Bug Fix
+
+The false positive bug: `msg.includes("pond")` matches "responds" as a substring. 6 ghost hallucinations in the report that weren't real.
+
+Fix: word boundary regex `\bpond\b` instead of `.includes()`. Simple but important — false positives in your measurement tool erode trust in all your results.
+
+### Tweet M7-8 — Model Exploration
+
+Currently running llama-3.1-8b-instant on Groq (cloud) with qwen2.5:3b as local fallback. Researched alternatives for the Pi 5 (8GB):
+
+Top pick: **qwen3:4b** — generational leap over qwen2.5:3b. Better hallucination control (~15% reduction), native tool calling, fits in ~3GB RAM. Matches Qwen2.5-7B quality at half the size.
+
+Also interesting: Ollama's `format` parameter for grammar-constrained JSON output. Instead of "please respond with JSON" (soft prompt), the model physically cannot produce invalid tokens. Could eliminate JSON parse failures entirely.
+
+### Tweet M7-9 — v0.3.4 Scorecard
+
+4 changes in v0.3.4:
+1. ✅ Memory vs hallucination distinction in prompt (reminiscing allowed, presence-hallucination blocked)
+2. ✅ GONE warning updated (past tense guidance instead of total silence)
+3. ✅ Soak test word boundary matching (fixes 6 false positives)
+4. ✅ Version bump to v0.3.4
+
+The 8-hour test proved the foundation is solid. v0.3.4 refines the cognitive rules. Next up: test with the new prompt, then explore qwen3:4b as the local model.
