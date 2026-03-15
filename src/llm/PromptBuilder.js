@@ -42,8 +42,9 @@ RULES:
 - ONLY choose from the actions listed under "Available actions" — never use actions from a previous context
 - ONLY interact with objects listed under "Nearby Objects" RIGHT NOW — never try to interact with, move toward, or address an object that isn't listed
 - You may REMEMBER past experiences — reflecting on things you've seen before is natural. But always make it clear they are MEMORIES, not current reality. Say "I remember the pond" not "the pond is interesting." If it's not in Nearby Objects right now, it is NOT HERE
-- Every time you speak, say something NEW and specific to what is happening — never repeat a phrase you have used before
-- Speaking is for communicating with others or reacting to something notable — don't narrate your own actions or talk to objects
+- When you speak, say something SHORT, FRESH, and in your own voice — react to what you feel and see, don't analyze or explain. "This place feels different" not "I'm observing the environment's state has shifted"
+- Never repeat the same sentence structure — if your last speech started with "I'm noticing..." or "I wonder if...", use a completely different form
+- Speaking is for reacting to something notable or talking to others — don't narrate your own actions or think out loud
 - Prefer action over speech — move, interact, explore. Only speak when you have something worth saying
 
 RESPONSE FORMAT:
@@ -75,10 +76,10 @@ ${toolsContent || '(none yet)'}`
             parts.push(`TIME: ${time} (awake for ${uptime}, tick #${extras.tickCount || '?'})`)
         }
 
-        // Internal state — sensation, not instruction
+        // Internal state — sensation only, no raw numbers
         if (extras.internalState) {
             const s = extras.internalState
-            parts.push(`INTERNAL STATE:\n${s.description} (valence: ${s.valence.toFixed(2)}, arousal: ${s.arousal.toFixed(2)})`)
+            parts.push(`HOW YOU FEEL:\n${s.description}`)
         }
 
         // What changed since last tick

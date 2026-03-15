@@ -615,3 +615,79 @@ Also interesting: Ollama's `format` parameter for grammar-constrained JSON outpu
 4. ✅ Version bump to v0.3.4
 
 The 8-hour test proved the foundation is solid. v0.3.4 refines the cognitive rules. Next up: test with the new prompt, then explore qwen3:4b as the local model.
+
+### Milestone 8 — Model Upgrade + First 70B Test (2026-03-15)
+
+Switched from llama-3.1-8b-instant to llama-3.3-70b-versatile on Groq cloud. Same free API, dramatically better results. 🧵
+
+### Tweet M8-1 — The 70B Difference
+
+First soak test on llama-3.3-70b-versatile. 45 minutes, 170 ticks. The action distribution shift is staggering:
+
+| Action | 8B model | 70B model |
+|--------|----------|-----------|
+| move_to | 53% | 42% |
+| interact | 12% | **30%** |
+| speak | 21% | 21% |
+| wait | 5% | 6.5% |
+
+The agent went from "mostly wandering" to "actively engaging with its world." interact more than doubled. The 70B model understands "be curious, explore, interact" in a way the 8B just couldn't.
+
+### Tweet M8-2 — Hallucination Quality
+
+4 "hallucinations" reported, but all from one speech at tick 113:
+
+> "I'm wondering if the **disappearance** of pillar-01 and relic-01 has caused a ripple effect..."
+
+The agent explicitly says "disappearance" — it knows they're gone. It's reflecting on the past, not claiming absent objects are present. This is the memory-vs-hallucination distinction working exactly as intended.
+
+The 4-count is a detector bug: "pillar-01" and "pillar" both match the same speech. Empty world phase: zero hallucinations for the 3rd consecutive test.
+
+### Tweet M8-3 — The Parrot Problem
+
+The agent kept saying "vitality" and "resonance" in every speech. Why? Because the observation literally said:
+
+```
+Environment: vitality: 0.55, resonance: 0.20, warmth: 0.50
+```
+
+The LLM echoed what it saw. We were showing raw metric names and expecting natural language in return. An observer of the thesis doesn't want to hear "the environment's vitality is 0.55" — they want "this place feels alive."
+
+### Tweet M8-4 — The Fix: Sensation Not Data
+
+Replaced raw signal pass-through with experiential descriptions:
+
+Before: `Environment: vitality: 0.55, resonance: 0.20, warmth: 0.50, abundance: 0.50`
+
+After: `Environment: There is a healthy energy here, things feel vibrant. The atmosphere is quiet and still. The air feels neutral — neither warm nor cold. Things seem adequate — enough, but nothing more.`
+
+The agent never sees the word "vitality." It experiences what vitality *feels like*. The same approach we use for internal state — sensation, not instruction.
+
+```js
+if (v >= 0.8) parts.push('This place feels alive — buzzing with energy.')
+else if (v >= 0.6) parts.push('There is a healthy energy here, things feel vibrant.')
+else if (v >= 0.45) parts.push('The energy here feels ordinary — nothing special.')
+else if (v >= 0.3) parts.push('The energy feels low, like this place is fading.')
+else parts.push('This place feels drained, almost lifeless.')
+```
+
+### Tweet M8-5 — Killing the Analysis Voice
+
+The agent spoke like a research paper: "I'm observing the environment's state has shifted" / "I'm noticing a connection between X's influence on vitality and resonance."
+
+Two fixes:
+1. Removed raw valence/arousal numbers from the prompt. Agent sees "A comfortable focus — present and attentive" not "valence: 0.22, arousal: 0.32"
+2. Updated speech rules: "Say something SHORT, FRESH, and in your own voice — react to what you feel and see, don't analyze or explain"
+
+We want "something's different here" not "I'm observing a shift in the environment's parameters."
+
+### Tweet M8-6 — v0.3.5 Scorecard
+
+5 changes in v0.3.5:
+1. ✅ Cloud model upgrade: llama-3.1-8b → llama-3.3-70b-versatile
+2. ✅ Local fallback upgrade: qwen2.5:3b → qwen3:4b
+3. ✅ Signal descriptions: raw metrics → felt experience
+4. ✅ Internal state: removed raw valence/arousal numbers from prompt
+5. ✅ Speech rules: short, fresh, experiential — no analysis voice
+
+The thesis insight: if you show data to an LLM, it will talk about data. If you show sensation, it will talk about experience. The medium shapes the message.

@@ -21,7 +21,7 @@ async function main() {
     const config = loadConfig()
     const logger = new Logger(config)
 
-    logger.info(`=== Agent Runtime v0.3.4 ===`)
+    logger.info(`=== Agent Runtime v0.3.5 ===`)
     logger.info(`Agent: ${config.agentId}`)
     logger.info(`Server: ${config.serverUrl}`)
     logger.info(`LLM: ${config.ollamaModel} @ ${config.ollamaHost}`)
