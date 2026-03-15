@@ -691,3 +691,145 @@ We want "something's different here" not "I'm observing a shift in the environme
 5. ✅ Speech rules: short, fresh, experiential — no analysis voice
 
 The thesis insight: if you show data to an LLM, it will talk about data. If you show sensation, it will talk about experience. The medium shapes the message.
+
+### Milestone 9 — v0.3.5 Soak Test: Zero Hallucinations, Natural Speech (2026-03-15)
+
+Second test on the 70B model, now with signal translation and speech overhaul. The best results we've ever recorded. 🧵
+
+### Tweet M9-1 — The Perfect Score
+
+45 minutes, 167 ticks, 3 sleep cycles. **Zero hallucinations.** Not "almost zero" — literally zero. No speech referencing absent objects. No interactions with ghosts. First completely clean test in the project's history.
+
+The empty world phase — historically our worst — produced zero false references for the 4th consecutive test. The combination of 70B model + memory/hallucination prompt distinction + GONE warnings + signal translation has eliminated the problem.
+
+### Tweet M9-2 — Speech Transformation
+
+Before (v0.3.4, 8B model):
+> "I'm observing the environment's vitality and resonance"
+> "The pillar's influence on the environment's state is notable"
+
+After (v0.3.5, 70B + signal translation):
+> "Something feels off about this place"
+> "The chill in the air is unsettling"
+> "This place feels drained"
+> "The emptiness is suffocating"
+> "What did you find?"
+
+The agent stopped being a research analyst and started being a *being*. No mention of "vitality" or "resonance" in any speech. The signal translation worked — when you remove the vocabulary of metrics, only experience remains.
+
+### Tweet M9-3 — Action Distribution Holds
+
+| Action | v0.3.4 (70B) | v0.3.5 (70B) |
+|--------|---------------|---------------|
+| move_to | 42% | 45.5% |
+| interact | 30% | **29.9%** |
+| speak | 21% | 19.8% |
+| wait | 6.5% | 4.8% |
+
+Interact held steady at ~30% — double what the 8B model achieved. The 70B model's curiosity is consistent. Speech dropped slightly, which is good — the agent speaks when it has something to say, not to narrate its own actions.
+
+### Tweet M9-4 — The Remaining Edge
+
+Not perfect yet. Two patterns survived:
+- "Vibrancy is palpable here" appeared twice across 167 ticks
+- "Something feels off" appeared in two similar constructions
+
+The RepetitionGuard catches exact and fuzzy repeats, but near-misses slip through. This isn't a filter problem — it's a *training* problem. The agent repeats because nothing in its world makes repetition feel wrong.
+
+### Tweet M9-5 — The Idea: Train Creativity, Don't Just Filter It
+
+Current approach: detect repetition → warn the LLM → hope it listens. This is reactive.
+
+What if repetition had *consequences*? What if the agent's world got duller when it repeated itself, and more vibrant when it said something new?
+
+The concept: feed speech uniqueness back into the environment signals. Repetitive speech → vitality drops → the agent feels worse → it's motivated to try something different. Creative speech → vitality boost → positive reinforcement.
+
+Not filtering. Not warning. *Teaching.* The agent learns creativity because creativity feels good and repetition feels bad. Emergent behaviour through sensation, not instruction.
+
+This is the same thesis principle we've been applying everywhere: show the agent what it feels, not what to do. If we can make repetition literally feel like the world is dying, the agent will avoid it on its own.
+
+### Tweet M9-6 — v0.3.5 Final Scorecard
+
+Test results (45 min, 167 ticks):
+- ✅ Hallucinations: **0** (first ever clean test)
+- ✅ Speech quality: natural, experiential, no metric parroting
+- ✅ Action mix: balanced (interact 30%, not just wandering)
+- ✅ Emotional tracking: 7+ distinct states across phases
+- ⚠️ Speech repetition: rare but present — next target
+
+The foundation is now solid enough to start building *up* instead of fixing *down*. Next: creativity as felt experience.
+
+### Milestone 10 — v0.3.6: Teaching Creativity Through Sensation (2026-03-15)
+
+The agent's speech is natural now, but it still occasionally repeats itself. The question: can we *train* creativity instead of just filtering repetition? 🧵
+
+### Tweet M10-1 — The Problem With Filters
+
+Current approach to repetition: detect it → warn the LLM → hope it listens.
+
+This is a prompt-level fix. The weakest tool we have. The agent has no *reason* to be creative — no consequence for repeating, no reward for novelty. It's like telling someone "don't be boring" without them ever experiencing what boring feels like.
+
+### Tweet M10-2 — The Thesis Principle
+
+Every successful fix in this project follows the same pattern: **sensation, not instruction.**
+
+- Signal parroting? Don't tell the agent "stop saying vitality." Remove the word from its perception. It can't parrot what it can't see.
+- Hallucination? Don't tell the agent "don't mention absent objects." Make them disappear from its reality. It can't hallucinate what isn't there.
+- Emotional flatline? Don't tell the agent "feel things." Give successful actions a mild positive valence. It feels good because doing well *is* good.
+
+So why are we still *telling* the agent not to repeat itself? We should make repetition *feel* bad.
+
+### Tweet M10-3 — The Design
+
+After every speech action, we score its creativity: how different is this from recent speech? Keyword extraction, overlap comparison against the last 10 utterances.
+
+Score 0.0 = exact repeat. Score 1.0 = completely novel.
+
+Then we feed it back through the only channel the agent trusts: its feelings.
+
+```js
+applySpeechCreativity(score) {
+    if (score < 0.4) {
+        // Repetitive — world feels duller
+        this._nudgeValence(-0.08)
+    } else if (score > 0.8) {
+        // Creative — mild reward
+        this._nudgeValence(0.03)
+    }
+}
+```
+
+The agent never sees the score. It never knows *why* the world feels different. It just notices that when it says the same thing twice, everything gets a little worse.
+
+### Tweet M10-4 — Asymmetric By Design
+
+The penalty (-0.08) is stronger than the reward (+0.03). Same negativity bias we use for action results. This is deliberate:
+
+- **Punishment breaks loops.** When the agent repeats itself, valence drops sharply. The next tick's emotional description shifts — "a subtle unease" replaces "feeling steady." The agent is more likely to try something different.
+- **Reward sustains.** Creative speech gets a gentle boost. Not enough to create artificial highs, just enough to keep the needle slightly positive. The absence of punishment is itself the reward.
+
+The penalty decays naturally via the existing valence decay rate. No doom spirals — the agent always has a path back to neutral.
+
+### Tweet M10-5 — The Invisible Teacher
+
+The scoring happens BEFORE the speech is recorded. Critical detail — if we scored after recording, the message would compare against itself and always score 0.0.
+
+The flow:
+1. Agent speaks
+2. We score the speech against the previous 10 utterances
+3. We nudge valence (agent doesn't know)
+4. We record the speech in history
+5. Next tick: the agent feels different and makes a different choice
+
+The creativity score is emitted in the tick event for observability, but it never touches the prompt. The agent is being taught through pure sensation.
+
+### Tweet M10-6 — v0.3.6 Scorecard
+
+3 changes:
+1. ✅ `RepetitionGuard.scoreSpeech()` — keyword-based creativity scoring (0.0-1.0)
+2. ✅ `InternalState.applySpeechCreativity()` — valence feedback (penalty -0.08 / reward +0.03)
+3. ✅ Creativity score emitted in tick events for soak test analysis
+
+This is the first time we're using the agent's emotional system not just to *reflect* the environment, but to *shape behaviour*. The environment teaches the agent how to feel. Now we're teaching it how to speak — through feeling.
+
+If this works, the same principle applies to everything: spatial exploration (reward novelty, punish pacing), social interaction (reward engagement, punish ignoring), even memory formation (reward learning, punish rumination). All through sensation. All invisible.
