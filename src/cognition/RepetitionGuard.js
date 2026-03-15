@@ -117,6 +117,33 @@ export class RepetitionGuard {
         return warnings.length > 0 ? warnings : null
     }
 
+    // Score how creative/unique a speech message is compared to recent speech.
+    // Returns 0.0 (exact repeat) to 1.0 (completely novel).
+    // Call BEFORE record() so the message isn't compared against itself.
+    scoreSpeech(message) {
+        if (this._recentSpeech.length === 0) return 1.0
+
+        const msgLower = message.toLowerCase().trim()
+        const keywords = this._extractKeywords(msgLower)
+
+        // Too short to judge meaningfully
+        if (keywords.size < 2) return 0.5
+
+        let maxOverlap = 0
+        for (const prev of this._recentSpeech) {
+            // Check exact match first
+            if (prev === msgLower) return 0.0
+
+            const prevKw = this._extractKeywords(prev)
+            if (prevKw.size < 2) continue
+            const overlap = [...keywords].filter(w => prevKw.has(w)).length
+            const similarity = overlap / Math.min(keywords.size, prevKw.size)
+            maxOverlap = Math.max(maxOverlap, similarity)
+        }
+
+        return Math.max(0, 1.0 - maxOverlap)
+    }
+
     // Action diversity score (0 = all same, 1 = all different) — for adaptive heartbeat
     diversityScore() {
         if (this.history.length < 2) return 1

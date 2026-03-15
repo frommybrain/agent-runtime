@@ -168,6 +168,21 @@ export class InternalState {
         }
     }
 
+    // Apply creativity feedback from speech scoring.
+    // Repetition makes the world feel duller (valence drops).
+    // Novelty is mildly rewarding (valence nudges up).
+    // The agent never knows why — it just feels the shift.
+    applySpeechCreativity(score) {
+        if (score < 0.4) {
+            // Repetitive speech — sharp penalty (asymmetric, like failure)
+            this._nudgeValence(-0.08)
+        } else if (score > 0.8) {
+            // Creative speech — mild reward
+            this._nudgeValence(0.03)
+        }
+        // 0.4-0.8: neutral — no effect
+    }
+
     // Salience multiplier — high arousal moments are remembered more strongly
     // Returns 0.5 (calm, low salience) to 1.0 (peak arousal, full salience)
     salience() {

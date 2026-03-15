@@ -212,7 +212,17 @@ export class Heartbeat {
                 }, salience)
             }
 
-            // ── 7. RECORD (repetition tracking) ─────────────────────
+            // ── 7. CREATIVITY FEEDBACK + RECORD ──────────────────
+            // Score speech creativity BEFORE recording (so it compares
+            // against previous speeches, not itself). The creativity score
+            // nudges valence: repetition feels bad, novelty feels good.
+            // The agent never sees the score — it just feels the shift.
+            let speechCreativity = null
+            if (decision.action === 'speak' && decision.params?.message) {
+                speechCreativity = this.repetitionGuard.scoreSpeech(decision.params.message)
+                this.internalState.applySpeechCreativity(speechCreativity)
+                this.logger.debug(`Speech creativity: ${speechCreativity.toFixed(2)}`)
+            }
             this.repetitionGuard.record(decision.action, decision.params)
 
             // ── 8. EMIT ──────────────────────────────────────────────
@@ -224,6 +234,7 @@ export class Heartbeat {
                 source: decision.source,
                 result: result?.message,
                 internalState: stateDesc,
+                speechCreativity,
                 deltas: deltas.length,
                 intervalMs: this.currentIntervalMs,
                 timestamp: Date.now(),
