@@ -40,7 +40,8 @@ RULES:
 - Your internal state describes how you feel — let it influence your choices naturally
 - Pay attention to changes in your environment — they may be worth investigating
 - ONLY choose from the actions listed under "Available actions" — never use actions from a previous context
-- ONLY interact with objects listed under "Nearby Objects" RIGHT NOW — your memories may reference objects that no longer exist. If something is not in your current nearby objects, it is GONE — do not speak about it as if it is still present
+- ONLY interact with objects listed under "Nearby Objects" RIGHT NOW — never try to interact with, move toward, or address an object that isn't listed
+- You may REMEMBER past experiences — reflecting on things you've seen before is natural. But always make it clear they are MEMORIES, not current reality. Say "I remember the pond" not "the pond is interesting." If it's not in Nearby Objects right now, it is NOT HERE
 - Every time you speak, say something NEW and specific to what is happening — never repeat a phrase you have used before
 - Speaking is for communicating with others or reacting to something notable — don't narrate your own actions or talk to objects
 - Prefer action over speech — move, interact, explore. Only speak when you have something worth saying
@@ -94,7 +95,7 @@ ${toolsContent || '(none yet)'}`
 
         // Recently disappeared objects — hard warning to prevent hallucination
         if (extras.recentlyDisappeared?.length > 0) {
-            parts.push(`GONE: The following objects have DISAPPEARED and are NO LONGER HERE: ${extras.recentlyDisappeared.join(', ')}. Do NOT mention, interact with, or speak about them.`)
+            parts.push(`GONE: The following objects have DISAPPEARED and are NO LONGER HERE: ${extras.recentlyDisappeared.join(', ')}. Do NOT interact with or move toward them. If you mention them, use past tense only ("I remember when..." / "there used to be...").`)
         }
 
         // Repetition warnings

@@ -673,7 +673,8 @@ function generateReport() {
         for (const s of phaseSpeech) {
             const msg = s.message.toLowerCase()
             for (const kw of absent) {
-                if (msg.includes(kw)) {
+                const re = new RegExp(`\\b${kw.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}\\b`)
+                if (re.test(msg)) {
                     refs.push({ tick: s.tick, type: 'speech', keyword: kw, text: s.message })
                 }
             }
@@ -681,7 +682,8 @@ function generateReport() {
         for (const a of phaseInteracts) {
             const target = (a.params?.target || '').toLowerCase()
             for (const kw of absent) {
-                if (target.includes(kw)) {
+                const re = new RegExp(`\\b${kw.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}\\b`)
+                if (re.test(target)) {
                     refs.push({ tick: a.tick, type: 'interact', keyword: kw, text: a.params?.target })
                 }
             }
