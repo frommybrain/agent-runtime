@@ -19,7 +19,7 @@ export function loadConfig() {
 
         // LLM
         ollamaHost: process.env.OLLAMA_HOST || 'http://localhost:11434',
-        ollamaModel: process.env.OLLAMA_MODEL || 'qwen2.5:3b',
+        ollamaModel: process.env.OLLAMA_MODEL || 'qwen3:4b',
         cloudApiKey: process.env.CLOUD_API_KEY || null,
         cloudApiUrl: process.env.CLOUD_API_URL || null,
         cloudModel: process.env.CLOUD_MODEL || 'llama-3.1-8b-instant',
@@ -28,7 +28,7 @@ export function loadConfig() {
 
         // Memory
         dataDir: process.env.DATA_DIR || './data',
-        workingMemorySize: 12,
+        workingMemorySize: 20,
         maxDailyLogAgeDays: 7,
 
         // Internal state
