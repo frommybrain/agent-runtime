@@ -15,7 +15,7 @@
 // 8. Adapts heartbeat interval
 
 export class Heartbeat {
-    constructor(socket, think, workingMemory, memoryFiles, dailyLog, sleepCycle, internalState, deltaDetector, repetitionGuard, config, logger) {
+    constructor(socket, think, workingMemory, memoryFiles, dailyLog, sleepCycle, internalState, deltaDetector, repetitionGuard, speechLog, config, logger) {
         this.socket = socket
         this.think = think
         this.workingMemory = workingMemory
@@ -25,6 +25,7 @@ export class Heartbeat {
         this.internalState = internalState
         this.deltaDetector = deltaDetector
         this.repetitionGuard = repetitionGuard
+        this.speechLog = speechLog
         this.logger = logger
 
         this.baseIntervalMs = config.heartbeatIntervalMs
@@ -111,7 +112,7 @@ export class Heartbeat {
             const deltas = this.deltaDetector.detect(observation)
             const deltaNarrative = this.deltaDetector.narrate(deltas)
 
-            // Track recently disappeared objects (fade after 10 ticks)
+            // Track recently disappeared objects (fade after 30 ticks)
             for (const d of deltas) {
                 if (d.type === 'disappeared' && d.category === 'object') {
                     this._recentlyDisappeared.push({ id: d.id, tick: this.tickCount })
@@ -150,6 +151,7 @@ export class Heartbeat {
                 repetitionWarnings: repetitionWarnings || undefined,
                 recentlyDisappeared: this._recentlyDisappeared.length > 0
                     ? this._recentlyDisappeared.map(d => d.id) : undefined,
+                recentSpeeches: this.speechLog?.recentForPrompt() || undefined,
                 tickCount: this.tickCount,
                 uptimeMinutes: Math.floor(this.uptimeSeconds() / 60),
                 salience,
@@ -221,6 +223,7 @@ export class Heartbeat {
                     type: 'speech_sent',
                     message: decision.params.message,
                 }, salience)
+                this.speechLog?.record(decision.params.message, this.tickCount)
             }
 
             // ── 7. CREATIVITY FEEDBACK + RECORD ──────────────────
@@ -274,6 +277,7 @@ export class Heartbeat {
             if (Date.now() - this._lastCheckpointAt > this._checkpointIntervalMs) {
                 this._lastCheckpointAt = Date.now()
                 this.internalState.checkpoint({ tickCount: this.tickCount }).catch(() => {})
+                this.speechLog?.save().catch(() => {})
             }
 
         } catch (err) {
@@ -318,7 +322,7 @@ export class Heartbeat {
 
     _scheduleNext() {
         this._timer = setTimeout(() => {
-            this._tick()
+            this._tick().catch(err => this.logger.error(`Uncaught tick error: ${err.message}`))
             if (this._timer !== null) {
                 this._scheduleNext()
             }

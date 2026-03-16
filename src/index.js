@@ -7,6 +7,7 @@ import { EnvironmentSocket } from './connection/EnvironmentSocket.js'
 import { WorkingMemory } from './memory/WorkingMemory.js'
 import { MemoryFiles } from './memory/MemoryFiles.js'
 import { DailyLog } from './memory/DailyLog.js'
+import { SpeechLog } from './memory/SpeechLog.js'
 import { LLMClient } from './llm/LLMClient.js'
 import { PromptBuilder } from './llm/PromptBuilder.js'
 import { Think } from './cognition/Think.js'
@@ -21,7 +22,7 @@ async function main() {
     const config = loadConfig()
     const logger = new Logger(config)
 
-    logger.info(`=== Agent Runtime v0.3.9 ===`)
+    logger.info(`=== Agent Runtime v0.3.10 ===`)
     logger.info(`Agent: ${config.agentId}`)
     logger.info(`Server: ${config.serverUrl}`)
     logger.info(`LLM: quality=${config.cloudModel}, fast=${config.cloudModelFast}, local=${config.ollamaModel}`)
@@ -55,17 +56,20 @@ async function main() {
     const deltaDetector = new DeltaDetector(logger)
     const repetitionGuard = new RepetitionGuard(config, logger)
 
+    const speechLog = new SpeechLog(config, logger)
+
     await memoryFiles.init()
     await dailyLog.init()
     await llmClient.init()
+    await speechLog.init()
     const checkpoint = await internalState.restore()  // crash recovery: reload last emotional state
 
     const think = new Think(llmClient, promptBuilder, memoryFiles, dailyLog, workingMemory, logger)
-    const sleepCycle = new SleepCycle(think, memoryFiles, dailyLog, workingMemory, internalState, repetitionGuard, config, logger)
+    const sleepCycle = new SleepCycle(think, memoryFiles, dailyLog, workingMemory, internalState, repetitionGuard, speechLog, config, logger)
     await sleepCycle.loadOriginalPersona(persona)  // immutable drift baseline
     const heartbeat = new Heartbeat(
         socket, think, workingMemory, memoryFiles, dailyLog, sleepCycle,
-        internalState, deltaDetector, repetitionGuard,
+        internalState, deltaDetector, repetitionGuard, speechLog,
         config, logger
     )
 
@@ -115,13 +119,17 @@ async function main() {
     // Start the heartbeat loop
     heartbeat.start()
 
-    // Graceful shutdown
+    // Graceful shutdown (guarded against double-signal)
+    let shuttingDown = false
     const shutdown = async (signal) => {
+        if (shuttingDown) return
+        shuttingDown = true
         logger.info(`${signal} received, shutting down...`)
         heartbeat.stop()
         sleepCycle.stop()
         api.stop()
         await dailyLog.append('=== AGENT STOPPED ===')
+        await speechLog.save()
         await dailyLog.stop()  // flush buffer to disk
         socket.close()
         process.exit(0)
