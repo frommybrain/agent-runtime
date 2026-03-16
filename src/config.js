@@ -40,8 +40,14 @@ export function loadConfig() {
         repetitionHistorySize: parseInt(process.env.REPETITION_HISTORY || '20'),
 
         // Sleep cycle
-        activeHoursBeforeSleep: parseFloat(process.env.ACTIVE_HOURS_BEFORE_SLEEP || '4'),
-        sleepDurationMinutes: parseInt(process.env.SLEEP_DURATION_MINUTES || '60'),
+        activeHoursBeforeSleep: parseFloat(process.env.ACTIVE_HOURS_BEFORE_SLEEP || '0.83'),
+        sleepDurationMinutes: parseInt(process.env.SLEEP_DURATION_MINUTES || '10'),
+
+        // Quiet hours — reduced activity during low-viewership windows
+        // Format: "HH:MM-HH:MM" in UTC (e.g., "02:00-10:00")
+        quietHours: process.env.QUIET_HOURS || null,
+        quietActiveMinutes: parseInt(process.env.QUIET_ACTIVE_MINUTES || '15'),
+        quietSleepMinutes: parseInt(process.env.QUIET_SLEEP_MINUTES || '30'),
 
         // API server
         apiPort: parseInt(process.env.API_PORT || '5000'),

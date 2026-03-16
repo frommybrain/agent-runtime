@@ -1,6 +1,6 @@
 // Sleep cycle manager
-// 4 hours active → 1 hour sleep (configurable)
-// During sleep: LLM consolidates memory, extracts skills, refreshes tools,
+// Configurable active/sleep durations with quiet hours support.
+// During sleep: LLM consolidates memory, extracts skills,
 // reflects on internal state history, optionally evolves persona, garbage collects.
 //
 // v0.3 changes:
@@ -8,6 +8,8 @@
 // - Clears repetition guard during sleep
 // - Persona drift guard: measures distance from original, blocks runaway evolution
 // - Flushes daily log buffer before consolidation
+
+import { sanitizeJson } from '../util/sanitizeJson.js'
 
 import { readFile, writeFile, copyFile } from 'node:fs/promises'
 
@@ -26,6 +28,11 @@ export class SleepCycle {
         this.personaPath = config.personaPath
         this.dataDir = config.dataDir
         this.sleeping = false
+
+        // Quiet hours — reduced activity during low-viewership windows
+        this._quietHours = this._parseQuietHours(config.quietHours)
+        this._quietActiveMinutes = config.quietActiveMinutes || 15
+        this._quietSleepMinutes = config.quietSleepMinutes || 30
 
         this._wakeTime = Date.now()
         this._sleepTimer = null
@@ -58,18 +65,23 @@ export class SleepCycle {
     checkSleepTime() {
         if (this.sleeping) return
         const activeMs = Date.now() - this._wakeTime
-        const activeHours = activeMs / (1000 * 60 * 60)
-        if (activeHours >= this.activeHours) {
-            this._startSleep()
+        const activeMinutes = activeMs / (1000 * 60)
+        const quiet = this._isQuietHours()
+        const targetMinutes = quiet
+            ? this._quietActiveMinutes
+            : this.activeHours * 60
+        if (activeMinutes >= targetMinutes) {
+            this._startSleep(quiet)
         }
     }
 
-    async _startSleep() {
+    async _startSleep(quiet = false) {
         if (this.sleeping) return
         this.sleeping = true
 
         const activeDuration = ((Date.now() - this._wakeTime) / (1000 * 60)).toFixed(1)
-        this.logger.info(`=== SLEEP STARTED === (active for ${activeDuration} min)`)
+        const mode = quiet ? ' [quiet hours]' : ''
+        this.logger.info(`=== SLEEP STARTED${mode} === (active for ${activeDuration} min)`)
         await this.dailyLog.append(`=== SLEEP STARTED === (active for ${activeDuration} min)`)
 
         this.workingMemory.push({ type: 'sleep', message: 'SLEEP STARTED' })
@@ -123,9 +135,10 @@ export class SleepCycle {
             await this.dailyLog.append(`Sleep consolidation error: ${err.message}`)
         }
 
-        // Schedule wake-up
-        this.logger.info(`Sleeping for ${this.sleepMinutes} minutes...`)
-        this._sleepTimer = setTimeout(() => this._wake(), this.sleepMinutes * 60 * 1000)
+        // Schedule wake-up — longer naps during quiet hours
+        const sleepMins = quiet ? this._quietSleepMinutes : this.sleepMinutes
+        this.logger.info(`Sleeping for ${sleepMins} minutes...${mode}`)
+        this._sleepTimer = setTimeout(() => this._wake(), sleepMins * 60 * 1000)
     }
 
     _wake() {
@@ -302,7 +315,7 @@ Should ${persona.name} evolve? Respond with JSON.`
                 jsonStr = jsonStr.slice(braceStart, braceEnd + 1)
             }
 
-            const reflection = JSON.parse(jsonStr)
+            const reflection = JSON.parse(sanitizeJson(jsonStr))
 
             if (!reflection.evolve) {
                 this.logger.info('Self-reflection: no evolution needed')
@@ -422,6 +435,32 @@ Should ${persona.name} evolve? Respond with JSON.`
         }
 
         return fieldCount > 0 ? totalDrift / fieldCount : 0
+    }
+
+    // --- Quiet Hours ---
+
+    // Parse "HH:MM-HH:MM" into { startMin, endMin } (minutes since midnight UTC)
+    _parseQuietHours(str) {
+        if (!str) return null
+        const match = str.match(/^(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})$/)
+        if (!match) return null
+        const startMin = parseInt(match[1]) * 60 + parseInt(match[2])
+        const endMin = parseInt(match[3]) * 60 + parseInt(match[4])
+        return { startMin, endMin }
+    }
+
+    // Check if current UTC time falls within the quiet window
+    _isQuietHours() {
+        if (!this._quietHours) return false
+        const now = new Date()
+        const nowMin = now.getUTCHours() * 60 + now.getUTCMinutes()
+        const { startMin, endMin } = this._quietHours
+
+        // Handle overnight wrap (e.g., 22:00-06:00)
+        if (startMin <= endMin) {
+            return nowMin >= startMin && nowMin < endMin
+        }
+        return nowMin >= startMin || nowMin < endMin
     }
 
     _sleepDelay(ms) {
