@@ -4,6 +4,16 @@ import { join } from 'node:path'
 // Manages the three persistent knowledge files: memory.md, skills.md, tools.md
 // v0.3.1: backup + restore for consolidation safety
 
+const STOP_WORDS = new Set([
+    'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
+    'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could',
+    'should', 'may', 'might', 'can', 'to', 'of', 'in', 'for', 'on', 'with',
+    'at', 'by', 'from', 'it', 'its', 'this', 'that', 'and', 'or', 'but',
+    'not', 'no', 'i', 'my', 'me', 'we', 'our', 'you', 'your', 'they',
+    'them', 'their', 'he', 'she', 'his', 'her', 'so', 'if', 'then',
+    'than', 'too', 'very', 'just', 'about', 'up', 'out', 'some', 'also',
+])
+
 export class MemoryFiles {
     constructor(config, logger) {
         this.dataDir = config.dataDir
@@ -117,19 +127,10 @@ export class MemoryFiles {
 
     // Extract meaningful keywords (strip stop words) for fuzzy dedup
     _extractKeywords(text) {
-        const stopWords = new Set([
-            'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
-            'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could',
-            'should', 'may', 'might', 'can', 'to', 'of', 'in', 'for', 'on', 'with',
-            'at', 'by', 'from', 'it', 'its', 'this', 'that', 'and', 'or', 'but',
-            'not', 'no', 'i', 'my', 'me', 'we', 'our', 'you', 'your', 'they',
-            'them', 'their', 'he', 'she', 'his', 'her', 'so', 'if', 'then',
-            'than', 'too', 'very', 'just', 'about', 'up', 'out', 'some', 'also',
-        ])
         return text
             .replace(/[^a-z0-9\s]/g, '')
             .split(/\s+/)
-            .filter(w => w.length > 2 && !stopWords.has(w))
+            .filter(w => w.length > 2 && !STOP_WORDS.has(w))
     }
 
     // --- Pre-consolidation dedup ---

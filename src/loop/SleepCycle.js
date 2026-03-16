@@ -14,13 +14,14 @@ import { sanitizeJson } from '../util/sanitizeJson.js'
 import { readFile, writeFile, copyFile } from 'node:fs/promises'
 
 export class SleepCycle {
-    constructor(think, memoryFiles, dailyLog, workingMemory, internalState, repetitionGuard, config, logger) {
+    constructor(think, memoryFiles, dailyLog, workingMemory, internalState, repetitionGuard, speechLog, config, logger) {
         this.think = think
         this.memoryFiles = memoryFiles
         this.dailyLog = dailyLog
         this.workingMemory = workingMemory
         this.internalState = internalState
         this.repetitionGuard = repetitionGuard
+        this.speechLog = speechLog
         this.logger = logger
 
         this.activeHours = config.activeHoursBeforeSleep
@@ -125,6 +126,11 @@ export class SleepCycle {
             this.workingMemory.clear()
             this.internalState.clearHistory()
             if (this.repetitionGuard) this.repetitionGuard.clear()
+            // Trim speech log (keep last 25 — don't clear, it persists across sleep)
+            if (this.speechLog) {
+                this.speechLog.trim(25)
+                await this.speechLog.save()
+            }
 
             const summary = `Consolidation complete: memory=${stats.memoryConsolidated}, skills=${stats.skillsExtracted}, reflected=${stats.selfReflected}, logs_deleted=${stats.logsDeleted}`
             this.logger.info(summary)

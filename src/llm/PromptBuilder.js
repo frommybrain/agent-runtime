@@ -104,6 +104,11 @@ ${toolsContent || '(none yet)'}`
             parts.push('NOTICE:\n' + extras.repetitionWarnings.join('\n'))
         }
 
+        // Persistent speech history — survives sleep cycles
+        if (extras.recentSpeeches) {
+            parts.push('YOUR RECENT SPEECHES (do NOT repeat these — say something fresh each time):\n' + extras.recentSpeeches)
+        }
+
         if (workingMemoryLines?.length > 0) {
             parts.push('RECENT ACTIONS:\n' + workingMemoryLines.join('\n'))
         }

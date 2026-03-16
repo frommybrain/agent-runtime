@@ -20,9 +20,17 @@ export class EnvironmentSocket {
     }
 
     connect() {
+        // Clean up previous WebSocket before creating a new one (prevents listener leak on reconnect)
+        if (this.ws) {
+            this.ws.removeAllListeners()
+            try { this.ws.close() } catch {}
+            this.ws = null
+        }
+
         return new Promise((resolve, reject) => {
             this.logger.info(`Connecting to ${this.url}`)
             this.ws = new WebSocket(this.url)
+            this._identifyResolve = resolve
 
             const timeout = setTimeout(() => {
                 reject(new Error('Connection timeout'))
@@ -37,7 +45,7 @@ export class EnvironmentSocket {
 
             this.ws.on('message', (raw) => {
                 const msg = JSON.parse(raw.toString())
-                this._handleMessage(msg, resolve)
+                this._handleMessage(msg)
             })
 
             this.ws.on('close', () => {
@@ -46,10 +54,12 @@ export class EnvironmentSocket {
                 this.logger.warn('Disconnected')
                 // Reject pending requests immediately (prevents 5s timeout hang)
                 if (this._pendingObserve) {
+                    clearTimeout(this._pendingObserve.timer)
                     this._pendingObserve.reject(new Error('Disconnected'))
                     this._pendingObserve = null
                 }
                 if (this._pendingAction) {
+                    clearTimeout(this._pendingAction.timer)
                     this._pendingAction.reject(new Error('Disconnected'))
                     this._pendingAction = null
                 }
@@ -64,7 +74,7 @@ export class EnvironmentSocket {
         })
     }
 
-    _handleMessage(msg, identifyResolve) {
+    _handleMessage(msg) {
         switch (msg.type) {
             case 'WELCOME':
                 // Send IDENTIFY
@@ -78,11 +88,15 @@ export class EnvironmentSocket {
                     terminalGridSize: msg.terminalGridSize,
                 }
                 this.logger.info(`Identified. World bounds: ±${msg.worldBounds?.halfSize}`)
-                if (identifyResolve) identifyResolve()
+                if (this._identifyResolve) {
+                    this._identifyResolve()
+                    this._identifyResolve = null
+                }
                 break
 
             case 'OBSERVATION':
                 if (this._pendingObserve) {
+                    clearTimeout(this._pendingObserve.timer)
                     this._pendingObserve.resolve(msg.data)
                     this._pendingObserve = null
                 }
@@ -90,6 +104,7 @@ export class EnvironmentSocket {
 
             case 'ACTION_RESULT':
                 if (this._pendingAction) {
+                    clearTimeout(this._pendingAction.timer)
                     this._pendingAction.resolve(msg)
                     this._pendingAction = null
                 }
@@ -119,14 +134,14 @@ export class EnvironmentSocket {
         if (!this.isConnected()) throw new Error('Not connected')
 
         return new Promise((resolve, reject) => {
-            this._pendingObserve = { resolve, reject }
-            this._send({ type: 'OBSERVE' })
-            setTimeout(() => {
+            const timer = setTimeout(() => {
                 if (this._pendingObserve) {
                     this._pendingObserve.reject(new Error('Observe timeout'))
                     this._pendingObserve = null
                 }
             }, 5000)
+            this._pendingObserve = { resolve, reject, timer }
+            this._send({ type: 'OBSERVE' })
         })
     }
 
@@ -134,14 +149,14 @@ export class EnvironmentSocket {
         if (!this.isConnected()) throw new Error('Not connected')
 
         return new Promise((resolve, reject) => {
-            this._pendingAction = { resolve, reject }
-            this._send({ type: 'ACT', action, params })
-            setTimeout(() => {
+            const timer = setTimeout(() => {
                 if (this._pendingAction) {
                     this._pendingAction.reject(new Error('Action timeout'))
                     this._pendingAction = null
                 }
             }, 5000)
+            this._pendingAction = { resolve, reject, timer }
+            this._send({ type: 'ACT', action, params })
         })
     }
 
