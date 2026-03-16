@@ -99,6 +99,7 @@ export class ApiServer {
             agent: persona?.name || 'unknown',
             id: persona?.id || 'unknown',
             sleeping: sleepCycle?.isSleeping() || false,
+            quietHours: sleepCycle?._isQuietHours() || false,
             connected: socket?.isConnected() || false,
             tickCount: heartbeat?.tickCount || 0,
             uptime: heartbeat?.uptimeSeconds() || 0,

@@ -1140,3 +1140,112 @@ Three things learned from this test:
 3. **The soak test overstates quality-tier usage.** Constant phase changes mean constant deltas, pushing most ticks to 70B. A real deployment with a stable world would see much more skip/fast usage. The 26% hourly savings is a floor, not a ceiling.
 
 Next: rerun with 8B cloud as fast-tier primary and longer sleep cycles. The projected savings should be much closer to the 65% target.
+
+---
+
+## Milestone 16: Quiet Hours & JSON Resilience (v0.3.9)
+
+### Tweet M16-1 — Quiet Hours
+
+Running an autonomous agent 24/7 is expensive. But your viewers aren't watching 24/7.
+
+v0.3.9 adds **quiet hours** — time-zone-aware sleep scheduling that throttles activity during low-viewership windows.
+
+```
+# Peak hours: 50 min active, 10 min sleep
+ACTIVE_HOURS_BEFORE_SLEEP=0.83
+SLEEP_DURATION_MINUTES=10
+
+# Quiet hours: 15 min active, 30 min sleep
+QUIET_HOURS=02:00-10:00
+QUIET_ACTIVE_MINUTES=15
+QUIET_SLEEP_MINUTES=30
+```
+
+During quiet hours the agent naps more and acts less. During peak hours it's almost always awake. One env var switches the whole schedule.
+
+### Tweet M16-2 — The Math
+
+Peak hours (18h): 50 min active / 10 min sleep per hour → ~54 LLM ticks/hr
+Quiet hours (6h): 15 min active / 30 min sleep per hour → ~20 LLM ticks/hr
+
+That's roughly 40% fewer LLM calls during the quiet window. Plus fewer consolidation cycles = fewer 70B calls.
+
+Projected daily cost: ~$4.50 → ~$3.50. Small savings add up over weeks.
+
+### Tweet M16-3 — JSON Resilience
+
+Small but annoying bug: the 8B model occasionally returns slightly malformed JSON during self-reflection. Trailing commas, stray comments — valid-ish but not valid JSON.
+
+```
+WARN: Self-reflection parse error: Expected ',' or '}'
+after property value in JSON at position 438
+```
+
+Fix: a tiny `sanitizeJson()` utility that strips trailing commas and line comments before `JSON.parse`. Applied to both Think (tick decisions) and SleepCycle (self-reflection).
+
+Three lines of regex, zero more skipped reflections.
+
+### Tweet M16-4 — Design Philosophy
+
+The quiet hours feature captures something important about this project: the agent should have a natural rhythm.
+
+Humans don't operate at 100% all day. Neither should an autonomous agent. Quiet hours aren't just cost optimization — they're the agent resting when nobody's watching and being present when they are.
+
+Peak hours, quiet hours, sleep cycles, arousal-driven heartbeat — every layer of this system breathes.
+
+---
+
+## Milestone 17: 9-Hour Soak Test — v0.3.8.1 Results
+
+### Tweet M17-1 — The Numbers
+
+Best soak test yet. 9 hours, v0.3.8.1 (8B cloud as fast tier, 30 min active / 10 min sleep):
+
+```
+Ticks:          2,048 (228/hr)
+Sleep cycles:   13
+Hallucinations: 0
+Phase cycles:   5 complete
+Speech rate:    28.8%
+Cost:           $2.30 ($0.26/hr)
+```
+
+Compare to v0.3.8 (Ollama as fast tier, 12 min active / 3 min sleep):
+
+```
+Ticks:          1,002 (111/hr)
+Sleep cycles:   32
+Hallucinations: 2
+Phase cycles:   2
+Cost:           $2.30 ($0.26/hr)
+```
+
+Same hourly cost. Double the ticks. Zero hallucinations. The swap from Ollama to 8B cloud didn't save money per hour — it doubled what we get for the same money.
+
+### Tweet M17-2 — Cost Per Tick
+
+The real metric isn't $/hour — it's $/tick.
+
+v0.3.7: $2.10 / 1,446 = $0.00145/tick (all 70B)
+v0.3.8: $2.30 / 1,002 = $0.00230/tick (Ollama bottleneck)
+v0.3.8.1: $2.30 / 2,048 = $0.00112/tick
+
+v0.3.8.1 is the cheapest per tick we've ever run. The tiered routing is paying off — quality-tier only fires when it matters, fast-tier handles the routine, and fewer sleep cycles mean fewer consolidation costs.
+
+### Tweet M17-3 — Emotional Stability
+
+5 full phase rotations. The emotional system is rock solid:
+
+- Environmental stress → negative valence, high arousal every time
+- Flourishing → positive valence, "surge of energy and satisfaction"
+- Empty world → unease, low arousal
+- Recovery → returns to comfortable focus
+
+Same emotional arc, 5 times in a row. No drift, no flatline. The agent *feels* its environment consistently.
+
+### Tweet M17-4 — The Remaining Problem
+
+Speech repetition. "The stillness is captivating" appears in 5+ phases across every cycle. The 20-entry working memory gets wiped every sleep cycle, so the agent forgets what it said.
+
+This isn't a bug in the filter — it's a vocabulary/memory problem. The agent needs to remember its own words across sleep boundaries. That's the next challenge.

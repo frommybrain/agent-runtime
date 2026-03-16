@@ -4,6 +4,7 @@
 
 import { perceive } from './Perceive.js'
 import { fallbackDecision } from './FallbackBrain.js'
+import { sanitizeJson } from '../util/sanitizeJson.js'
 
 export class Think {
     constructor(llmClient, promptBuilder, memoryFiles, dailyLog, workingMemory, logger) {
@@ -120,7 +121,7 @@ export class Think {
         }
 
         try {
-            const parsed = JSON.parse(jsonStr)
+            const parsed = JSON.parse(sanitizeJson(jsonStr))
             if (!parsed.action) return null
             return parsed
         } catch {
