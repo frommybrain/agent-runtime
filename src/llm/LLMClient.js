@@ -127,26 +127,23 @@ export class LLMClient {
     }
 
     async _ollamaGenerate(systemPrompt, userPrompt, timeoutMs) {
-        const controller = new AbortController()
-        const timeout = setTimeout(() => controller.abort(), timeoutMs)
-
-        try {
-            const response = await this.ollama.chat({
-                model: this.ollamaModel,
-                messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: userPrompt },
-                ],
-                options: {
-                    temperature: this.temperature,
-                    num_predict: this.maxTokens,
-                },
-                stream: false,
-            })
-            return response.message.content
-        } finally {
-            clearTimeout(timeout)
-        }
+        const chatPromise = this.ollama.chat({
+            model: this.ollamaModel,
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userPrompt },
+            ],
+            options: {
+                temperature: this.temperature,
+                num_predict: this.maxTokens,
+            },
+            stream: false,
+        })
+        const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Ollama timeout')), timeoutMs)
+        )
+        const response = await Promise.race([chatPromise, timeoutPromise])
+        return response.message.content
     }
 
     async _cloudGenerate(systemPrompt, userPrompt, timeoutMs, model) {

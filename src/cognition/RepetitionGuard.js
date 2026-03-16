@@ -4,6 +4,20 @@
 // This is the "constraints create creativity" principle from OHMAR —
 // when the agent can't fall back on repetitive patterns, it has to get creative.
 
+const STOP_WORDS = new Set([
+    'i', 'me', 'my', 'the', 'a', 'an', 'is', 'am', 'are', 'was', 'were',
+    'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did',
+    'will', 'would', 'could', 'should', 'shall', 'can', 'may', 'might',
+    'to', 'of', 'in', 'for', 'on', 'with', 'at', 'by', 'from', 'up',
+    'about', 'into', 'through', 'after', 'over', 'between', 'out',
+    'and', 'but', 'or', 'nor', 'not', 'no', 'so', 'if', 'then',
+    'that', 'this', 'it', 'its', 'what', 'which', 'who', 'whom',
+    'there', 'here', 'when', 'where', 'why', 'how', 'all', 'each',
+    'some', 'any', 'just', 'very', 'quite', 'really', 'now', 'well',
+    'also', 'than', 'too', 'only', 'right', 'let', 'see', 'hmm',
+    'going', 'got', 'get', 'like', 'know', 'think', 'look', 'come',
+])
+
 export class RepetitionGuard {
     constructor(config, logger) {
         this.maxHistory = config.repetitionHistorySize || 20
@@ -185,21 +199,8 @@ export class RepetitionGuard {
 
     // Extract meaningful keywords from speech (stop-word removal)
     _extractKeywords(text) {
-        const stops = new Set([
-            'i', 'me', 'my', 'the', 'a', 'an', 'is', 'am', 'are', 'was', 'were',
-            'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did',
-            'will', 'would', 'could', 'should', 'shall', 'can', 'may', 'might',
-            'to', 'of', 'in', 'for', 'on', 'with', 'at', 'by', 'from', 'up',
-            'about', 'into', 'through', 'after', 'over', 'between', 'out',
-            'and', 'but', 'or', 'nor', 'not', 'no', 'so', 'if', 'then',
-            'that', 'this', 'it', 'its', 'what', 'which', 'who', 'whom',
-            'there', 'here', 'when', 'where', 'why', 'how', 'all', 'each',
-            'some', 'any', 'just', 'very', 'quite', 'really', 'now', 'well',
-            'also', 'than', 'too', 'only', 'right', 'let', 'see', 'hmm',
-            'going', 'got', 'get', 'like', 'know', 'think', 'look', 'come',
-        ])
         const words = text.toLowerCase().replace(/[^a-z\s]/g, '').split(/\s+/).filter(w => w.length > 2)
-        return new Set(words.filter(w => !stops.has(w)))
+        return new Set(words.filter(w => !STOP_WORDS.has(w)))
     }
 
     clear() {

@@ -25,6 +25,8 @@ export class ApiServer {
 
     start() {
         this._server = createServer((req, res) => this._route(req, res))
+        this._server.timeout = 30000
+        this._server.keepAliveTimeout = 5000
         this._server.listen(this.port, () => {
             this.logger.info(`API listening on http://localhost:${this.port}`)
         })
@@ -284,7 +286,13 @@ export class ApiServer {
     async _readBody(req) {
         return new Promise((resolve, reject) => {
             let data = ''
-            req.on('data', chunk => { data += chunk })
+            req.on('data', chunk => {
+                data += chunk
+                if (data.length > 1024 * 1024) {
+                    req.destroy()
+                    reject(new Error('Body too large'))
+                }
+            })
             req.on('end', () => {
                 try { resolve(JSON.parse(data || '{}')) }
                 catch { reject(new Error('Invalid JSON body')) }
