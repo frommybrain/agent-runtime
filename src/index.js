@@ -21,11 +21,15 @@ async function main() {
     const config = loadConfig()
     const logger = new Logger(config)
 
-    logger.info(`=== Agent Runtime v0.3.8 ===`)
+    logger.info(`=== Agent Runtime v0.3.9 ===`)
     logger.info(`Agent: ${config.agentId}`)
     logger.info(`Server: ${config.serverUrl}`)
     logger.info(`LLM: quality=${config.cloudModel}, fast=${config.cloudModelFast}, local=${config.ollamaModel}`)
     logger.info(`Heartbeat: ${config.heartbeatIntervalMs}ms base (adaptive ${config.heartbeatMinMs}-${config.heartbeatMaxMs}ms)`)
+    logger.info(`Sleep: ${config.activeHoursBeforeSleep}h active / ${config.sleepDurationMinutes}m sleep`)
+    if (config.quietHours) {
+        logger.info(`Quiet hours: ${config.quietHours} UTC (${config.quietActiveMinutes}m active / ${config.quietSleepMinutes}m sleep)`)
+    }
 
     // Load persona
     let persona
@@ -85,9 +89,9 @@ async function main() {
 
     // Also emit sleep/wake events from sleepCycle
     const origStart = sleepCycle._startSleep.bind(sleepCycle)
-    sleepCycle._startSleep = async () => {
-        await origStart()
-        api.emit('sleep', { agent: persona.name, timestamp: Date.now() })
+    sleepCycle._startSleep = async (quiet) => {
+        await origStart(quiet)
+        api.emit('sleep', { agent: persona.name, quiet: !!quiet, timestamp: Date.now() })
     }
     const origWake = sleepCycle._wake.bind(sleepCycle)
     sleepCycle._wake = () => {
