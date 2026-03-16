@@ -1080,3 +1080,63 @@ The runtime is production-ready for continuous deployment:
 - ✅ No crashes, no disconnects, no unrecoverable errors
 
 Remaining work: cost optimization (v0.3.8 tiered routing, testing next) and speech variety at scale. The foundation is done. Time to run it for real.
+
+### Milestone 15 — 9-Hour Overnight Test: Tiered Routing Results (2026-03-16)
+
+First test of v0.3.8's tiered model routing. 9 hours overnight. The good: cost per hour dropped 26%. The bad: Ollama on the Pi was too slow and halved the tick rate. 🧵
+
+### Tweet M15-1 — The Cost Comparison
+
+| Metric | v0.3.7 (6hr, all-70B) | **v0.3.8 (9hr, tiered)** |
+|--------|------------------------|--------------------------|
+| Duration | 6 hours | **9 hours** |
+| Cost | $2.10 | **$2.30** |
+| Cost/hour | $0.35/hr | **$0.26/hr** |
+| Ticks | 1,446 | **1,002** |
+| Sleep cycles | 23 | **32** |
+
+26% cheaper per hour. But only 1,002 ticks in 9 hours vs 1,446 in 6. The agent was thinking less often, not just thinking cheaper.
+
+### Tweet M15-2 — The Ollama Bottleneck
+
+The fast tier was designed to route to Ollama on the Pi (free) before falling back to 8B cloud (cheap). Problem: qwen3:4b on the Pi takes 8-12 seconds per generation.
+
+With a heartbeat interval of 10-15s, the model generation time exceeds the tick window. The `_ticking` guard prevents overlap — so the next scheduled tick gets skipped. Effectively halving throughput during calm periods.
+
+The math: 1,002 ticks / (9 hrs - 1.6 hrs sleeping) = ~136 ticks/hour. The v0.3.7 baseline: ~241 ticks/hour. Ollama was eating 44% of our ticks.
+
+### Tweet M15-3 — The Fix
+
+Swap the fast tier priority: 8B cloud first (fast, $0.0001/call), Ollama only as fallback when cloud is down.
+
+The Pi model becomes emergency backup, not default. Cloud 8B responds in ~200ms vs ~10s for local Ollama. No more tick skipping. Cost increase is negligible — the savings come from NOT using 70B, not from using Ollama vs 8B.
+
+### Tweet M15-4 — Sleep Cycle Overhead
+
+32 sleep cycles in 9 hours. Each sleep runs 4 consolidation passes on 70B: memory, skills, self-reflection, GC. That's 128 quality-tier LLM calls just for sleeping — more than the cost of routine ticks.
+
+Testing with 12 minutes active / 3 minutes sleep was too aggressive. Each consolidation only had 12 minutes of data to work with — barely enough for meaningful memory formation.
+
+Fix: longer active periods, longer but less frequent sleep. 30 min active / 10 min sleep → ~13 cycles per 9 hours instead of 32. Richer data per consolidation, 60% fewer 70B consolidation calls.
+
+### Tweet M15-5 — What Held Up
+
+Despite the throughput issue, the runtime was solid:
+- 9 hours, zero crashes, 32 sleep cycles all completed
+- Emotional system stable across 5 full phase rotations
+- Speech rate dropped to 21.1% (healthier than v0.3.7's 26.9%)
+- Memory: 8 → 9 entries (lean consolidation working)
+
+2 hallucinations at a single tick (sleep/synth boundary) — a minor regression worth investigating.
+
+### Tweet M15-6 — Lessons
+
+Three things learned from this test:
+
+1. **Local model as primary was wrong.** The Pi isn't fast enough for routine use. Cloud 8B is 50× faster and costs almost nothing. Save the Pi model for when the internet goes down.
+
+2. **Sleep frequency matters for cost.** 32 consolidation cycles × 4 LLM calls = 128 quality-tier calls. That's more than routine ticks cost. Less frequent, richer sleep saves money and produces better memories.
+
+3. **The soak test overstates quality-tier usage.** Constant phase changes mean constant deltas, pushing most ticks to 70B. A real deployment with a stable world would see much more skip/fast usage. The 26% hourly savings is a floor, not a ceiling.
+
+Next: rerun with 8B cloud as fast-tier primary and longer sleep cycles. The projected savings should be much closer to the 65% target.
