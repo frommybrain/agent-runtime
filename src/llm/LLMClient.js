@@ -70,25 +70,28 @@ export class LLMClient {
         return this._generateQuality(systemPrompt, userPrompt, timeoutMs)
     }
 
-    // Fast tier: Ollama first (free), 8B cloud fallback
+    // Fast tier: 8B cloud first (fast + cheap), Ollama fallback (free but slow)
+    // v0.3.8.1: Swapped priority — Ollama on Pi causes tick skipping due to
+    // generation time exceeding heartbeat interval. 8B cloud is fast enough
+    // to avoid missed ticks and cheap enough for routine use.
     async _generateFast(systemPrompt, userPrompt, timeoutMs) {
-        // Try free local model first
-        if (this.ollamaAvailable) {
-            try {
-                const result = await this._ollamaGenerate(systemPrompt, userPrompt, timeoutMs)
-                return { text: result, source: 'ollama' }
-            } catch (err) {
-                this.logger.warn(`Ollama failed (fast tier): ${err.message}`)
-            }
-        }
-
-        // Fall back to cheap cloud model
+        // Try cheap cloud model first (fast, avoids tick skipping)
         if (this.cloudApiKey && this.cloudApiUrl && Date.now() >= this._cloudCooldownUntil) {
             try {
                 const result = await this._cloudGenerate(systemPrompt, userPrompt, timeoutMs, this.cloudModelFast)
                 return { text: result, source: 'cloud-fast' }
             } catch (err) {
                 this.logger.warn(`Cloud fast failed: ${err.message}`)
+            }
+        }
+
+        // Fall back to free local model (slow but free — only when cloud is down)
+        if (this.ollamaAvailable) {
+            try {
+                const result = await this._ollamaGenerate(systemPrompt, userPrompt, timeoutMs)
+                return { text: result, source: 'ollama' }
+            } catch (err) {
+                this.logger.warn(`Ollama failed (fast tier): ${err.message}`)
             }
         }
 
