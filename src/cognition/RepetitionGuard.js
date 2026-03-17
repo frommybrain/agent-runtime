@@ -20,7 +20,7 @@ const STOP_WORDS = new Set([
 
 export class RepetitionGuard {
     constructor(config, logger) {
-        this.maxHistory = config.repetitionHistorySize || 20
+        this.maxHistory = config.repetitionHistorySize || 30
         this.logger = logger
         this.history = []
         this._recentSpeech = []  // track recent speech for repetition detection
@@ -82,17 +82,35 @@ export class RepetitionGuard {
             }
         }
 
-        // 2b. One TARGET dominates (>40% of recent history, any action)
+        // 2b. One TARGET dominates (>25% of recent history, any action)
         const targetCounts = {}
         for (const h of this.history) {
             if (h.target) targetCounts[h.target] = (targetCounts[h.target] || 0) + 1
         }
         for (const [target, count] of Object.entries(targetCounts)) {
-            if (count / total > 0.4 && total >= 5) {
+            if (count / total > 0.25 && total >= 8) {
                 const pct = Math.round(count / total * 100)
-                warnings.push(
-                    `You have targeted "${target}" in ${count} of your last ${total} actions (${pct}%). It has nothing new to offer. Focus on something you haven't explored.`
-                )
+                const totalInteractions = this._targetInteractions.get(target)?.count || count
+                if (totalInteractions >= 15) {
+                    warnings.push(
+                        `STOP. You have targeted "${target}" ${totalInteractions} times total and ${pct}% of recent actions. It is EXHAUSTED. There is NOTHING left to learn. You MUST choose a completely different target.`
+                    )
+                } else {
+                    warnings.push(
+                        `You have targeted "${target}" in ${count} of your last ${total} actions (${pct}%). It has nothing new to offer. Pick a DIFFERENT target.`
+                    )
+                }
+            }
+        }
+
+        // 2c. Same target in 3+ of last 5 actions (catches spread-out fixation)
+        const last5targets = this.history.slice(-5).map(h => h.target).filter(Boolean)
+        const target5counts = {}
+        for (const t of last5targets) target5counts[t] = (target5counts[t] || 0) + 1
+        for (const [target, count] of Object.entries(target5counts)) {
+            if (count >= 3) {
+                warnings.push(`You targeted "${target}" ${count} out of your last 5 actions. Do something ELSE with a DIFFERENT target.`)
+                break
             }
         }
 
@@ -112,6 +130,10 @@ export class RepetitionGuard {
         // 4. Alternating pattern detection (A→B→A→B or A→B→C→A→B→C)
         const altWarning = this._checkAlternating()
         if (altWarning) warnings.push(altWarning)
+
+        // 4b. Target-level cycling — catches "shiny→food→shiny→food" regardless of action
+        const targetAltWarning = this._checkTargetCycling()
+        if (targetAltWarning) warnings.push(targetAltWarning)
 
         // 5. Speech frequency — cap at ~30% of recent actions
         if (total >= 5 && counts['speak']) {
@@ -211,6 +233,7 @@ export class RepetitionGuard {
     explorationContext(currentNearbyIds) {
         if (this._targetInteractions.size === 0) return null
 
+        const exhausted = []
         const wellExplored = []
         const barelyExplored = []
 
@@ -218,7 +241,8 @@ export class RepetitionGuard {
         const nearbySet = new Set(currentNearbyIds || [])
 
         for (const [target, data] of this._targetInteractions) {
-            if (data.count >= 10) wellExplored.push(`${target} (${data.count}x)`)
+            if (data.count >= 15) exhausted.push(`${target} (${data.count}x)`)
+            else if (data.count >= 5) wellExplored.push(`${target} (${data.count}x)`)
         }
 
         // Find nearby things that haven't been explored much
@@ -227,16 +251,19 @@ export class RepetitionGuard {
             if (!data || data.count <= 2) barelyExplored.push(id)
         }
 
-        if (wellExplored.length === 0 && barelyExplored.length === 0) return null
+        if (exhausted.length === 0 && wellExplored.length === 0 && barelyExplored.length === 0) return null
 
         const parts = []
+        if (exhausted.length > 0) {
+            parts.push(`EXHAUSTED — DO NOT TARGET: ${exhausted.join(', ')}. These have NOTHING left to offer. Choosing them again is a waste.`)
+        }
         if (wellExplored.length > 0) {
-            parts.push(`Well-explored: ${wellExplored.join(', ')}. You already know these — move on.`)
+            parts.push(`Already explored: ${wellExplored.join(', ')}. Avoid unless you have a specific NEW reason.`)
         }
         if (barelyExplored.length > 0) {
-            parts.push(`Barely explored: ${barelyExplored.join(', ')}. Try these instead.`)
+            parts.push(`Barely explored: ${barelyExplored.join(', ')}. Prioritise these.`)
         }
-        return parts.join(' ')
+        return parts.join('\n')
     }
 
     // Reset exploration counts (called on sleep cycle)
@@ -272,6 +299,25 @@ export class RepetitionGuard {
                 const cycle = recent.slice(-len).join(' → ')
                 return `You are stuck in a repeating cycle: ${cycle}. Break out of this loop.`
             }
+        }
+        return null
+    }
+
+    // Detect target-level cycling: agent keeps returning to the same target
+    // between other actions. E.g. shiny_02 → food_01 → shiny_02 → wander → shiny_02
+    _checkTargetCycling() {
+        if (this.history.length < 6) return null
+        const recentTargets = this.history.slice(-10).map(h => h.target).filter(Boolean)
+        if (recentTargets.length < 5) return null
+
+        // Count how many times the most common target appears
+        const counts = {}
+        for (const t of recentTargets) counts[t] = (counts[t] || 0) + 1
+        const [topTarget, topCount] = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]
+
+        // If one target appears in 40%+ of the last 10 targeted actions, it's a cycle
+        if (topCount >= Math.ceil(recentTargets.length * 0.4)) {
+            return `You keep returning to "${topTarget}" between other actions. This is a fixation loop. STOP targeting it entirely and do something unrelated.`
         }
         return null
     }
