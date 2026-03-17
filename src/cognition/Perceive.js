@@ -20,11 +20,11 @@ export function perceive(observation, worldEvents) {
         }
         if (s.action) lines.push(`I am currently ${s.action.toLowerCase()}.`)
         if (s.interacting_with) lines.push(`I am interacting with ${s.interacting_with}.`)
-        // Narrate any other self properties we haven't handled
+        // Narrate any other self properties — including nested objects (needs, wellbeing, etc.)
         for (const [key, val] of Object.entries(s)) {
             if (['pos', 'action', 'interacting_with', 'id', 'name'].includes(key)) continue
-            if (typeof val === 'object' && val !== null) continue
-            lines.push(`My ${key}: ${val}`)
+            const narrated = _narrateValue(key, val)
+            if (narrated) lines.push(...narrated)
         }
     }
 
@@ -59,10 +59,14 @@ export function perceive(observation, worldEvents) {
                 parts.push(`at (${coords})`)
             }
             if (o.interactive) parts.push('[interactive]')
-            // Include extra properties (state, value, level, etc.)
+            // Include extra properties (state, value, level, description, etc.)
             for (const [k, v] of Object.entries(o)) {
                 if (['id', 'name', 'type', 'pos', 'interactive', 'distance'].includes(k)) continue
-                if (typeof v !== 'object') parts.push(`${k}:${v}`)
+                if (typeof v === 'object' && v !== null) {
+                    parts.push(`${k}:${JSON.stringify(v)}`)
+                } else if (v !== undefined) {
+                    parts.push(`${k}:${v}`)
+                }
             }
             return parts.join(' ')
         })
@@ -129,6 +133,50 @@ export function perceive(observation, worldEvents) {
     }
 
     return lines.join('\n')
+}
+
+// Narrate a self property — handles primitives, nested objects, and arrays.
+// Returns an array of narration lines, or null if nothing to narrate.
+function _narrateValue(key, val) {
+    if (val === undefined || val === null) return null
+
+    // Primitives — simple narration
+    if (typeof val !== 'object') return [`My ${key}: ${val}`]
+
+    // Arrays — join with commas
+    if (Array.isArray(val)) {
+        if (val.length === 0) return null
+        return [`My ${key}: ${val.join(', ')}`]
+    }
+
+    // Object with level + urgency (needs pattern: {level: 70, urgency: "strong"})
+    if (val.level !== undefined && val.urgency !== undefined) {
+        return [`My ${key}: ${val.urgency} (${val.level}%)`]
+    }
+
+    // Object with status (wellbeing pattern: {status: "suffering", criticalNeeds: [...], ...})
+    if (val.status !== undefined) {
+        const parts = [val.status]
+        if (val.criticalNeeds?.length > 0) parts.push(`critical: ${val.criticalNeeds.join(', ')}`)
+        if (val.discomfortNeeds?.length > 0) parts.push(`discomfort: ${val.discomfortNeeds.join(', ')}`)
+        return [`My ${key}: ${parts.join(' — ')}`]
+    }
+
+    // Generic object — recurse one level for readable narration
+    const lines = []
+    for (const [k, v] of Object.entries(val)) {
+        if (v === undefined || v === null) continue
+        if (typeof v === 'object' && !Array.isArray(v)) {
+            // Nested object (e.g. needs.hunger = {level, urgency}) — use pattern matching
+            const sub = _narrateValue(k, v)
+            if (sub) lines.push(...sub)
+        } else if (Array.isArray(v)) {
+            if (v.length > 0) lines.push(`My ${k}: ${v.join(', ')}`)
+        } else {
+            lines.push(`My ${k}: ${v}`)
+        }
+    }
+    return lines.length > 0 ? lines : null
 }
 
 // Translate raw signal values into natural, felt descriptions.

@@ -133,7 +133,7 @@ export class Heartbeat {
             this.internalState.update({
                 actionResult: this._lastActionResult,
                 deltas,
-                environmentSignals: observation.signals,
+                environmentSignals: observation.signals || this._normalizeSignals(observation.world),
                 worldEvents,
             })
 
@@ -329,6 +329,26 @@ export class Heartbeat {
 
         // Fast tier: routine activity (minor deltas, action feedback)
         return 'fast'
+    }
+
+    // Normalize environment signals from alternative formats.
+    // Some environments send `world: {vitality: 70, resonance: 50}` (0-100 scale)
+    // instead of `signals: {vitality: 0.7}` (0-1 scale). Detect and normalize.
+    _normalizeSignals(world) {
+        if (!world || typeof world !== 'object') return null
+        const signals = {}
+        let needsScale = false
+        for (const [k, v] of Object.entries(world)) {
+            if (typeof v === 'number') {
+                if (v > 1) needsScale = true
+                signals[k] = v
+            }
+        }
+        if (Object.keys(signals).length === 0) return null
+        if (needsScale) {
+            for (const k of Object.keys(signals)) signals[k] /= 100
+        }
+        return signals
     }
 
     _scheduleNext() {

@@ -44,7 +44,7 @@ export class Think {
         const recentLog = await this.dailyLog.readRecentLines(5)
         const recentMemory = this.workingMemory.recent(5)
 
-        const systemPrompt = this.promptBuilder.buildSystemPrompt(memory, skills, tools)
+        const systemPrompt = this.promptBuilder.buildSystemPrompt(memory, skills, tools, observation.available_actions)
         const userPrompt = this.promptBuilder.buildUserPrompt(situation, recentLog, recentMemory, extras)
 
         // 2b. Token budget check — truncate memory if over budget.
@@ -57,7 +57,7 @@ export class Think {
             const overBy = totalChars - this._maxInputChars
             this.logger.warn(`Prompt over budget by ~${Math.round(overBy / 4)} tokens — truncating Learned Facts`)
             const truncatedMemory = this._truncateLearnedFacts(memory, overBy)
-            finalSystemPrompt = this.promptBuilder.buildSystemPrompt(truncatedMemory, skills, tools)
+            finalSystemPrompt = this.promptBuilder.buildSystemPrompt(truncatedMemory, skills, tools, observation.available_actions)
         }
 
         // 3. Call LLM with tier routing
