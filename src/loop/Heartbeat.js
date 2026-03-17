@@ -178,13 +178,23 @@ export class Heartbeat {
                     observation.available_actions.map(a => typeof a === 'string' ? a : a.name)
                 )
                 if (!validActions.has(decision.action)) {
-                    this.logger.warn(`Action "${decision.action}" not available — correcting to valid action`)
-                    // Pick first available action as safe fallback
-                    const fallback = observation.available_actions[0]
-                    decision.action = typeof fallback === 'string' ? fallback : fallback.name
-                    decision.params = {}
+                    this.logger.warn(`Action "${decision.action}" not available — correcting to wait`)
+                    decision.action = validActions.has('wait') ? 'wait' : (typeof observation.available_actions[0] === 'string' ? observation.available_actions[0] : observation.available_actions[0].name)
+                    decision.params = { reason: '(corrected: original action not in available_actions)' }
                     decision.reason = `(corrected: original action not in available_actions)`
                 }
+            }
+
+            // ── 4b2. ANTI-FIXATION BLOCK ────────────────────────────
+            // Hard mechanical block: if the agent has targeted the same entity
+            // 20+ times, force a wander regardless of what the LLM decided.
+            const fixationTarget = decision.params?.target || decision.params?.entityId
+            if (fixationTarget && this.repetitionGuard.isExhausted(fixationTarget)) {
+                const count = this.repetitionGuard.targetCount(fixationTarget)
+                this.logger.warn(`Hard block: "${fixationTarget}" exhausted (${count}x) — forcing wander`)
+                decision.action = 'move_to'
+                decision.params = { target: 'wander', reason: `(blocked: ${fixationTarget} exhausted after ${count} interactions)` }
+                decision.reason = `(blocked: ${fixationTarget} exhausted after ${count} interactions)`
             }
 
             // ── 4c. VALIDATE SPEECH PARAMS ──────────────────────────
@@ -208,7 +218,7 @@ export class Heartbeat {
                 action: decision.action,
                 params: decision.params,
                 success: result?.success !== false,
-                message: result?.message || '',
+                message: result?.message || result?.error || result?.result?.effect || '',
             }
 
             // ── 6. REFLECT (log with salience) ───────────────────────

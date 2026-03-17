@@ -266,6 +266,17 @@ export class RepetitionGuard {
         return parts.join('\n')
     }
 
+    // Check if a target has been interacted with too many times (hard block threshold)
+    isExhausted(target) {
+        const entry = this._targetInteractions.get(target)
+        return entry ? entry.count >= 20 : false
+    }
+
+    // Get the interaction count for a target
+    targetCount(target) {
+        return this._targetInteractions.get(target)?.count || 0
+    }
+
     // Reset exploration counts (called on sleep cycle)
     resetExploration() {
         this._targetInteractions.clear()
