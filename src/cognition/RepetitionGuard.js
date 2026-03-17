@@ -83,9 +83,12 @@ export class RepetitionGuard {
         }
 
         // 2b. One TARGET dominates (>25% of recent history, any action)
+        // Skip survival targets (food, nests, NPCs) — the agent needs to revisit these
         const targetCounts = {}
         for (const h of this.history) {
-            if (h.target) targetCounts[h.target] = (targetCounts[h.target] || 0) + 1
+            if (h.target && !this._isSurvivalTarget(h.target)) {
+                targetCounts[h.target] = (targetCounts[h.target] || 0) + 1
+            }
         }
         for (const [target, count] of Object.entries(targetCounts)) {
             if (count / total > 0.25 && total >= 8) {
@@ -104,9 +107,12 @@ export class RepetitionGuard {
         }
 
         // 2c. Same target in 3+ of last 5 actions (catches spread-out fixation)
+        // Skip survival targets
         const last5targets = this.history.slice(-5).map(h => h.target).filter(Boolean)
         const target5counts = {}
-        for (const t of last5targets) target5counts[t] = (target5counts[t] || 0) + 1
+        for (const t of last5targets) {
+            if (!this._isSurvivalTarget(t)) target5counts[t] = (target5counts[t] || 0) + 1
+        }
         for (const [target, count] of Object.entries(target5counts)) {
             if (count >= 3) {
                 warnings.push(`You targeted "${target}" ${count} out of your last 5 actions. Do something ELSE with a DIFFERENT target.`)
@@ -229,7 +235,10 @@ export class RepetitionGuard {
     }
 
     // Build exploration context string for PromptBuilder
-    // Shows what has been explored a lot vs barely touched
+    // Shows what has been explored a lot vs barely touched.
+    // Only flags non-essential targets (shiny objects) as exhausted.
+    // Food spots, nests, and NPCs are survival targets — the agent
+    // legitimately needs to keep visiting them.
     explorationContext(currentNearbyIds) {
         if (this._targetInteractions.size === 0) return null
 
@@ -241,6 +250,8 @@ export class RepetitionGuard {
         const nearbySet = new Set(currentNearbyIds || [])
 
         for (const [target, data] of this._targetInteractions) {
+            // Skip survival targets — agent needs to keep using food/nest/NPCs
+            if (this._isSurvivalTarget(target)) continue
             if (data.count >= 15) exhausted.push(`${target} (${data.count}x)`)
             else if (data.count >= 5) wellExplored.push(`${target} (${data.count}x)`)
         }
@@ -255,15 +266,24 @@ export class RepetitionGuard {
 
         const parts = []
         if (exhausted.length > 0) {
-            parts.push(`EXHAUSTED — DO NOT TARGET: ${exhausted.join(', ')}. These have NOTHING left to offer. Choosing them again is a waste.`)
+            parts.push(`EXHAUSTED — DO NOT INSPECT: ${exhausted.join(', ')}. These have NOTHING left to learn from inspecting. Do something else.`)
         }
         if (wellExplored.length > 0) {
-            parts.push(`Already explored: ${wellExplored.join(', ')}. Avoid unless you have a specific NEW reason.`)
+            parts.push(`Already explored: ${wellExplored.join(', ')}. Avoid inspecting unless you have a specific NEW reason.`)
         }
         if (barelyExplored.length > 0) {
             parts.push(`Barely explored: ${barelyExplored.join(', ')}. Prioritise these.`)
         }
         return parts.join('\n')
+    }
+
+    // Targets that the agent legitimately needs to re-use (food, nests, NPCs)
+    _isSurvivalTarget(target) {
+        if (!target) return false
+        const id = target.toLowerCase()
+        return id.startsWith('food_') || id.startsWith('nest_') ||
+               // NPC names don't have underscores in the prefix (e.g. "Bean", "Pip")
+               (!id.includes('_') && id !== 'wander')
     }
 
     // Check if a target has been interacted with too many times (hard block threshold)

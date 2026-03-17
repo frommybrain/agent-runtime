@@ -186,15 +186,18 @@ export class Heartbeat {
             }
 
             // ── 4b2. ANTI-FIXATION BLOCK ────────────────────────────
-            // Hard mechanical block: if the agent has targeted the same entity
-            // 20+ times, force a wander regardless of what the LLM decided.
-            const fixationTarget = decision.params?.target || decision.params?.entityId
-            if (fixationTarget && this.repetitionGuard.isExhausted(fixationTarget)) {
-                const count = this.repetitionGuard.targetCount(fixationTarget)
-                this.logger.warn(`Hard block: "${fixationTarget}" exhausted (${count}x) — forcing wander`)
-                decision.action = 'move_to'
-                decision.params = { target: 'wander', reason: `(blocked: ${fixationTarget} exhausted after ${count} interactions)` }
-                decision.reason = `(blocked: ${fixationTarget} exhausted after ${count} interactions)`
+            // Hard mechanical block for inspect fixation only. Survival actions
+            // (forage, rest, socialise) need to repeat on the same targets — only
+            // inspect is a pure curiosity action that should be capped.
+            if (decision.action === 'inspect') {
+                const fixationTarget = decision.params?.target || decision.params?.entityId
+                if (fixationTarget && this.repetitionGuard.isExhausted(fixationTarget)) {
+                    const count = this.repetitionGuard.targetCount(fixationTarget)
+                    this.logger.warn(`Hard block: inspect "${fixationTarget}" exhausted (${count}x) — forcing wander`)
+                    decision.action = 'move_to'
+                    decision.params = { target: 'wander', reason: `(blocked: inspect ${fixationTarget} exhausted after ${count} interactions)` }
+                    decision.reason = `(blocked: inspect ${fixationTarget} exhausted after ${count} interactions)`
+                }
             }
 
             // ── 4c. VALIDATE SPEECH PARAMS ──────────────────────────
