@@ -25,6 +25,8 @@ export class InternalState {
         this._history = []  // track recent state for sleep reflection
         this._maxHistory = 50
         this._checkpointPath = join(config.dataDir, 'state-checkpoint.json')
+        this._prevEntityIds = null    // for stability tracking
+        this._stabilityStreak = 0     // how many ticks the same entities have been present
     }
 
     // Called each tick with context from the current cycle
@@ -52,9 +54,16 @@ export class InternalState {
         }
 
         // 3. Environmental changes — novelty = arousal spike (one-time per tick)
+        //    Familiarity discount: if the same entities have been present for 5+ ticks,
+        //    property deltas are likely noise (positional changes), not genuine novelty.
+        //    Only entity appearances/disappearances break the stability streak.
         if (context.deltas?.length > 0) {
+            const hasStructuralChange = context.deltas.some(
+                d => d.type === 'appeared' || d.type === 'disappeared'
+            )
+            const familiarityDiscount = (!hasStructuralChange && this._stabilityStreak >= 5) ? 0.5 : 1.0
             const intensity = Math.min(context.deltas.length / 5, 1)
-            this._nudgeArousal(intensity * 0.2)
+            this._nudgeArousal(intensity * 0.2 * familiarityDiscount)
         }
 
         // 4. Continuous signals — ATTRACTORS, not additive nudges.
@@ -85,12 +94,13 @@ export class InternalState {
                 const target = (s.abundance - 0.5) * 0.4
                 this.valence += (target - this.valence) * pull * 0.4
             }
-            // Arbitrary numeric signals in 0..1 range — gently pull arousal up
+            // Arbitrary numeric signals in 0..1 range — gently pull arousal
             // Skip large values (e.g. bpm: 120) — those are data, not affect signals
+            // Gentle multiplier (0.1) to prevent arousal saturation in signal-rich environments
             for (const [key, val] of Object.entries(s)) {
                 if (['vitality', 'resonance', 'warmth', 'abundance'].includes(key)) continue
                 if (typeof val === 'number' && val >= 0 && val <= 1) {
-                    this.arousal += (val * 0.3 - this.arousal) * pull * 0.2
+                    this.arousal += (val * 0.3 - this.arousal) * pull * 0.1
                 }
             }
         }
@@ -166,6 +176,26 @@ export class InternalState {
             arousalLabel: aLabel,
             description,
         }
+    }
+
+    // Track entity stability — how many consecutive ticks the same entities are present.
+    // Called each tick with the set of nearby entity IDs.
+    updateStability(entityIds) {
+        const currentSet = new Set(entityIds || [])
+        if (this._prevEntityIds && this._setsEqual(currentSet, this._prevEntityIds)) {
+            this._stabilityStreak++
+        } else {
+            this._stabilityStreak = 0
+        }
+        this._prevEntityIds = currentSet
+    }
+
+    _setsEqual(a, b) {
+        if (a.size !== b.size) return false
+        for (const item of a) {
+            if (!b.has(item)) return false
+        }
+        return true
     }
 
     // Apply creativity feedback from speech scoring.

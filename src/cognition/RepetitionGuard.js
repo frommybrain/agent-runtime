@@ -24,17 +24,30 @@ export class RepetitionGuard {
         this.logger = logger
         this.history = []
         this._recentSpeech = []  // track recent speech for repetition detection
+        this._targetInteractions = new Map()  // targetId → { count, lastTime }
     }
 
     // Record an action after it's chosen
     record(action, params) {
+        const target = this._extractTarget(params)
         this.history.push({
             action,
+            target,
             key: this._actionKey(action, params),
             time: Date.now(),
         })
         if (this.history.length > this.maxHistory) {
             this.history.shift()
+        }
+        // Track target interactions for exploration context
+        if (target) {
+            const entry = this._targetInteractions.get(target)
+            if (entry) {
+                entry.count++
+                entry.lastTime = Date.now()
+            } else {
+                this._targetInteractions.set(target, { count: 1, lastTime: Date.now() })
+            }
         }
         // Track speech content separately
         if (action === 'speak' && params?.message) {
@@ -65,6 +78,20 @@ export class RepetitionGuard {
             if (count / total > 0.6 && total >= 5) {
                 warnings.push(
                     `You have been doing "${action}" ${Math.round(count / total * 100)}% of the time recently. Explore other options.`
+                )
+            }
+        }
+
+        // 2b. One TARGET dominates (>40% of recent history, any action)
+        const targetCounts = {}
+        for (const h of this.history) {
+            if (h.target) targetCounts[h.target] = (targetCounts[h.target] || 0) + 1
+        }
+        for (const [target, count] of Object.entries(targetCounts)) {
+            if (count / total > 0.4 && total >= 5) {
+                const pct = Math.round(count / total * 100)
+                warnings.push(
+                    `You have targeted "${target}" in ${count} of your last ${total} actions (${pct}%). It has nothing new to offer. Focus on something you haven't explored.`
                 )
             }
         }
@@ -165,6 +192,58 @@ export class RepetitionGuard {
         return unique.size / this.history.length
     }
 
+    // Extract target from action params (works across any environment)
+    _extractTarget(params) {
+        if (!params) return null
+        return params.target || params.entityId || params.npcId || params.spotId || params.nestId || null
+    }
+
+    // Target diversity score (0 = all same target, 1 = all different)
+    targetDiversityScore() {
+        const targets = this.history.map(h => h.target).filter(Boolean)
+        if (targets.length < 2) return 1
+        const unique = new Set(targets)
+        return unique.size / targets.length
+    }
+
+    // Build exploration context string for PromptBuilder
+    // Shows what has been explored a lot vs barely touched
+    explorationContext(currentNearbyIds) {
+        if (this._targetInteractions.size === 0) return null
+
+        const wellExplored = []
+        const barelyExplored = []
+
+        // Check nearby entities against interaction counts
+        const nearbySet = new Set(currentNearbyIds || [])
+
+        for (const [target, data] of this._targetInteractions) {
+            if (data.count >= 10) wellExplored.push(`${target} (${data.count}x)`)
+        }
+
+        // Find nearby things that haven't been explored much
+        for (const id of nearbySet) {
+            const data = this._targetInteractions.get(id)
+            if (!data || data.count <= 2) barelyExplored.push(id)
+        }
+
+        if (wellExplored.length === 0 && barelyExplored.length === 0) return null
+
+        const parts = []
+        if (wellExplored.length > 0) {
+            parts.push(`Well-explored: ${wellExplored.join(', ')}. You already know these — move on.`)
+        }
+        if (barelyExplored.length > 0) {
+            parts.push(`Barely explored: ${barelyExplored.join(', ')}. Try these instead.`)
+        }
+        return parts.join(' ')
+    }
+
+    // Reset exploration counts (called on sleep cycle)
+    resetExploration() {
+        this._targetInteractions.clear()
+    }
+
     _actionKey(action, params) {
         const normalized = {}
         if (params) {
@@ -206,5 +285,6 @@ export class RepetitionGuard {
     clear() {
         this.history = []
         this._recentSpeech = []
+        this._targetInteractions.clear()
     }
 }

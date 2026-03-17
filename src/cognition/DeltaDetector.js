@@ -33,13 +33,18 @@ export class DeltaDetector {
         this._diffSets(prevObjects, currObjects, 'object', deltas)
 
         // --- Objects: property changes on existing objects ---
+        // Skip noise properties that change every tick due to relative position
+        const noiseProps = new Set([
+            'id', 'name', 'pos', 'distance',
+            'direction', 'heading', 'facing', 'angle',
+        ])
         const prevObjMap = this._objectMap(prev.nearbyObjects || prev.nearby_objects)
         const currObjMap = this._objectMap(observation.nearbyObjects || observation.nearby_objects)
         for (const [id, currObj] of currObjMap) {
             const prevObj = prevObjMap.get(id)
             if (!prevObj) continue  // new object — already handled by appeared
             for (const [key, val] of Object.entries(currObj)) {
-                if (['id', 'name', 'pos', 'distance'].includes(key)) continue
+                if (noiseProps.has(key)) continue
                 if (JSON.stringify(val) !== JSON.stringify(prevObj[key])) {
                     deltas.push({
                         type: 'changed', category: 'object_property',
