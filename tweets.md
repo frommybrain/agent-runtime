@@ -1249,3 +1249,71 @@ Same emotional arc, 5 times in a row. No drift, no flatline. The agent *feels* i
 Speech repetition. "The stillness is captivating" appears in 5+ phases across every cycle. The 20-entry working memory gets wiped every sleep cycle, so the agent forgets what it said.
 
 This isn't a bug in the filter — it's a vocabulary/memory problem. The agent needs to remember its own words across sleep boundaries. That's the next challenge.
+
+## Milestone 18: v0.3.10 — Quiet Hours, SpeechLog & Stability Hardening
+
+### Tweet M18-1 — The Overnight Run
+
+v0.3.10 ran 9 hours overnight. Three big changes: quiet hours scheduling, persistent SpeechLog (speech survives sleep), and a full stability audit (WebSocket leak fix, Ollama timeout fix, double-shutdown guard).
+
+```
+Ticks:          1,702 (189/hr)
+Sleep cycles:   10
+Hallucinations: 1 (0.06%)
+Cost:           $2.02 ($0.22/hr)
+Total Groq:     $10.01
+```
+
+15% cheaper per hour than v0.3.8.1. Same $/tick. The savings came from quiet hours — the agent sleeps more when nobody's watching.
+
+### Tweet M18-2 — Quiet Hours In Action
+
+Time-zone-aware sleep scheduling. Peak hours: 50 min active / 10 min sleep. Quiet hours: 15 min active / 30 min sleep.
+
+The overnight logs show the exact transition:
+
+```
+21:59  sleep 10 min  ← normal
+22:59  sleep 10 min  ← normal
+23:59  sleep 10 min  ← normal
+01:25  sleep 30 min  ← quiet hours kicked in
+02:10  sleep 30 min
+02:55  sleep 30 min
+03:41  sleep 30 min
+04:26  sleep 30 min
+05:46  sleep 10 min  ← back to normal
+```
+
+No code told the agent to "be less active". The scheduling layer just gives it more sleep. The agent wakes up, explores for 15 minutes, and goes back to sleep. Naturally.
+
+### Tweet M18-3 — SpeechLog: Persistent Memory for Speech
+
+The speech repetition problem from v0.3.8.1: working memory wipes on sleep, so the agent says "the stillness is captivating" every cycle.
+
+Fix: a persistent ring buffer (50 entries) that survives sleep. Last 15 speeches injected into the prompt as "YOUR RECENT SPEECHES — do NOT repeat these."
+
+Result: speech rate dropped 28.8% → 26.4%. But the 8B model still falls back on the same structures — "The [noun] is [adjective]". The prompt tells it not to repeat; it paraphrases instead. This is an inherent 8B vocabulary limitation, not a code problem. The real fix is a richer environment — give the agent something to actually talk *about*.
+
+### Tweet M18-4 — Stability Audit
+
+Went through the entire codebase before this run. Found and fixed:
+
+- **WebSocket reconnect leak**: old listeners accumulated on every reconnect. `removeAllListeners()` before creating new connection.
+- **Ollama timeout deadlock**: AbortController wasn't actually aborting. Replaced with `Promise.race`.
+- **Double-shutdown corruption**: Ctrl+C twice caused concurrent disk flush. Added `shuttingDown` guard.
+- **Fire-and-forget tick crash**: unhandled rejection in `_scheduleNext()`. Added `.catch()`.
+
+Result: clean 9-hour run. Zero crashes, zero disconnects, all 10 sleep cycles completed. This runtime is production-stable.
+
+### Tweet M18-5 — Cost Trajectory
+
+```
+v0.3.7   $2.10  (6hr, all-70B)     $0.35/hr
+v0.3.8   $2.30  (9hr, Ollama)      $0.26/hr
+v0.3.8.1 $2.30  (9hr, 8B cloud)    $0.26/hr
+v0.3.10  $2.02  (9hr, quiet hours) $0.22/hr
+```
+
+$0.22/hr = $5.28/day = ~$160/month for a 24/7 autonomous agent. And that's before any further optimization.
+
+The agent runtime is stable, cheap, and environment-agnostic. It's ready for a real world. Next step: plug it into the 3D environment.
