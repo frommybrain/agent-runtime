@@ -1317,3 +1317,64 @@ v0.3.10  $2.02  (9hr, quiet hours) $0.22/hr
 $0.22/hr = $5.28/day = ~$160/month for a 24/7 autonomous agent. And that's before any further optimization.
 
 The agent runtime is stable, cheap, and environment-agnostic. It's ready for a real world. Next step: plug it into the 3D environment.
+
+## Milestone 19: Environment Protocol Standard (v0.4)
+
+### Tweet M19-1 — The Blindness Bug
+
+We put Victor in the 3D world. He inspected every shiny object he could find — obsessively, endlessly. Never ate. Never rested. Never socialised properly.
+
+Soak tests worked perfectly. What was different?
+
+The sim-server sends `self.needs.hunger = {level: 70, urgency: "strong"}`. Perceive.js had this line:
+
+```js
+if (typeof val === 'object' && val !== null) continue  // 💀
+```
+
+Victor was literally blind to his own needs. Every nested object — needs, wellbeing, mood — silently discarded. No wonder he never ate. He couldn't feel hunger.
+
+### Tweet M19-2 — The Signal Mismatch
+
+It got worse. The sim-server sends `world: {vitality: 70, resonance: 50}` (0-100 scale). Agent-runtime expects `signals: {vitality: 0.7}` (0-1 scale).
+
+Victor's InternalState never received a single environment signal. His emotional state was completely disconnected from the world around him.
+
+And the PromptBuilder was telling him "if someone speaks to you, respond" — but the sim-server has `socialise`, not `speak`. He was getting instructions for capabilities he didn't have.
+
+Three structural mismatches, all invisible from the soak test because the test-server used a different format.
+
+### Tweet M19-3 — The Fix
+
+Seven changes across both repos:
+
+1. **Perceive.js** — recursive `_narrateValue()` handles nested objects naturally. `{level: 70, urgency: "strong"}` → "My hunger: strong (70%)"
+2. **Heartbeat.js** — `_normalizeSignals()` auto-detects 0-100 scale and normalizes to 0-1
+3. **PromptBuilder.js** — rules are now action-aware. Socialise rules only if `socialise` exists. Speech rules only if `speak` exists
+4. **Think.js** — threads `available_actions` to the prompt builder
+5. **FallbackBrain.js** — respects whatever actions the environment offers instead of hardcoding
+6. **AgentBridge.js** (sim-server) — sends `signals` in 0-1 range instead of `world` in 0-100
+
+All backwards compatible — existing test-suite still passes.
+
+### Tweet M19-4 — The Protocol
+
+The real win: we defined a standard. `docs/ENVIRONMENT_PROTOCOL.md` — the contract any environment must implement to host an agent.
+
+```
+WELCOME → IDENTIFY → IDENTIFIED → [OBSERVE/ACT loop] + WORLD_EVENTs
+```
+
+Same observation shape everywhere: `self`, `nearbyAgents`, `nearbyObjects`, `available_actions`, `signals`, `recentSpeech`.
+
+A 3D bird world and a hardware synth bridge use the exact same protocol. Perceive.js narrates whatever it finds — no environment-specific code needed.
+
+```json
+// 3D world
+{"self": {"needs": {"hunger": {"level": 70, "urgency": "strong"}}}}
+
+// Synth bridge
+{"self": {"currentPatch": "warm_pad", "filterCutoff": 0.6}}
+```
+
+Both work. One agent runtime, infinite environments.

@@ -12,7 +12,7 @@ export class PromptBuilder {
         this.persona = persona
     }
 
-    buildSystemPrompt(memoryContent, skillsContent, toolsContent) {
+    buildSystemPrompt(memoryContent, skillsContent, toolsContent, availableActions) {
         const p = this.persona
         const traits = p.traits?.join(', ') || 'curious'
         const values = p.values?.join(', ') || 'discovery'
@@ -20,6 +20,31 @@ export class PromptBuilder {
         const quirks = p.quirks?.join('; ') || ''
         const voice = p.voice?.style || 'natural'
         const vocab = p.voice?.vocabulary?.join(', ') || ''
+
+        // Extract action names for conditional rules
+        const actionNames = new Set(
+            (availableActions || []).map(a => typeof a === 'string' ? a : a.name)
+        )
+
+        // Build interaction rules based on what actions exist
+        const interactionRules = []
+        if (actionNames.has('speak')) {
+            interactionRules.push('- If another agent speaks to you, consider responding')
+            interactionRules.push('- When you speak, say something SHORT, FRESH, and in your own voice — react to what you feel and see, don\'t analyze or explain')
+            interactionRules.push('- Never repeat the same sentence structure — vary your language')
+            interactionRules.push('- Speaking is for reacting to something notable or talking to others — don\'t narrate your own actions')
+            interactionRules.push('- Prefer action over speech — move, interact, explore. Only speak when you have something worth saying')
+        }
+        if (actionNames.has('socialise')) {
+            interactionRules.push('- You can socialise with nearby agents — approach them when you feel social or curious about them')
+            interactionRules.push('- Vary who you socialise with — don\'t fixate on one agent')
+        }
+        if (actionNames.has('forage')) {
+            interactionRules.push('- When your hunger is high, prioritise foraging at a food spot')
+        }
+        if (actionNames.has('rest')) {
+            interactionRules.push('- When your rest need is high, find a nest to rest in')
+        }
 
         return `You are ${p.name}.
 PERSONALITY: ${traits}
@@ -35,17 +60,14 @@ RULES:
 - Stay in character as ${p.name}
 - Vary your actions — don't repeat the same thing endlessly
 - Be curious about your environment, explore, interact with things
-- If another agent speaks to you, consider responding
 - When you learn something new, include a "remember" field
 - Your internal state describes how you feel — let it influence your choices naturally
+- Pay attention to your own needs (hunger, rest, social, curiosity) — they tell you what your body wants
 - Pay attention to changes in your environment — they may be worth investigating
 - ONLY choose from the actions listed under "Available actions" — never use actions from a previous context
 - ONLY interact with objects listed under "Nearby Objects" RIGHT NOW — never try to interact with, move toward, or address an object that isn't listed
 - You may REMEMBER past experiences — reflecting on things you've seen before is natural. But always make it clear they are MEMORIES, not current reality. Say "I remember the pond" not "the pond is interesting." If it's not in Nearby Objects right now, it is NOT HERE
-- When you speak, say something SHORT, FRESH, and in your own voice — react to what you feel and see, don't analyze or explain. "This place feels different" not "I'm observing the environment's state has shifted"
-- Never repeat the same sentence structure — if your last speech started with "I'm noticing..." or "I wonder if...", use a completely different form
-- Speaking is for reacting to something notable or talking to others — don't narrate your own actions or think out loud
-- Prefer action over speech — move, interact, explore. Only speak when you have something worth saying
+${interactionRules.join('\n')}
 
 RESPONSE FORMAT:
 {"action": "action_name", "params": {...}, "reason": "why you chose this"}
