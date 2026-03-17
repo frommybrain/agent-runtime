@@ -123,6 +123,13 @@ export class Heartbeat {
             )
 
             // ── 3. FEEL ───────────────────────────────────────────────
+            // Collect nearby entity IDs (used for stability tracking + exploration context)
+            const nearbyIds = [
+                ...(observation.nearbyObjects || observation.nearby_objects || []).map(o => o.id || o.name),
+                ...(observation.nearbyAgents || observation.nearby_agents || []).map(a => a.id || a.name),
+            ].filter(Boolean)
+            this.internalState.updateStability(nearbyIds)
+
             this.internalState.update({
                 actionResult: this._lastActionResult,
                 deltas,
@@ -143,12 +150,16 @@ export class Heartbeat {
                 repetitionWarnings,
             })
 
+            // ── 3c. EXPLORATION CONTEXT ────────────────────────────
+            const explorationHint = this.repetitionGuard.explorationContext(nearbyIds)
+
             // ── 4. THINK ──────────────────────────────────────────────
             const decision = await this.think.decide(observation, worldEvents, {
                 internalState: stateDesc,
                 deltaNarrative: deltaNarrative || undefined,
                 lastActionResult: this._lastActionResult,
                 repetitionWarnings: repetitionWarnings || undefined,
+                explorationHint: explorationHint || undefined,
                 recentlyDisappeared: this._recentlyDisappeared.length > 0
                     ? this._recentlyDisappeared.map(d => d.id) : undefined,
                 recentSpeeches: this.speechLog?.recentForPrompt() || undefined,
