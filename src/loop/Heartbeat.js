@@ -186,18 +186,16 @@ export class Heartbeat {
             }
 
             // ── 4b2. ANTI-FIXATION BLOCK ────────────────────────────
-            // Hard mechanical block for inspect fixation only. Survival actions
-            // (forage, rest, socialise) need to repeat on the same targets — only
-            // inspect is a pure curiosity action that should be capped.
-            if (decision.action === 'inspect') {
-                const fixationTarget = decision.params?.target || decision.params?.entityId
-                if (fixationTarget && this.repetitionGuard.isExhausted(fixationTarget)) {
-                    const count = this.repetitionGuard.targetCount(fixationTarget)
-                    this.logger.warn(`Hard block: inspect "${fixationTarget}" exhausted (${count}x) — forcing wander`)
-                    decision.action = 'move_to'
-                    decision.params = { target: 'wander', reason: `(blocked: inspect ${fixationTarget} exhausted after ${count} interactions)` }
-                    decision.reason = `(blocked: inspect ${fixationTarget} exhausted after ${count} interactions)`
-                }
+            // Environment-agnostic: if the same action+target combo dominates
+            // the recent history window (40%+), force a wander to break the loop.
+            // Works for any environment — inspect(shiny_01), set_step(step_5), etc.
+            const fixationTarget = decision.params?.target || decision.params?.entityId
+            if (fixationTarget && this.repetitionGuard.isFixated(decision.action, fixationTarget)) {
+                const count = this.repetitionGuard.comboCount(decision.action, fixationTarget)
+                this.logger.warn(`Hard block: ${decision.action}("${fixationTarget}") fixated (${count}x) — forcing wander`)
+                decision.action = 'move_to'
+                decision.params = { target: 'wander', reason: `(blocked: ${decision.action} ${fixationTarget} fixated after ${count}x)` }
+                decision.reason = `(blocked: fixation on ${fixationTarget})`
             }
 
             // ── 4c. VALIDATE SPEECH PARAMS ──────────────────────────
