@@ -59,13 +59,13 @@ export function fallbackDecision(observation) {
         }
     }
 
-    // Default: wander to a random position
-    const bounds = observation.worldBounds?.halfSize || 100
-    const x = (Math.random() - 0.5) * bounds * 1.5
-    const z = (Math.random() - 0.5) * bounds * 1.5
+    // Default: move toward a nearby object or wander randomly
+    const moveTarget = nearbyObjects.length > 0
+        ? nearbyObjects[Math.floor(Math.random() * nearbyObjects.length)].id
+        : 'wander'
     return {
         action: 'move_to',
-        params: { x: Math.round(x), z: Math.round(z) },
+        params: { target: moveTarget, reason: 'exploring' },
         reason: 'exploring',
         source: 'fallback',
     }
