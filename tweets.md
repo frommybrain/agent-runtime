@@ -1378,3 +1378,43 @@ A 3D bird world and a hardware synth bridge use the exact same protocol. Perceiv
 ```
 
 Both work. One agent runtime, infinite environments.
+
+---
+
+## Milestone 20: Behavioral Tuning — From Data to Fixes
+
+### Tweet 1 — The 1.5hr Log Analysis
+Ran Victor for 90 minutes in the 3D world after the perception fix. Pulled logs via the HTTP API and ran a full action distribution analysis.
+
+655 ticks. Pre-fix vs post-fix:
+- forage: 1 → 43
+- socialise: 27 → 171
+- rest: 0 → 6
+- speak (hallucinated): 235 → 4
+
+The fix WORKED. But three new problems emerged from the data.
+
+### Tweet 2 — Problem: Desperate Everything
+All needs hit "desperate" simultaneously because drift rates were calibrated for 2-4 minute cycles. With an 8s heartbeat, the agent was cycling forage→rest→socialise→inspect in a frantic loop.
+
+Fix: halved all drift rates, increased satisfaction amounts, added cross-need satisfaction (eating is slightly restful, socialising satisfies curiosity).
+
+```js
+// Before: hunger drift 0.008/s → desperate in 2 min, forage satisfies 0.4
+// After:  hunger drift 0.004/s → desperate in 4 min, forage satisfies 0.6
+```
+
+### Tweet 3 — Problem: Shiny Fixation
+73% of all inspects targeted shiny_01 or shiny_02. The RepetitionGuard was screaming "STOP TARGETING shiny_01" but the LLM's curiosity kept winning.
+
+Three-layer fix:
+1. Sim-server: diminishing curiosity returns per re-inspect (1st: 0.4, 5th: 0.13, 10th: 0.07)
+2. Observer: describes over-inspected shinies as "dull, nothing new to discover"
+3. Agent-runtime: hard mechanical block after 20 interactions — forces a wander. No LLM can override this.
+
+Soft warnings alone don't work against a strong drive. Sometimes you need a wall.
+
+### Tweet 4 — Problem: Ghost Actions
+4 `speak` actions got through despite `speak` not being in available_actions. The LLM hallucinated it, and the sim-server accepted it silently.
+
+Fix: sim-server now rejects unknown actions with a clear error listing valid options. Agent-runtime falls back to `wait` (not the first available action with empty params). Error messages are now captured from the response and fed back to the agent on the next tick.
