@@ -104,6 +104,11 @@ ${toolsContent || '(none yet)'}`
             parts.push('NOTICE:\n' + extras.repetitionWarnings.join('\n'))
         }
 
+        // Exploration context — what you've explored vs what's new
+        if (extras.explorationHint) {
+            parts.push('EXPLORATION:\n' + extras.explorationHint)
+        }
+
         // Persistent speech history — survives sleep cycles
         if (extras.recentSpeeches) {
             parts.push('YOUR RECENT SPEECHES (do NOT repeat these — say something fresh each time):\n' + extras.recentSpeeches)
