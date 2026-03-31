@@ -217,9 +217,58 @@ function _describeSignals(signals) {
         else parts.push('This place feels barren and empty.')
     }
 
+    // --- Real-world / installation signals ---
+
+    if (signals.temperature !== undefined) {
+        const t = signals.temperature
+        if (t >= 0.8) parts.push('The heat is heavy — the air feels thick and oppressive.')
+        else if (t >= 0.6) parts.push('The air is warm and soft against the skin.')
+        else if (t >= 0.4) parts.push('The temperature is mild — comfortable and easy.')
+        else if (t >= 0.25) parts.push('There is a cool edge to the air.')
+        else if (t >= 0.12) parts.push('The cold is sharp — biting at every surface.')
+        else parts.push('A deep freeze grips everything — brittle and still.')
+    }
+
+    if (signals.humidity !== undefined) {
+        const h = signals.humidity
+        if (h >= 0.8) parts.push('The air is thick with moisture — everything feels damp and close.')
+        else if (h >= 0.6) parts.push('There is a heaviness to the air, moisture clinging to everything.')
+        else if (h >= 0.4) parts.push('The air feels balanced — neither dry nor damp.')
+        else if (h >= 0.2) parts.push('The air is dry and crisp, clean to breathe.')
+        else parts.push('The air is parched — bone-dry, almost desert-like.')
+    }
+
+    if (signals.wind_speed !== undefined) {
+        const w = signals.wind_speed
+        if (w >= 0.7) parts.push('Strong gusts push through the space — everything sways and rustles.')
+        else if (w >= 0.4) parts.push('A steady breeze moves through, carrying scents and sounds.')
+        else if (w >= 0.15) parts.push('A gentle breath of wind, barely felt.')
+        else parts.push('The air is completely still — no movement at all.')
+    }
+
+    if (signals.cloud_cover !== undefined) {
+        const c = signals.cloud_cover
+        if (c >= 0.85) parts.push('The sky is blanketed — heavy, enclosed, the light flat and diffuse.')
+        else if (c >= 0.6) parts.push('Clouds drift overhead, softening and dimming the light.')
+        else if (c >= 0.3) parts.push('Patches of cloud break the sky, shifting between light and shadow.')
+        else parts.push('The sky is wide open — bright and clear.')
+    }
+
+    if (signals.crowd_energy !== undefined) {
+        const e = signals.crowd_energy
+        if (e >= 0.7) parts.push('The space is alive with people — energy, movement, voices overlapping.')
+        else if (e >= 0.4) parts.push('People move through the space — a moderate human presence.')
+        else if (e >= 0.15) parts.push('A few souls drift through — quiet but not empty.')
+        else parts.push('The space is nearly deserted — deep solitude.')
+    }
+
     // Fall through for any unknown signals — narrate them generically
+    const described = new Set([
+        'vitality', 'resonance', 'warmth', 'abundance',
+        'temperature', 'humidity', 'wind_speed', 'cloud_cover', 'crowd_energy',
+    ])
     for (const [k, v] of Object.entries(signals)) {
-        if (['vitality', 'resonance', 'warmth', 'abundance'].includes(k)) continue
+        if (described.has(k)) continue
         parts.push(`${k}: ${typeof v === 'number' ? v.toFixed(2) : v}`)
     }
 
