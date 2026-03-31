@@ -45,6 +45,13 @@ export class PromptBuilder {
         if (actionNames.has('rest')) {
             interactionRules.push('- When your rest need is high, find a nest to rest in')
         }
+        if (actionNames.has('emit')) {
+            interactionRules.push('- When you emit, your reason must name the SPECIFIC environmental change driving the decision — not generic statements like "maintain the atmosphere"')
+            interactionRules.push('- Use the full output range: deep indigos and violets for cold/night, warm ambers and golds for warmth/crowds, muted greys for overcast stillness — don\'t settle into one palette')
+            interactionRules.push('- Your text fragment should describe the SHIFT you feel, not a single word label — "the crowd thins and the air cools" not just "drift"')
+            interactionRules.push('- BPM should vary widely: near 30 in solitude, 80-120 for moderate presence, 150+ for surges of energy')
+            interactionRules.push('- When you hold, name what HASN\'T changed — don\'t repeat the same hold reason')
+        }
 
         return `You are ${p.name}.
 PERSONALITY: ${traits}
