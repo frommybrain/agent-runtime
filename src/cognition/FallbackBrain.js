@@ -46,9 +46,10 @@ export function fallbackDecision(observation) {
         }
     }
 
-    // 10% chance to wait
+    // 10% chance to do nothing
     if (roll < 0.45) {
-        return { action: 'wait', params: {}, reason: 'taking a moment', source: 'fallback' }
+        const idle = has('wait') ? 'wait' : has('hold') ? 'hold' : null
+        if (idle) return { action: idle, params: {}, reason: 'taking a moment', source: 'fallback' }
     }
 
     // Default: move toward a nearby object or wander randomly
@@ -59,6 +60,10 @@ export function fallbackDecision(observation) {
         return { action: 'move_to', params: { target: moveTarget }, reason: 'exploring', source: 'fallback' }
     }
 
-    // Absolute fallback: wait
+    // Absolute fallback: idle action or first available
+    const idle = has('wait') ? 'wait' : has('hold') ? 'hold' : null
+    if (idle) return { action: idle, params: {}, reason: 'nothing to do', source: 'fallback' }
+    // Last resort: first available action with empty params
+    if (actions.length > 0) return { action: actions[0], params: {}, reason: 'nothing to do', source: 'fallback' }
     return { action: 'wait', params: {}, reason: 'nothing to do', source: 'fallback' }
 }
