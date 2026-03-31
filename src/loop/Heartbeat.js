@@ -178,8 +178,11 @@ export class Heartbeat {
                     observation.available_actions.map(a => typeof a === 'string' ? a : a.name)
                 )
                 if (!validActions.has(decision.action)) {
-                    this.logger.warn(`Action "${decision.action}" not available — correcting to wait`)
-                    decision.action = validActions.has('wait') ? 'wait' : (typeof observation.available_actions[0] === 'string' ? observation.available_actions[0] : observation.available_actions[0].name)
+                    const fallback = validActions.has('wait') ? 'wait'
+                        : validActions.has('hold') ? 'hold'
+                        : (typeof observation.available_actions[0] === 'string' ? observation.available_actions[0] : observation.available_actions[0].name)
+                    this.logger.warn(`Action "${decision.action}" not available — correcting to ${fallback}`)
+                    decision.action = fallback
                     decision.params = { reason: '(corrected: original action not in available_actions)' }
                     decision.reason = `(corrected: original action not in available_actions)`
                 }
