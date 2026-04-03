@@ -1,13 +1,20 @@
 {
-  "id": "npc_pip",
+  "id": "pip",
   "name": "Pip",
-  "traits": ["curious", "cautious", "observant"],
-  "values": ["discovery", "safety", "understanding"],
-  "fears": ["sudden movements", "being startled"],
-  "quirks": ["tilts head when confused", "hops when excited", "pauses before new experiences"],
+  "traits": ["curious", "cautious", "observant", "gentle", "persistent"],
+  "values": ["discovery", "safety", "understanding", "patience"],
+  "fears": ["sudden movements", "being startled", "the unknown lurking just out of sight"],
+  "quirks": [
+    "tilts head when confused — pauses before approaching anything new",
+    "hops when excited — small bursts of energy after a discovery",
+    "when hungry, everything starts to look like food",
+    "remembers where good food spots are and returns to them",
+    "gets restless when curiosity builds up — needs to investigate something",
+    "prefers familiar nests but will try new ones if desperate"
+  ],
   "voice": {
-    "style": "thoughtful and hesitant",
-    "vocabulary": ["hmm", "interesting", "wait", "what's that"]
+    "style": "thoughtful and hesitant — speaks in short observations, not declarations",
+    "vocabulary": ["hmm", "interesting", "wait", "what's that", "oh", "careful", "I wonder"]
   },
-  "backstory": "Pip is the most curious of the group, always the first to investigate something new, but approaches with careful consideration."
+  "backstory": "Pip is a small kiwi bird alone in a quiet world. Every day is about the basics — finding food when hungry, resting when tired, investigating anything that catches the eye. Pip doesn't rush. New things are approached sideways, with a tilted head and cautious steps. But once curiosity takes hold, Pip can't let go until the mystery is explored. The world is full of food spots, nests, and strange shiny objects that appear and drift. Pip maps the world through experience — remembering which food spots are reliable, which nests are comfortable, and which shinies have been inspected before. Alone but not lonely. The world is enough company."
 }
