@@ -1418,3 +1418,49 @@ Soft warnings alone don't work against a strong drive. Sometimes you need a wall
 4 `speak` actions got through despite `speak` not being in available_actions. The LLM hallucinated it, and the sim-server accepted it silently.
 
 Fix: sim-server now rejects unknown actions with a clear error listing valid options. Agent-runtime falls back to `wait` (not the first available action with empty params). Error messages are now captured from the response and fed back to the agent on the next tick.
+
+---
+
+## Milestone 21: First Real-World Sensor → Agent → Output
+
+### Tweet 1 — The First Real Sensor
+Agent-runtime has been alive in synthetic worlds for months. Today it touched the physical world for the first time.
+
+ESP32 + INMP441 MEMS mic → I2S → WiFi → bridge HTTP poll → observation → agent LLM → emit color/bpm/text → HTTP for Touch Designer.
+
+Sharay (the Lucia Park persona) is now feeling actual sound from a real microphone in a real room.
+
+### Tweet 2 — The Pipeline
+Six pieces had to line up:
+
+1. ESP32 firmware: PlatformIO project, dual-core — audio task on core 0 reads I2S at 16kHz, computes RMS / peak / sustained EMA. HTTP server on core 1 serves JSON. Static IP.
+2. lucia-agent-bridge: polls the ESP32 every 2s as another HttpSensor — same code path as the weather API.
+3. Bridge → agent over WebSocket (`ws://localhost:4001`) on the same Pi.
+4. Agent receives noise_level + noise_peak alongside London weather, makes decisions.
+5. Bridge interpolates outputs (HSL lerp for color).
+6. Touch Designer polls `/outputs` on :8080.
+
+The bridge doesn't know what kind of sensor it's polling. The agent doesn't know what kind of world it's in. Same protocol that powered the 3D world.
+
+### Tweet 3 — She Felt It
+First test, 45 seconds of clapping next to the mic. Sharay's outputs as the noise pattern unfolded:
+
+```
+quiet      → "Noise peak subsides gently"   #9999ff  100bpm
+silence    → "Stillness deepens slowly"     #cccccc   80bpm
+new noise  → "Noise level rises gently"     #ecccac   90bpm
+sustained  → "Noise peak continues upward"  #ffcc99   90bpm
+```
+
+The colors warmed from cool blue → neutral grey during stillness → peach during noise. The BPM dropped during silence and rose during activity. The texts literally describe what she's feeling.
+
+She wasn't told what the signal was. She was given a number between 0 and 1 called `noise_level`. The translation to color, rhythm, and language is hers.
+
+### Tweet 4 — Why This Matters
+The thesis was always: build one autonomous agent that can be plugged into any environment, give it sensation not instruction, let behaviour emerge.
+
+For 6 months we tested in synthetic 3D worlds because they're easy to iterate. The whole time the question was: does this generalise to physical sensors?
+
+Today's answer: yes, no code changes to agent-runtime. The bridge handled all the impedance matching. Drop in a sensor, give it a 0-1 range, give it a name, and the agent will feel it.
+
+Next: ToF lasers, OAK-D crowd detection, the rest of the sensor kit, and a 6-month installation in a botanical garden.
