@@ -27,8 +27,14 @@ export function loadConfig() {
         ollamaModel: process.env.OLLAMA_MODEL || 'qwen3:4b',
         cloudApiKey: process.env.CLOUD_API_KEY || null,
         cloudApiUrl: process.env.CLOUD_API_URL || null,
-        cloudModel: process.env.CLOUD_MODEL || 'llama-3.3-70b-versatile',
-        cloudModelFast: process.env.CLOUD_MODEL_FAST || 'llama-3.1-8b-instant',
+        // Default models on Groq:
+        //   quality = openai/gpt-oss-120b — bigger AND ~75% cheaper than
+        //             llama-3.3-70b on Groq's pricing
+        //   fast    = openai/gpt-oss-20b  — same family as quality, 1000 TPS
+        //             (vs 840 for llama-3.1-8b), avoids the voice tics 8B
+        //             llama produces under sustained use
+        cloudModel: process.env.CLOUD_MODEL || 'openai/gpt-oss-120b',
+        cloudModelFast: process.env.CLOUD_MODEL_FAST || 'openai/gpt-oss-20b',
         temperature: 0.7,
         // 200 was tight for reasoning models — gpt-oss-120b often produces
         // a brief "reasoning" preamble inside the JSON before the action,
