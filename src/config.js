@@ -10,6 +10,11 @@ export function loadConfig() {
         serverUrl: process.env.SERVER_URL || 'ws://localhost:4001',
         reconnectIntervalMs: 5000,
         identifyTimeoutMs: 10000,
+        // Optional auth token sent on IDENTIFY. Required by environments
+        // that have ADMIN_TOKEN set (e.g. 3eyes sim-server when bound to
+        // 0.0.0.0). Empty string = no token, accepted by environments
+        // that don't require auth.
+        adminToken: process.env.ADMIN_TOKEN || '',
 
         // Heartbeat (adaptive)
         heartbeatIntervalMs: parseInt(process.env.HEARTBEAT_MS || '8000'),
