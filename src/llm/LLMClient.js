@@ -150,6 +150,13 @@ export class LLMClient {
         const controller = new AbortController()
         const timeout = setTimeout(() => controller.abort(), timeoutMs)
 
+        // response_format: json_object constrains the model to emit a single
+        // valid JSON object — no markdown fences, no preamble, no GPT-OSS
+        // channel markers. Without it, gpt-oss-120b returns code-fenced
+        // output ~half the time and Think.js's parser falls back to null.
+        // Groq's OpenAI-compatible endpoint requires the prompt to mention
+        // "JSON" — agent-runtime's PromptBuilder already does (the system
+        // prompt instructs JSON output for the action decision).
         try {
             const response = await fetch(this.cloudApiUrl, {
                 method: 'POST',
@@ -165,6 +172,7 @@ export class LLMClient {
                     ],
                     temperature: this.temperature,
                     max_tokens: this.maxTokens,
+                    response_format: { type: 'json_object' },
                 }),
                 signal: controller.signal,
             })
