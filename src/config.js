@@ -30,7 +30,10 @@ export function loadConfig() {
         cloudModel: process.env.CLOUD_MODEL || 'llama-3.3-70b-versatile',
         cloudModelFast: process.env.CLOUD_MODEL_FAST || 'llama-3.1-8b-instant',
         temperature: 0.7,
-        maxTokens: 200,
+        // 200 was tight for reasoning models — gpt-oss-120b often produces
+        // a brief "reasoning" preamble inside the JSON before the action,
+        // and 200 was occasionally truncating mid-string.
+        maxTokens: 500,
 
         // Memory
         dataDir: process.env.DATA_DIR || './data',
