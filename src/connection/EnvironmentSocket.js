@@ -4,6 +4,7 @@ export class EnvironmentSocket {
     constructor(config, logger) {
         this.url = config.serverUrl
         this.agentId = config.agentId
+        this.adminToken = config.adminToken || ''
         this.reconnectMs = config.reconnectIntervalMs
         this.logger = logger
 
@@ -76,10 +77,19 @@ export class EnvironmentSocket {
 
     _handleMessage(msg) {
         switch (msg.type) {
-            case 'WELCOME':
-                // Send IDENTIFY
-                this._send({ type: 'IDENTIFY', agentId: this.agentId })
+            case 'WELCOME': {
+                // Send IDENTIFY. Always include `token` — environments that
+                // don't require auth (ADMIN_TOKEN unset) accept any value;
+                // environments that do (3eyes sim-server in production)
+                // constant-time-compare against the configured token.
+                const identifyMsg = { type: 'IDENTIFY', agentId: this.agentId }
+                if (this.adminToken) identifyMsg.token = this.adminToken
+                else if (msg.requiresToken) {
+                    this.logger.warn('Server requires a token but ADMIN_TOKEN env is unset — IDENTIFY will be rejected')
+                }
+                this._send(identifyMsg)
                 break
+            }
 
             case 'IDENTIFIED':
                 this.identified = true
