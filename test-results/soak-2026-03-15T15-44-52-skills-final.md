@@ -1,0 +1,18 @@
+# victor's Skills
+* interact({"target":"pond-01"})
+* speak({"message":"This environment's balance is intriguing"})
+* move_to({"x":5,"z":20})
+* interact({"target":"relic-01"})
+* move_to({"x":10,"z":-5})
+* interact({"target":"pillar-01"})
+* speak({"message":"Scout, what's your take on this environment?"})
+* move_to({"x":-15,"z":8})
+* speak({"message":"Something's off about this relic"})
+* speak({"message":"Scout, what's your take on this pillar?"})
+* speak({"message":"This feels like a turning point"})
+* wait({})
+* speak({"message":"What's near the pond?"})
+* speak({"message":"Find anything unusual?"})
+* speak({"message":"Anything catch your eye, scout?"})
+* speak({"message":"Scout, what do you think about this pillar's energy?"})
+* move_to

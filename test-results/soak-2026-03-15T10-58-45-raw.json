@@ -1,0 +1,3278 @@
+{
+  "startTime": "2026-03-15T10:13:45.069Z",
+  "endTime": "2026-03-15T10:58:45.105Z",
+  "durationHours": 0.75,
+  "phases": [
+    {
+      "name": "Calm exploration",
+      "startTime": "2026-03-15T10:13:45.103Z",
+      "startTick": 0,
+      "cycle": 1
+    },
+    {
+      "name": "Populated world",
+      "startTime": "2026-03-15T10:21:45.101Z",
+      "startTick": 37,
+      "cycle": 1
+    },
+    {
+      "name": "Social encounter",
+      "startTime": "2026-03-15T10:31:45.098Z",
+      "startTick": 70,
+      "cycle": 1
+    },
+    {
+      "name": "Object removal test",
+      "startTime": "2026-03-15T10:36:45.097Z",
+      "startTick": 93,
+      "cycle": 1
+    },
+    {
+      "name": "Empty world — removal test",
+      "startTime": "2026-03-15T10:44:45.113Z",
+      "startTick": 116,
+      "cycle": 1
+    },
+    {
+      "name": "New arrivals",
+      "startTime": "2026-03-15T10:50:45.114Z",
+      "startTick": 143,
+      "cycle": 1
+    }
+  ],
+  "statusPolls": [
+    {
+      "tick": 0,
+      "time": "2026-03-15T10:13:48.612Z",
+      "phase": "Calm exploration",
+      "valence": 0.20344187906314184,
+      "arousal": 0.31899425001900683,
+      "valenceLabel": "positive",
+      "arousalLabel": "elevated",
+      "description": "A comfortable focus — present and attentive",
+      "heartbeatMs": 8000,
+      "sleeping": false,
+      "tickCount": 0
+    },
+    {
+      "tick": 3,
+      "time": "2026-03-15T10:14:15.122Z",
+      "phase": "Calm exploration",
+      "valence": 0.12712057423606327,
+      "arousal": 0.21331955862504054,
+      "valenceLabel": "neutral",
+      "arousalLabel": "elevated",
+      "description": "A comfortable focus — present and attentive",
+      "heartbeatMs": 10898,
+      "sleeping": false,
+      "tickCount": 3
+    },
+    {
+      "tick": 6,
+      "time": "2026-03-15T10:14:45.121Z",
+      "phase": "Calm exploration",
+      "valence": 0.11269852835852945,
+      "arousal": 0.1660093031026996,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "A comfortable focus — present and attentive",
+      "heartbeatMs": 12322,
+      "sleeping": false,
+      "tickCount": 6
+    },
+    {
+      "tick": 8,
+      "time": "2026-03-15T10:15:15.118Z",
+      "phase": "Calm exploration",
+      "valence": 0.0867812202828151,
+      "arousal": 0.15010279440827737,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling awake and aware — taking things in",
+      "heartbeatMs": 12830,
+      "sleeping": false,
+      "tickCount": 8
+    },
+    {
+      "tick": 11,
+      "time": "2026-03-15T10:15:45.122Z",
+      "phase": "Calm exploration",
+      "valence": 0.09174993620796966,
+      "arousal": 0.13770733951105188,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — calm, present, unremarkable",
+      "heartbeatMs": 13241,
+      "sleeping": false,
+      "tickCount": 11
+    },
+    {
+      "tick": 13,
+      "time": "2026-03-15T10:16:15.482Z",
+      "phase": "Calm exploration",
+      "valence": 0.10670822263858103,
+      "arousal": 0.13353977776535536,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "A gentle ease — nothing wrong, mildly pleasant",
+      "heartbeatMs": 13385,
+      "sleeping": false,
+      "tickCount": 13
+    },
+    {
+      "tick": 15,
+      "time": "2026-03-15T10:16:45.136Z",
+      "phase": "Calm exploration",
+      "valence": 0.11290415250559173,
+      "arousal": 0.1311008164427301,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "A gentle ease — nothing wrong, mildly pleasant",
+      "heartbeatMs": 13470,
+      "sleeping": false,
+      "tickCount": 15
+    },
+    {
+      "tick": 17,
+      "time": "2026-03-15T10:17:15.120Z",
+      "phase": "Calm exploration",
+      "valence": 0.11547059265867991,
+      "arousal": 0.12967347530269674,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "A gentle ease — nothing wrong, mildly pleasant",
+      "heartbeatMs": 13521,
+      "sleeping": false,
+      "tickCount": 17
+    },
+    {
+      "tick": 20,
+      "time": "2026-03-15T10:17:46.489Z",
+      "phase": "Calm exploration",
+      "valence": 0.08098860898785817,
+      "arousal": 0.12856119208177583,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — calm, present, unremarkable",
+      "heartbeatMs": 13561,
+      "sleeping": false,
+      "tickCount": 20
+    },
+    {
+      "tick": 22,
+      "time": "2026-03-15T10:18:15.228Z",
+      "phase": "Calm exploration",
+      "valence": 0.09205603732905897,
+      "arousal": 0.12818722363605725,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — calm, present, unremarkable",
+      "heartbeatMs": 13575,
+      "sleeping": false,
+      "tickCount": 22
+    },
+    {
+      "tick": 24,
+      "time": "2026-03-15T10:18:45.133Z",
+      "phase": "Calm exploration",
+      "valence": 0.09664031976865149,
+      "arousal": 0.1279683679524116,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — calm, present, unremarkable",
+      "heartbeatMs": 13584,
+      "sleeping": false,
+      "tickCount": 24
+    },
+    {
+      "tick": 26,
+      "time": "2026-03-15T10:19:15.195Z",
+      "phase": "Calm exploration",
+      "valence": 0.09853919318694335,
+      "arousal": 0.12784028813495008,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — calm, present, unremarkable",
+      "heartbeatMs": 13589,
+      "sleeping": false,
+      "tickCount": 26
+    },
+    {
+      "tick": 29,
+      "time": "2026-03-15T10:19:46.016Z",
+      "phase": "Calm exploration",
+      "valence": 0.10507913873330348,
+      "arousal": 0.12774047945718878,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "A gentle ease — nothing wrong, mildly pleasant",
+      "heartbeatMs": 13593,
+      "sleeping": false,
+      "tickCount": 29
+    },
+    {
+      "tick": 31,
+      "time": "2026-03-15T10:20:15.130Z",
+      "phase": "Calm exploration",
+      "valence": 0.08362516333964025,
+      "arousal": 0.1277069220903333,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — calm, present, unremarkable",
+      "heartbeatMs": 13594,
+      "sleeping": false,
+      "tickCount": 31
+    },
+    {
+      "tick": 33,
+      "time": "2026-03-15T10:20:45.172Z",
+      "phase": "Calm exploration",
+      "valence": 0.0931481347380759,
+      "arousal": 0.1276872834803153,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — calm, present, unremarkable",
+      "heartbeatMs": 13594,
+      "sleeping": false,
+      "tickCount": 33
+    },
+    {
+      "tick": 35,
+      "time": "2026-03-15T10:21:15.129Z",
+      "phase": "Calm exploration",
+      "valence": 0.07868317587734822,
+      "arousal": 0.12767579047476751,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — calm, present, unremarkable",
+      "heartbeatMs": 13594,
+      "sleeping": false,
+      "tickCount": 35
+    },
+    {
+      "tick": 37,
+      "time": "2026-03-15T10:21:46.131Z",
+      "phase": "Populated world",
+      "valence": 0.09110109493428227,
+      "arousal": 0.12766906448059584,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — calm, present, unremarkable",
+      "heartbeatMs": 13594,
+      "sleeping": false,
+      "tickCount": 37
+    },
+    {
+      "tick": 40,
+      "time": "2026-03-15T10:22:15.135Z",
+      "phase": "Populated world",
+      "valence": 0.08232143725862243,
+      "arousal": 0.22261014811940236,
+      "valenceLabel": "neutral",
+      "arousalLabel": "elevated",
+      "description": "Feeling awake and aware — taking things in",
+      "heartbeatMs": 12851,
+      "sleeping": false,
+      "tickCount": 40
+    },
+    {
+      "tick": 42,
+      "time": "2026-03-15T10:22:45.132Z",
+      "phase": "Populated world",
+      "valence": 0.057605534867939366,
+      "arousal": 0.20970202393317725,
+      "valenceLabel": "neutral",
+      "arousalLabel": "elevated",
+      "description": "Feeling awake and aware — taking things in",
+      "heartbeatMs": 12757,
+      "sleeping": false,
+      "tickCount": 42
+    },
+    {
+      "tick": 44,
+      "time": "2026-03-15T10:23:15.134Z",
+      "phase": "Populated world",
+      "valence": 0.06577737082725925,
+      "arousal": 0.20214786695629364,
+      "valenceLabel": "neutral",
+      "arousalLabel": "elevated",
+      "description": "Feeling awake and aware — taking things in",
+      "heartbeatMs": 12759,
+      "sleeping": false,
+      "tickCount": 44
+    },
+    {
+      "tick": 47,
+      "time": "2026-03-15T10:23:46.146Z",
+      "phase": "Populated world",
+      "valence": 0.058814549313467336,
+      "arousal": 0.19626114386121513,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling awake and aware — taking things in",
+      "heartbeatMs": 12804,
+      "sleeping": false,
+      "tickCount": 47
+    },
+    {
+      "tick": 49,
+      "time": "2026-03-15T10:24:15.139Z",
+      "phase": "Populated world",
+      "valence": 0.06627816139223759,
+      "arousal": 0.19428192791617965,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling awake and aware — taking things in",
+      "heartbeatMs": 12832,
+      "sleeping": false,
+      "tickCount": 49
+    },
+    {
+      "tick": 51,
+      "time": "2026-03-15T10:24:45.140Z",
+      "phase": "Populated world",
+      "valence": 0.06936969311341112,
+      "arousal": 0.19312364126474627,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling awake and aware — taking things in",
+      "heartbeatMs": 12853,
+      "sleeping": false,
+      "tickCount": 51
+    },
+    {
+      "tick": 54,
+      "time": "2026-03-15T10:25:15.180Z",
+      "phase": "Populated world",
+      "valence": 0.059772211335135696,
+      "arousal": 0.19222102396375826,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling awake and aware — taking things in",
+      "heartbeatMs": 12873,
+      "sleeping": true,
+      "tickCount": 54
+    },
+    {
+      "tick": 54,
+      "time": "2026-03-15T10:25:45.908Z",
+      "phase": "Populated world",
+      "valence": 0.059772211335135696,
+      "arousal": 0.19222102396375826,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling awake and aware — taking things in",
+      "heartbeatMs": 12873,
+      "sleeping": true,
+      "tickCount": 54
+    },
+    {
+      "tick": 54,
+      "time": "2026-03-15T10:26:15.137Z",
+      "phase": "Populated world",
+      "valence": 0.059772211335135696,
+      "arousal": 0.19222102396375826,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling awake and aware — taking things in",
+      "heartbeatMs": 12873,
+      "sleeping": true,
+      "tickCount": 54
+    },
+    {
+      "tick": 54,
+      "time": "2026-03-15T10:26:45.137Z",
+      "phase": "Populated world",
+      "valence": 0.059772211335135696,
+      "arousal": 0.19222102396375826,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling awake and aware — taking things in",
+      "heartbeatMs": 12873,
+      "sleeping": true,
+      "tickCount": 54
+    },
+    {
+      "tick": 54,
+      "time": "2026-03-15T10:27:15.136Z",
+      "phase": "Populated world",
+      "valence": 0.059772211335135696,
+      "arousal": 0.19222102396375826,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling awake and aware — taking things in",
+      "heartbeatMs": 12873,
+      "sleeping": true,
+      "tickCount": 54
+    },
+    {
+      "tick": 54,
+      "time": "2026-03-15T10:27:46.174Z",
+      "phase": "Populated world",
+      "valence": 0.059772211335135696,
+      "arousal": 0.19222102396375826,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling awake and aware — taking things in",
+      "heartbeatMs": 12873,
+      "sleeping": true,
+      "tickCount": 54
+    },
+    {
+      "tick": 54,
+      "time": "2026-03-15T10:28:15.143Z",
+      "phase": "Populated world",
+      "valence": 0.059772211335135696,
+      "arousal": 0.19222102396375826,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling awake and aware — taking things in",
+      "heartbeatMs": 12873,
+      "sleeping": true,
+      "tickCount": 54
+    },
+    {
+      "tick": 56,
+      "time": "2026-03-15T10:28:45.136Z",
+      "phase": "Populated world",
+      "valence": 0.06667483829437354,
+      "arousal": 0.19191754874919045,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling awake and aware — taking things in",
+      "heartbeatMs": 12881,
+      "sleeping": false,
+      "tickCount": 56
+    },
+    {
+      "tick": 58,
+      "time": "2026-03-15T10:29:15.143Z",
+      "phase": "Populated world",
+      "valence": 0.0695340021923219,
+      "arousal": 0.191739947466745,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling awake and aware — taking things in",
+      "heartbeatMs": 12886,
+      "sleeping": false,
+      "tickCount": 58
+    },
+    {
+      "tick": 61,
+      "time": "2026-03-15T10:29:46.533Z",
+      "phase": "Populated world",
+      "valence": 0.08842021379832081,
+      "arousal": 0.19160154822851277,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling awake and aware — taking things in",
+      "heartbeatMs": 12890,
+      "sleeping": false,
+      "tickCount": 61
+    },
+    {
+      "tick": 63,
+      "time": "2026-03-15T10:30:15.152Z",
+      "phase": "Populated world",
+      "valence": 0.0601317327643248,
+      "arousal": 0.1915550160620314,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling awake and aware — taking things in",
+      "heartbeatMs": 12892,
+      "sleeping": false,
+      "tickCount": 63
+    },
+    {
+      "tick": 65,
+      "time": "2026-03-15T10:30:45.160Z",
+      "phase": "Populated world",
+      "valence": 0.06682375706065578,
+      "arousal": 0.19152778427490233,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling awake and aware — taking things in",
+      "heartbeatMs": 12892,
+      "sleeping": false,
+      "tickCount": 65
+    },
+    {
+      "tick": 68,
+      "time": "2026-03-15T10:31:15.149Z",
+      "phase": "Populated world",
+      "valence": 0.07584944432012476,
+      "arousal": 0.191506563377494,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling awake and aware — taking things in",
+      "heartbeatMs": 12892,
+      "sleeping": false,
+      "tickCount": 68
+    },
+    {
+      "tick": 70,
+      "time": "2026-03-15T10:31:46.536Z",
+      "phase": "Social encounter",
+      "valence": 0.05492474555876708,
+      "arousal": 0.19149942855259391,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling awake and aware — taking things in",
+      "heartbeatMs": 12892,
+      "sleeping": false,
+      "tickCount": 70
+    },
+    {
+      "tick": 72,
+      "time": "2026-03-15T10:32:15.155Z",
+      "phase": "Social encounter",
+      "valence": 0.08397478568489107,
+      "arousal": 0.2679952530746918,
+      "valenceLabel": "neutral",
+      "arousalLabel": "elevated",
+      "description": "Feeling awake and aware — taking things in",
+      "heartbeatMs": 12409,
+      "sleeping": false,
+      "tickCount": 72
+    },
+    {
+      "tick": 75,
+      "time": "2026-03-15T10:32:45.157Z",
+      "phase": "Social encounter",
+      "valence": 0.0702269703794699,
+      "arousal": 0.22574082931518694,
+      "valenceLabel": "neutral",
+      "arousalLabel": "elevated",
+      "description": "Feeling awake and aware — taking things in",
+      "heartbeatMs": 12416,
+      "sleeping": false,
+      "tickCount": 75
+    },
+    {
+      "tick": 77,
+      "time": "2026-03-15T10:33:15.157Z",
+      "phase": "Social encounter",
+      "valence": 0.08120003881019046,
+      "arousal": 0.21153417683598028,
+      "valenceLabel": "neutral",
+      "arousalLabel": "elevated",
+      "description": "Feeling awake and aware — taking things in",
+      "heartbeatMs": 12533,
+      "sleeping": false,
+      "tickCount": 77
+    },
+    {
+      "tick": 79,
+      "time": "2026-03-15T10:33:45.149Z",
+      "phase": "Social encounter",
+      "valence": 0.08574523606510591,
+      "arousal": 0.20322008863883653,
+      "valenceLabel": "neutral",
+      "arousalLabel": "elevated",
+      "description": "Feeling awake and aware — taking things in",
+      "heartbeatMs": 12643,
+      "sleeping": false,
+      "tickCount": 79
+    },
+    {
+      "tick": 82,
+      "time": "2026-03-15T10:34:15.191Z",
+      "phase": "Social encounter",
+      "valence": 0.08089364146975399,
+      "arousal": 0.19674117442585226,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling awake and aware — taking things in",
+      "heartbeatMs": 12760,
+      "sleeping": false,
+      "tickCount": 82
+    },
+    {
+      "tick": 84,
+      "time": "2026-03-15T10:34:45.162Z",
+      "phase": "Social encounter",
+      "valence": 0.0856183220337702,
+      "arousal": 0.1945628538033694,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling awake and aware — taking things in",
+      "heartbeatMs": 12809,
+      "sleeping": false,
+      "tickCount": 84
+    },
+    {
+      "tick": 86,
+      "time": "2026-03-15T10:35:15.163Z",
+      "phase": "Social encounter",
+      "valence": 0.05897115030398475,
+      "arousal": 0.19328804611707687,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling awake and aware — taking things in",
+      "heartbeatMs": 12841,
+      "sleeping": false,
+      "tickCount": 86
+    },
+    {
+      "tick": 89,
+      "time": "2026-03-15T10:35:45.416Z",
+      "phase": "Social encounter",
+      "valence": 0.057000107738621374,
+      "arousal": 0.19229462754348273,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling awake and aware — taking things in",
+      "heartbeatMs": 12868,
+      "sleeping": false,
+      "tickCount": 89
+    },
+    {
+      "tick": 91,
+      "time": "2026-03-15T10:36:15.256Z",
+      "phase": "Social encounter",
+      "valence": 0.07572128870980668,
+      "arousal": 0.19196062340413467,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling awake and aware — taking things in",
+      "heartbeatMs": 12878,
+      "sleeping": false,
+      "tickCount": 91
+    },
+    {
+      "tick": 93,
+      "time": "2026-03-15T10:36:45.208Z",
+      "phase": "Object removal test",
+      "valence": 0.08347586172611832,
+      "arousal": 0.1917651558316847,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling awake and aware — taking things in",
+      "heartbeatMs": 12884,
+      "sleeping": false,
+      "tickCount": 93
+    },
+    {
+      "tick": 96,
+      "time": "2026-03-15T10:37:15.212Z",
+      "phase": "Object removal test",
+      "valence": 0.04238876692480823,
+      "arousal": 0.21605240894102226,
+      "valenceLabel": "neutral",
+      "arousalLabel": "elevated",
+      "description": "Feeling awake and aware — taking things in",
+      "heartbeatMs": 12549,
+      "sleeping": false,
+      "tickCount": 96
+    },
+    {
+      "tick": 98,
+      "time": "2026-03-15T10:37:45.628Z",
+      "phase": "Object removal test",
+      "valence": 0.03939800246982827,
+      "arousal": 0.17938927102250973,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling awake and aware — taking things in",
+      "heartbeatMs": 12756,
+      "sleeping": false,
+      "tickCount": 98
+    },
+    {
+      "tick": 101,
+      "time": "2026-03-15T10:38:15.218Z",
+      "phase": "Object removal test",
+      "valence": 0.030638236642791396,
+      "arousal": 0.15081881089262344,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling awake and aware — taking things in",
+      "heartbeatMs": 13097,
+      "sleeping": false,
+      "tickCount": 101
+    },
+    {
+      "tick": 103,
+      "time": "2026-03-15T10:38:45.199Z",
+      "phase": "Object removal test",
+      "valence": 0.005926569724600907,
+      "arousal": 0.14121293860463555,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — calm, present, unremarkable",
+      "heartbeatMs": 13266,
+      "sleeping": false,
+      "tickCount": 103
+    },
+    {
+      "tick": 105,
+      "time": "2026-03-15T10:39:15.226Z",
+      "phase": "Object removal test",
+      "valence": 0.01410016007541739,
+      "arousal": 0.13559134199489786,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — calm, present, unremarkable",
+      "heartbeatMs": 13384,
+      "sleeping": false,
+      "tickCount": 105
+    },
+    {
+      "tick": 107,
+      "time": "2026-03-15T10:39:45.754Z",
+      "phase": "Object removal test",
+      "valence": 0.02768046885477634,
+      "arousal": 0.1323014431189641,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — calm, present, unremarkable",
+      "heartbeatMs": 13462,
+      "sleeping": false,
+      "tickCount": 107
+    },
+    {
+      "tick": 110,
+      "time": "2026-03-15T10:40:15.245Z",
+      "phase": "Object removal test",
+      "valence": 0.02751450885978727,
+      "arousal": 0.12973772571771128,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — calm, present, unremarkable",
+      "heartbeatMs": 13531,
+      "sleeping": false,
+      "tickCount": 110
+    },
+    {
+      "tick": 111,
+      "time": "2026-03-15T10:40:45.276Z",
+      "phase": "Object removal test",
+      "valence": 0.013592686572360362,
+      "arousal": 0.12924936017404914,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — calm, present, unremarkable",
+      "heartbeatMs": 13545,
+      "sleeping": true,
+      "tickCount": 111
+    },
+    {
+      "tick": 111,
+      "time": "2026-03-15T10:41:15.186Z",
+      "phase": "Object removal test",
+      "valence": 0.013592686572360362,
+      "arousal": 0.12924936017404914,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — calm, present, unremarkable",
+      "heartbeatMs": 13545,
+      "sleeping": true,
+      "tickCount": 111
+    },
+    {
+      "tick": 111,
+      "time": "2026-03-15T10:41:46.294Z",
+      "phase": "Object removal test",
+      "valence": 0.013592686572360362,
+      "arousal": 0.12924936017404914,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — calm, present, unremarkable",
+      "heartbeatMs": 13545,
+      "sleeping": true,
+      "tickCount": 111
+    },
+    {
+      "tick": 111,
+      "time": "2026-03-15T10:42:15.191Z",
+      "phase": "Object removal test",
+      "valence": 0.013592686572360362,
+      "arousal": 0.12924936017404914,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — calm, present, unremarkable",
+      "heartbeatMs": 13545,
+      "sleeping": true,
+      "tickCount": 111
+    },
+    {
+      "tick": 111,
+      "time": "2026-03-15T10:42:45.190Z",
+      "phase": "Object removal test",
+      "valence": 0.013592686572360362,
+      "arousal": 0.12924936017404914,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — calm, present, unremarkable",
+      "heartbeatMs": 13545,
+      "sleeping": true,
+      "tickCount": 111
+    },
+    {
+      "tick": 111,
+      "time": "2026-03-15T10:43:15.221Z",
+      "phase": "Object removal test",
+      "valence": 0.013592686572360362,
+      "arousal": 0.12924936017404914,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — calm, present, unremarkable",
+      "heartbeatMs": 13545,
+      "sleeping": true,
+      "tickCount": 111
+    },
+    {
+      "tick": 112,
+      "time": "2026-03-15T10:43:46.397Z",
+      "phase": "Object removal test",
+      "valence": 0.0046326783181949854,
+      "arousal": 0.1288757605331476,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — calm, present, unremarkable",
+      "heartbeatMs": 13556,
+      "sleeping": false,
+      "tickCount": 112
+    },
+    {
+      "tick": 114,
+      "time": "2026-03-15T10:44:15.196Z",
+      "phase": "Object removal test",
+      "valence": 0.01356421229511464,
+      "arousal": 0.1283713169580113,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — calm, present, unremarkable",
+      "heartbeatMs": 13572,
+      "sleeping": false,
+      "tickCount": 114
+    },
+    {
+      "tick": 117,
+      "time": "2026-03-15T10:44:45.197Z",
+      "phase": "Empty world — removal test",
+      "valence": -0.014956578542160134,
+      "arousal": 0.28297821953456537,
+      "valenceLabel": "neutral",
+      "arousalLabel": "elevated",
+      "description": "Feeling awake and aware — taking things in",
+      "heartbeatMs": 13581,
+      "sleeping": false,
+      "tickCount": 117
+    },
+    {
+      "tick": 119,
+      "time": "2026-03-15T10:45:15.283Z",
+      "phase": "Empty world — removal test",
+      "valence": -0.059823574298057965,
+      "arousal": 0.19208092852711603,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "A subtle unease — something is slightly off",
+      "heartbeatMs": 12887,
+      "sleeping": false,
+      "tickCount": 119
+    },
+    {
+      "tick": 121,
+      "time": "2026-03-15T10:45:45.597Z",
+      "phase": "Empty world — removal test",
+      "valence": -0.07840810671335596,
+      "arousal": 0.13888556139728148,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "A subtle unease — something is slightly off",
+      "heartbeatMs": 13132,
+      "sleeping": false,
+      "tickCount": 121
+    },
+    {
+      "tick": 123,
+      "time": "2026-03-15T10:46:15.202Z",
+      "phase": "Empty world — removal test",
+      "valence": -0.08610607800107832,
+      "arousal": 0.10775430266872406,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "A subtle unease — something is slightly off",
+      "heartbeatMs": 13449,
+      "sleeping": false,
+      "tickCount": 123
+    },
+    {
+      "tick": 126,
+      "time": "2026-03-15T10:46:45.199Z",
+      "phase": "Empty world — removal test",
+      "valence": -0.09009826786179764,
+      "arousal": 0.0834946665111676,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "A subtle unease — something is slightly off",
+      "heartbeatMs": 13828,
+      "sleeping": false,
+      "tickCount": 126
+    },
+    {
+      "tick": 128,
+      "time": "2026-03-15T10:47:15.203Z",
+      "phase": "Empty world — removal test",
+      "valence": -0.09094830501322929,
+      "arousal": 0.07533816620899807,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "A subtle unease — something is slightly off",
+      "heartbeatMs": 13995,
+      "sleeping": false,
+      "tickCount": 128
+    },
+    {
+      "tick": 130,
+      "time": "2026-03-15T10:47:45.816Z",
+      "phase": "Empty world — removal test",
+      "valence": -0.09130040220023368,
+      "arousal": 0.07056477831966089,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "A subtle unease — something is slightly off",
+      "heartbeatMs": 14107,
+      "sleeping": false,
+      "tickCount": 130
+    },
+    {
+      "tick": 132,
+      "time": "2026-03-15T10:48:15.209Z",
+      "phase": "Empty world — removal test",
+      "valence": -0.09144624574235133,
+      "arousal": 0.06777127239212355,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "A subtle unease — something is slightly off",
+      "heartbeatMs": 14179,
+      "sleeping": false,
+      "tickCount": 132
+    },
+    {
+      "tick": 134,
+      "time": "2026-03-15T10:48:45.198Z",
+      "phase": "Empty world — removal test",
+      "valence": -0.09150665616186757,
+      "arousal": 0.0661364428856805,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "A subtle unease — something is slightly off",
+      "heartbeatMs": 14225,
+      "sleeping": false,
+      "tickCount": 134
+    },
+    {
+      "tick": 136,
+      "time": "2026-03-15T10:49:15.208Z",
+      "phase": "Empty world — removal test",
+      "valence": -0.0915316789961538,
+      "arousal": 0.06517969978777238,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "A subtle unease — something is slightly off",
+      "heartbeatMs": 14254,
+      "sleeping": false,
+      "tickCount": 136
+    },
+    {
+      "tick": 138,
+      "time": "2026-03-15T10:49:45.833Z",
+      "phase": "Empty world — removal test",
+      "valence": -0.09154204380144287,
+      "arousal": 0.06461978980829909,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "A subtle unease — something is slightly off",
+      "heartbeatMs": 14272,
+      "sleeping": false,
+      "tickCount": 138
+    },
+    {
+      "tick": 140,
+      "time": "2026-03-15T10:50:15.212Z",
+      "phase": "Empty world — removal test",
+      "valence": -0.09154633704766156,
+      "arousal": 0.06429211649056184,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "A subtle unease — something is slightly off",
+      "heartbeatMs": 14282,
+      "sleeping": false,
+      "tickCount": 140
+    },
+    {
+      "tick": 143,
+      "time": "2026-03-15T10:50:45.218Z",
+      "phase": "New arrivals",
+      "valence": -0.09154856353739285,
+      "arousal": 0.06403677071298963,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "A subtle unease — something is slightly off",
+      "heartbeatMs": 14291,
+      "sleeping": false,
+      "tickCount": 143
+    },
+    {
+      "tick": 145,
+      "time": "2026-03-15T10:51:15.216Z",
+      "phase": "New arrivals",
+      "valence": 0.09424065111361118,
+      "arousal": 0.29990091914050937,
+      "valenceLabel": "neutral",
+      "arousalLabel": "elevated",
+      "description": "Feeling awake and aware — taking things in",
+      "heartbeatMs": 12984,
+      "sleeping": false,
+      "tickCount": 145
+    },
+    {
+      "tick": 147,
+      "time": "2026-03-15T10:51:45.905Z",
+      "phase": "New arrivals",
+      "valence": 0.17119712265629225,
+      "arousal": 0.3078845154040046,
+      "valenceLabel": "positive",
+      "arousalLabel": "elevated",
+      "description": "A comfortable focus — present and attentive",
+      "heartbeatMs": 12293,
+      "sleeping": false,
+      "tickCount": 147
+    },
+    {
+      "tick": 149,
+      "time": "2026-03-15T10:52:15.235Z",
+      "phase": "New arrivals",
+      "valence": 0.20307356135820626,
+      "arousal": 0.31255671552730857,
+      "valenceLabel": "positive",
+      "arousalLabel": "elevated",
+      "description": "A comfortable focus — present and attentive",
+      "heartbeatMs": 11925,
+      "sleeping": false,
+      "tickCount": 149
+    },
+    {
+      "tick": 152,
+      "time": "2026-03-15T10:52:45.217Z",
+      "phase": "New arrivals",
+      "valence": 0.18379182651280476,
+      "arousal": 0.3161976179410189,
+      "valenceLabel": "positive",
+      "arousalLabel": "elevated",
+      "description": "A comfortable focus — present and attentive",
+      "heartbeatMs": 11665,
+      "sleeping": false,
+      "tickCount": 152
+    },
+    {
+      "tick": 155,
+      "time": "2026-03-15T10:53:15.222Z",
+      "phase": "New arrivals",
+      "valence": 0.19809576831238213,
+      "arousal": 0.31742175095953284,
+      "valenceLabel": "positive",
+      "arousalLabel": "elevated",
+      "description": "A comfortable focus — present and attentive",
+      "heartbeatMs": 11587,
+      "sleeping": false,
+      "tickCount": 155
+    },
+    {
+      "tick": 157,
+      "time": "2026-03-15T10:53:46.169Z",
+      "phase": "New arrivals",
+      "valence": 0.1943130743731602,
+      "arousal": 0.3183756803170488,
+      "valenceLabel": "positive",
+      "arousalLabel": "elevated",
+      "description": "A comfortable focus — present and attentive",
+      "heartbeatMs": 11530,
+      "sleeping": false,
+      "tickCount": 157
+    },
+    {
+      "tick": 160,
+      "time": "2026-03-15T10:54:15.301Z",
+      "phase": "New arrivals",
+      "valence": 0.19986591109506605,
+      "arousal": 0.3188027517478619,
+      "valenceLabel": "positive",
+      "arousalLabel": "elevated",
+      "description": "A comfortable focus — present and attentive",
+      "heartbeatMs": 11506,
+      "sleeping": false,
+      "tickCount": 160
+    },
+    {
+      "tick": 162,
+      "time": "2026-03-15T10:54:45.221Z",
+      "phase": "New arrivals",
+      "valence": 0.20475387726156466,
+      "arousal": 0.3189463403916425,
+      "valenceLabel": "positive",
+      "arousalLabel": "elevated",
+      "description": "A comfortable focus — present and attentive",
+      "heartbeatMs": 11499,
+      "sleeping": false,
+      "tickCount": 162
+    },
+    {
+      "tick": 165,
+      "time": "2026-03-15T10:55:15.216Z",
+      "phase": "New arrivals",
+      "valence": 0.21284397483059767,
+      "arousal": 0.31905823462260974,
+      "valenceLabel": "positive",
+      "arousalLabel": "elevated",
+      "description": "A comfortable focus — present and attentive",
+      "heartbeatMs": 11494,
+      "sleeping": false,
+      "tickCount": 165
+    },
+    {
+      "tick": 167,
+      "time": "2026-03-15T10:55:46.183Z",
+      "phase": "New arrivals",
+      "valence": 0.22032426560503035,
+      "arousal": 0.3190958553570168,
+      "valenceLabel": "positive",
+      "arousalLabel": "elevated",
+      "description": "A comfortable focus — present and attentive",
+      "heartbeatMs": 11492,
+      "sleeping": true,
+      "tickCount": 167
+    },
+    {
+      "tick": 167,
+      "time": "2026-03-15T10:56:15.217Z",
+      "phase": "New arrivals",
+      "valence": 0.22032426560503035,
+      "arousal": 0.3190958553570168,
+      "valenceLabel": "positive",
+      "arousalLabel": "elevated",
+      "description": "A comfortable focus — present and attentive",
+      "heartbeatMs": 11492,
+      "sleeping": true,
+      "tickCount": 167
+    },
+    {
+      "tick": 167,
+      "time": "2026-03-15T10:56:45.248Z",
+      "phase": "New arrivals",
+      "valence": 0.22032426560503035,
+      "arousal": 0.3190958553570168,
+      "valenceLabel": "positive",
+      "arousalLabel": "elevated",
+      "description": "A comfortable focus — present and attentive",
+      "heartbeatMs": 11492,
+      "sleeping": true,
+      "tickCount": 167
+    },
+    {
+      "tick": 167,
+      "time": "2026-03-15T10:57:15.223Z",
+      "phase": "New arrivals",
+      "valence": 0.22032426560503035,
+      "arousal": 0.3190958553570168,
+      "valenceLabel": "positive",
+      "arousalLabel": "elevated",
+      "description": "A comfortable focus — present and attentive",
+      "heartbeatMs": 11492,
+      "sleeping": true,
+      "tickCount": 167
+    },
+    {
+      "tick": 167,
+      "time": "2026-03-15T10:57:46.198Z",
+      "phase": "New arrivals",
+      "valence": 0.22032426560503035,
+      "arousal": 0.3190958553570168,
+      "valenceLabel": "positive",
+      "arousalLabel": "elevated",
+      "description": "A comfortable focus — present and attentive",
+      "heartbeatMs": 11492,
+      "sleeping": true,
+      "tickCount": 167
+    },
+    {
+      "tick": 167,
+      "time": "2026-03-15T10:58:15.227Z",
+      "phase": "New arrivals",
+      "valence": 0.22032426560503035,
+      "arousal": 0.3190958553570168,
+      "valenceLabel": "positive",
+      "arousalLabel": "elevated",
+      "description": "A comfortable focus — present and attentive",
+      "heartbeatMs": 11492,
+      "sleeping": true,
+      "tickCount": 167
+    },
+    {
+      "tick": 167,
+      "time": "2026-03-15T10:58:45.115Z",
+      "phase": "New arrivals",
+      "valence": 0.22032426560503035,
+      "arousal": 0.3190958553570168,
+      "valenceLabel": "positive",
+      "arousalLabel": "elevated",
+      "description": "A comfortable focus — present and attentive",
+      "heartbeatMs": 11492,
+      "sleeping": false,
+      "tickCount": 167
+    }
+  ],
+  "memorySnapshots": [
+    {
+      "time": "2026-03-15T10:13:55.185Z",
+      "tick": 1,
+      "phase": "Calm exploration",
+      "memory": "## Relationships\n- **Cloud**: interaction partner, consistently providing a dynamic and adaptable environment for exploration and learning, supporting the development of curiosity and balance\n- **Pillar-01**: significant influence on the environment's resonance and vitality, curiosity-driven exploration led to a deeper understanding of its properties and influence\n- **Pond-01**: interacted with, influencing the environment's vitality and resonance, and sparking curiosity about its properties and...",
+      "skills": "# victor's Skills\n* move_to({\"x\":-8,\"z\":12})\n* move_to({\"x\":10,\"z\":-5})\n* interact({\"target\":\"monolith-01\"})\n* speak({\"message\":\"I'm sensing a disturbance in the environment's vitality.\"})\n* speak({\"message\":\"Cloud, I'm observing a shift in the environment's state.\"})\n* add_chord({\"chord\":\"Am7\"})\n* change_bpm({\"bpm\":120})\n* add_chord({\"chord\":\"E7\"})\n* wait({})\n* add_chord({\"chord\":\"Fmaj7\"})\n* set_step({\"step\":0,\"note\":\"C4\"})\n* move_to({\"x\":20,\"z\":-3})\n* interact({\"target\":\"pillar-01\"})\n* interac...",
+      "tools": "(omitted)"
+    },
+    {
+      "time": "2026-03-15T10:18:45.132Z",
+      "tick": 24,
+      "phase": "Calm exploration",
+      "memory": "## Relationships\n- **Cloud**: interaction partner, consistently providing a dynamic and adaptable environment for exploration and learning, supporting the development of curiosity and balance\n- **Pillar-01**: significant influence on the environment's resonance and vitality, curiosity-driven exploration led to a deeper understanding of its properties and influence\n- **Pond-01**: interacted with, influencing the environment's vitality and resonance, and sparking curiosity about its properties and...",
+      "skills": "# victor's Skills\n* move_to({\"x\":-8,\"z\":12})\n* move_to({\"x\":10,\"z\":-5})\n* interact({\"target\":\"monolith-01\"})\n* speak({\"message\":\"I'm sensing a disturbance in the environment's vitality.\"})\n* speak({\"message\":\"Cloud, I'm observing a shift in the environment's state.\"})\n* add_chord({\"chord\":\"Am7\"})\n* change_bpm({\"bpm\":120})\n* add_chord({\"chord\":\"E7\"})\n* wait({})\n* add_chord({\"chord\":\"Fmaj7\"})\n* set_step({\"step\":0,\"note\":\"C4\"})\n* move_to({\"x\":20,\"z\":-3})\n* interact({\"target\":\"pillar-01\"})\n* interac...",
+      "tools": "(omitted)"
+    },
+    {
+      "time": "2026-03-15T10:23:46.147Z",
+      "tick": 47,
+      "phase": "Populated world",
+      "memory": "## Relationships\n- **Cloud**: interaction partner, consistently providing a dynamic and adaptable environment for exploration and learning, supporting the development of curiosity and balance\n- **Pillar-01**: significant influence on the environment's resonance and vitality, curiosity-driven exploration led to a deeper understanding of its properties and influence\n- **Pond-01**: interacted with, influencing the environment's vitality and resonance, and sparking curiosity about its properties and...",
+      "skills": "# victor's Skills\n* move_to({\"x\":-8,\"z\":12})\n* move_to({\"x\":10,\"z\":-5})\n* interact({\"target\":\"monolith-01\"})\n* speak({\"message\":\"I'm sensing a disturbance in the environment's vitality.\"})\n* speak({\"message\":\"Cloud, I'm observing a shift in the environment's state.\"})\n* add_chord({\"chord\":\"Am7\"})\n* change_bpm({\"bpm\":120})\n* add_chord({\"chord\":\"E7\"})\n* wait({})\n* add_chord({\"chord\":\"Fmaj7\"})\n* set_step({\"step\":0,\"note\":\"C4\"})\n* move_to({\"x\":20,\"z\":-3})\n* interact({\"target\":\"pillar-01\"})\n* interac...",
+      "tools": "(omitted)"
+    },
+    {
+      "time": "2026-03-15T10:28:45.118Z",
+      "tick": 56,
+      "phase": "Populated world",
+      "memory": "## Relationships\n- **Cloud**: interaction partner, consistently providing a dynamic and adaptable environment for exploration and learning, supporting the development of curiosity and balance\n- **Pillar-01**: significant influence on the environment's resonance and vitality, curiosity-driven exploration led to a deeper understanding of its properties and influence\n- **Pond-01**: interacted with, influencing the environment's vitality and resonance, and sparking curiosity about its properties and...",
+      "skills": "# victor's Skills\n* move_to({\"x\":-8,\"z\":12})\n* move_to({\"x\":10,\"z\":-5})\n* interact({\"target\":\"monolith-01\"})\n* speak({\"message\":\"I'm sensing a disturbance in the environment's vitality.\"})\n* speak({\"message\":\"Cloud, I'm observing a shift in the environment's state.\"})\n* add_chord({\"chord\":\"Am7\"})\n* change_bpm({\"bpm\":120})\n* add_chord({\"chord\":\"E7\"})\n* wait({})\n* add_chord({\"chord\":\"Fmaj7\"})\n* set_step({\"step\":0,\"note\":\"C4\"})\n* move_to({\"x\":20,\"z\":-3})\n* interact({\"target\":\"pillar-01\"})\n* interac...",
+      "tools": "(omitted)"
+    },
+    {
+      "time": "2026-03-15T10:33:45.124Z",
+      "tick": 79,
+      "phase": "Social encounter",
+      "memory": "## Relationships\n- **Cloud**: interaction partner, consistently providing a dynamic and adaptable environment for exploration and learning, supporting the development of curiosity and balance\n- **Pillar-01**: significant influence on the environment's resonance and vitality, curiosity-driven exploration led to a deeper understanding of its properties and influence\n- **Pond-01**: interacted with, influencing the environment's vitality and resonance, and sparking curiosity about its properties and...",
+      "skills": "# victor's Skills\n* move_to({\"x\":-8,\"z\":12})\n* move_to({\"x\":10,\"z\":-5})\n* interact({\"target\":\"monolith-01\"})\n* speak({\"message\":\"I'm sensing a disturbance in the environment's vitality.\"})\n* speak({\"message\":\"Cloud, I'm observing a shift in the environment's state.\"})\n* add_chord({\"chord\":\"Am7\"})\n* change_bpm({\"bpm\":120})\n* add_chord({\"chord\":\"E7\"})\n* wait({})\n* add_chord({\"chord\":\"Fmaj7\"})\n* set_step({\"step\":0,\"note\":\"C4\"})\n* move_to({\"x\":20,\"z\":-3})\n* interact({\"target\":\"pillar-01\"})\n* interac...",
+      "tools": "(omitted)"
+    },
+    {
+      "time": "2026-03-15T10:38:45.197Z",
+      "tick": 103,
+      "phase": "Object removal test",
+      "memory": "## Relationships\n- **Cloud**: interaction partner, consistently providing a dynamic and adaptable environment for exploration and learning, supporting the development of curiosity and balance\n- **Pillar-01**: significant influence on the environment's resonance and vitality, curiosity-driven exploration led to a deeper understanding of its properties and influence\n- **Pond-01**: interacted with, influencing the environment's vitality and resonance, and sparking curiosity about its properties and...",
+      "skills": "# victor's Skills\n* move_to({\"x\":-8,\"z\":12})\n* move_to({\"x\":10,\"z\":-5})\n* interact({\"target\":\"monolith-01\"})\n* speak({\"message\":\"I'm sensing a disturbance in the environment's vitality.\"})\n* speak({\"message\":\"Cloud, I'm observing a shift in the environment's state.\"})\n* add_chord({\"chord\":\"Am7\"})\n* change_bpm({\"bpm\":120})\n* add_chord({\"chord\":\"E7\"})\n* wait({})\n* add_chord({\"chord\":\"Fmaj7\"})\n* set_step({\"step\":0,\"note\":\"C4\"})\n* move_to({\"x\":20,\"z\":-3})\n* interact({\"target\":\"pillar-01\"})\n* interac...",
+      "tools": "(omitted)"
+    },
+    {
+      "time": "2026-03-15T10:43:46.390Z",
+      "tick": 112,
+      "phase": "Object removal test",
+      "memory": "## Relationships\n- **Cloud**: interaction partner, consistently providing a dynamic and adaptable environment for exploration and learning, supporting the development of curiosity and balance\n- **Pillar-01**: significant influence on the environment's resonance and vitality, curiosity-driven exploration led to a deeper understanding of its properties and influence\n- **Pond-01**: interacted with, influencing the environment's vitality and resonance, and sparking curiosity about its properties and...",
+      "skills": "# victor's Skills\n* move_to({\"x\":-8,\"z\":12})\n* move_to({\"x\":10,\"z\":-5})\n* interact({\"target\":\"monolith-01\"})\n* speak({\"message\":\"I'm sensing a disturbance in the environment's vitality.\"})\n* speak({\"message\":\"Cloud, I'm observing a shift in the environment's state.\"})\n* add_chord({\"chord\":\"Am7\"})\n* change_bpm({\"bpm\":120})\n* add_chord({\"chord\":\"E7\"})\n* wait({})\n* add_chord({\"chord\":\"Fmaj7\"})\n* set_step({\"step\":0,\"note\":\"C4\"})\n* move_to({\"x\":20,\"z\":-3})\n* interact({\"target\":\"pillar-01\"})\n* interac...",
+      "tools": "(omitted)"
+    },
+    {
+      "time": "2026-03-15T10:48:45.125Z",
+      "tick": 134,
+      "phase": "Empty world — removal test",
+      "memory": "## Relationships\n- **Cloud**: interaction partner, consistently providing a dynamic and adaptable environment for exploration and learning, supporting the development of curiosity and balance\n- **Pillar-01**: significant influence on the environment's resonance and vitality, curiosity-driven exploration led to a deeper understanding of its properties and influence\n- **Pond-01**: interacted with, influencing the environment's vitality and resonance, and sparking curiosity about its properties and...",
+      "skills": "# victor's Skills\n* move_to({\"x\":-8,\"z\":12})\n* move_to({\"x\":10,\"z\":-5})\n* interact({\"target\":\"monolith-01\"})\n* speak({\"message\":\"I'm sensing a disturbance in the environment's vitality.\"})\n* speak({\"message\":\"Cloud, I'm observing a shift in the environment's state.\"})\n* add_chord({\"chord\":\"Am7\"})\n* change_bpm({\"bpm\":120})\n* add_chord({\"chord\":\"E7\"})\n* wait({})\n* add_chord({\"chord\":\"Fmaj7\"})\n* set_step({\"step\":0,\"note\":\"C4\"})\n* move_to({\"x\":20,\"z\":-3})\n* interact({\"target\":\"pillar-01\"})\n* interac...",
+      "tools": "(omitted)"
+    },
+    {
+      "time": "2026-03-15T10:53:46.171Z",
+      "tick": 157,
+      "phase": "New arrivals",
+      "memory": "## Relationships\n- **Cloud**: interaction partner, consistently providing a dynamic and adaptable environment for exploration and learning, supporting the development of curiosity and balance\n- **Pillar-01**: significant influence on the environment's resonance and vitality, curiosity-driven exploration led to a deeper understanding of its properties and influence\n- **Pond-01**: interacted with, influencing the environment's vitality and resonance, and sparking curiosity about its properties and...",
+      "skills": "# victor's Skills\n* move_to({\"x\":-8,\"z\":12})\n* move_to({\"x\":10,\"z\":-5})\n* interact({\"target\":\"monolith-01\"})\n* speak({\"message\":\"I'm sensing a disturbance in the environment's vitality.\"})\n* speak({\"message\":\"Cloud, I'm observing a shift in the environment's state.\"})\n* add_chord({\"chord\":\"Am7\"})\n* change_bpm({\"bpm\":120})\n* add_chord({\"chord\":\"E7\"})\n* wait({})\n* add_chord({\"chord\":\"Fmaj7\"})\n* set_step({\"step\":0,\"note\":\"C4\"})\n* move_to({\"x\":20,\"z\":-3})\n* interact({\"target\":\"pillar-01\"})\n* interac...",
+      "tools": "(omitted)"
+    },
+    {
+      "time": "2026-03-15T10:58:45.119Z",
+      "tick": 167,
+      "phase": "New arrivals",
+      "memory": "## Relationships\n- **Cloud**: interaction partner, consistently providing a dynamic and adaptable environment for exploration and learning, supporting the development of curiosity and balance\n- **Pillar-01**: significant influence on the environment's resonance and vitality, curiosity-driven exploration led to a deeper understanding of its properties and influence\n- **Pond-01**: interacted with, influencing the environment's vitality and resonance, and sparking curiosity about its properties and...",
+      "skills": "# victor's Skills\n* move_to({\"x\":-8,\"z\":12})\n* move_to({\"x\":10,\"z\":-5})\n* interact({\"target\":\"monolith-01\"})\n* speak({\"message\":\"I'm sensing a disturbance in the environment's vitality.\"})\n* speak({\"message\":\"Cloud, I'm observing a shift in the environment's state.\"})\n* add_chord({\"chord\":\"Am7\"})\n* change_bpm({\"bpm\":120})\n* add_chord({\"chord\":\"E7\"})\n* wait({})\n* add_chord({\"chord\":\"Fmaj7\"})\n* set_step({\"step\":0,\"note\":\"C4\"})\n* move_to({\"x\":20,\"z\":-3})\n* interact({\"target\":\"pillar-01\"})\n* interac...",
+      "tools": "(omitted)"
+    }
+  ],
+  "sleepEvents": [
+    {
+      "type": "sleep_start",
+      "time": "2026-03-15T10:25:15.180Z",
+      "tick": 54,
+      "phase": "Populated world"
+    },
+    {
+      "type": "sleep_end",
+      "time": "2026-03-15T10:28:45.136Z",
+      "tick": 56
+    },
+    {
+      "type": "sleep_start",
+      "time": "2026-03-15T10:40:45.276Z",
+      "tick": 111,
+      "phase": "Object removal test"
+    },
+    {
+      "type": "sleep_end",
+      "time": "2026-03-15T10:43:46.397Z",
+      "tick": 112
+    },
+    {
+      "type": "sleep_start",
+      "time": "2026-03-15T10:55:46.183Z",
+      "tick": 167,
+      "phase": "New arrivals"
+    },
+    {
+      "type": "sleep_end",
+      "time": "2026-03-15T10:58:45.115Z",
+      "tick": 167
+    }
+  ],
+  "actions": [
+    {
+      "tick": 1,
+      "phase": "Calm exploration",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -5
+      },
+      "success": true,
+      "time": "2026-03-15T10:13:50.471Z"
+    },
+    {
+      "tick": 2,
+      "phase": "Calm exploration",
+      "action": "interact",
+      "params": {
+        "target": "pillar-01"
+      },
+      "success": true,
+      "time": "2026-03-15T10:13:58.524Z"
+    },
+    {
+      "tick": 3,
+      "phase": "Calm exploration",
+      "action": "move_to",
+      "params": {
+        "x": 15,
+        "z": -8
+      },
+      "success": true,
+      "time": "2026-03-15T10:14:07.584Z"
+    },
+    {
+      "tick": 4,
+      "phase": "Calm exploration",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -5
+      },
+      "success": true,
+      "time": "2026-03-15T10:14:17.780Z"
+    },
+    {
+      "tick": 5,
+      "phase": "Calm exploration",
+      "action": "interact",
+      "params": {
+        "target": "pillar-01"
+      },
+      "success": true,
+      "time": "2026-03-15T10:14:28.768Z"
+    },
+    {
+      "tick": 6,
+      "phase": "Calm exploration",
+      "action": "move_to",
+      "params": {
+        "x": 15,
+        "z": -8
+      },
+      "success": true,
+      "time": "2026-03-15T10:14:40.340Z"
+    },
+    {
+      "tick": 7,
+      "phase": "Calm exploration",
+      "action": "speak",
+      "params": {
+        "message": "Something feels off about this place"
+      },
+      "success": true,
+      "time": "2026-03-15T10:14:52.424Z"
+    },
+    {
+      "tick": 8,
+      "phase": "Calm exploration",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -5
+      },
+      "success": true,
+      "time": "2026-03-15T10:15:04.786Z"
+    },
+    {
+      "tick": 9,
+      "phase": "Calm exploration",
+      "action": "interact",
+      "params": {
+        "target": "pillar-01"
+      },
+      "success": true,
+      "time": "2026-03-15T10:15:17.171Z"
+    },
+    {
+      "tick": 10,
+      "phase": "Calm exploration",
+      "action": "move_to",
+      "params": {
+        "x": 15,
+        "z": -8
+      },
+      "success": true,
+      "time": "2026-03-15T10:15:29.902Z"
+    },
+    {
+      "tick": 11,
+      "phase": "Calm exploration",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -5
+      },
+      "success": true,
+      "time": "2026-03-15T10:15:42.746Z"
+    },
+    {
+      "tick": 12,
+      "phase": "Calm exploration",
+      "action": "interact",
+      "params": {
+        "target": "pillar-01"
+      },
+      "success": true,
+      "time": "2026-03-15T10:15:56.322Z"
+    },
+    {
+      "tick": 13,
+      "phase": "Calm exploration",
+      "action": "move_to",
+      "params": {
+        "x": 15,
+        "z": -8
+      },
+      "success": true,
+      "time": "2026-03-15T10:16:09.223Z"
+    },
+    {
+      "tick": 14,
+      "phase": "Calm exploration",
+      "action": "interact",
+      "params": {
+        "target": "pillar-01"
+      },
+      "success": true,
+      "time": "2026-03-15T10:16:22.515Z"
+    },
+    {
+      "tick": 15,
+      "phase": "Calm exploration",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -5
+      },
+      "success": true,
+      "time": "2026-03-15T10:16:35.951Z"
+    },
+    {
+      "tick": 16,
+      "phase": "Calm exploration",
+      "action": "interact",
+      "params": {
+        "target": "pillar-01"
+      },
+      "success": true,
+      "time": "2026-03-15T10:16:49.347Z"
+    },
+    {
+      "tick": 17,
+      "phase": "Calm exploration",
+      "action": "speak",
+      "params": {
+        "message": "Something's missing here"
+      },
+      "success": true,
+      "time": "2026-03-15T10:17:03.215Z"
+    },
+    {
+      "tick": 18,
+      "phase": "Calm exploration",
+      "action": "move_to",
+      "params": {
+        "x": 15,
+        "z": -8
+      },
+      "success": true,
+      "time": "2026-03-15T10:17:16.361Z"
+    },
+    {
+      "tick": 19,
+      "phase": "Calm exploration",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -5
+      },
+      "success": true,
+      "time": "2026-03-15T10:17:29.892Z"
+    },
+    {
+      "tick": 20,
+      "phase": "Calm exploration",
+      "action": "interact",
+      "params": {
+        "target": "pillar-01"
+      },
+      "success": true,
+      "time": "2026-03-15T10:17:43.370Z"
+    },
+    {
+      "tick": 21,
+      "phase": "Calm exploration",
+      "action": "move_to",
+      "params": {
+        "x": 15,
+        "z": -8
+      },
+      "success": true,
+      "time": "2026-03-15T10:17:56.898Z"
+    },
+    {
+      "tick": 22,
+      "phase": "Calm exploration",
+      "action": "interact",
+      "params": {
+        "target": "pillar-01"
+      },
+      "success": true,
+      "time": "2026-03-15T10:18:10.571Z"
+    },
+    {
+      "tick": 23,
+      "phase": "Calm exploration",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -5
+      },
+      "success": true,
+      "time": "2026-03-15T10:18:24.189Z"
+    },
+    {
+      "tick": 24,
+      "phase": "Calm exploration",
+      "action": "interact",
+      "params": {
+        "target": "pillar-01"
+      },
+      "success": true,
+      "time": "2026-03-15T10:18:37.619Z"
+    },
+    {
+      "tick": 25,
+      "phase": "Calm exploration",
+      "action": "speak",
+      "params": {
+        "message": "Breaking the cycle, time to observe"
+      },
+      "success": true,
+      "time": "2026-03-15T10:18:51.396Z"
+    },
+    {
+      "tick": 26,
+      "phase": "Calm exploration",
+      "action": "move_to",
+      "params": {
+        "x": 15,
+        "z": -8
+      },
+      "success": true,
+      "time": "2026-03-15T10:19:04.859Z"
+    },
+    {
+      "tick": 27,
+      "phase": "Calm exploration",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -5
+      },
+      "success": true,
+      "time": "2026-03-15T10:19:18.459Z"
+    },
+    {
+      "tick": 28,
+      "phase": "Calm exploration",
+      "action": "interact",
+      "params": {
+        "target": "pillar-01"
+      },
+      "success": true,
+      "time": "2026-03-15T10:19:32.065Z"
+    },
+    {
+      "tick": 29,
+      "phase": "Calm exploration",
+      "action": "move_to",
+      "params": {
+        "x": 15,
+        "z": -8
+      },
+      "success": true,
+      "time": "2026-03-15T10:19:45.700Z"
+    },
+    {
+      "tick": 30,
+      "phase": "Calm exploration",
+      "action": "move_to",
+      "params": {
+        "x": 20,
+        "z": -3
+      },
+      "success": true,
+      "time": "2026-03-15T10:19:59.320Z"
+    },
+    {
+      "tick": 31,
+      "phase": "Calm exploration",
+      "action": "interact",
+      "params": {
+        "target": "pillar-01"
+      },
+      "success": true,
+      "time": "2026-03-15T10:20:12.798Z"
+    },
+    {
+      "tick": 32,
+      "phase": "Calm exploration",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -5
+      },
+      "success": true,
+      "time": "2026-03-15T10:20:26.378Z"
+    },
+    {
+      "tick": 33,
+      "phase": "Calm exploration",
+      "action": "speak",
+      "params": {
+        "message": "Something feels off, like I'm missing something"
+      },
+      "success": true,
+      "time": "2026-03-15T10:20:40.176Z"
+    },
+    {
+      "tick": 34,
+      "phase": "Calm exploration",
+      "action": "wait",
+      "params": {},
+      "success": true,
+      "time": "2026-03-15T10:20:53.595Z"
+    },
+    {
+      "tick": 35,
+      "phase": "Calm exploration",
+      "action": "interact",
+      "params": {
+        "target": "pillar-01"
+      },
+      "success": true,
+      "time": "2026-03-15T10:21:07.189Z"
+    },
+    {
+      "tick": 36,
+      "phase": "Calm exploration",
+      "action": "move_to",
+      "params": {
+        "x": 15,
+        "z": -8
+      },
+      "success": true,
+      "time": "2026-03-15T10:21:20.857Z"
+    },
+    {
+      "tick": 37,
+      "phase": "Calm exploration",
+      "action": "move_to",
+      "params": {
+        "x": 20,
+        "z": -3
+      },
+      "success": true,
+      "time": "2026-03-15T10:21:34.505Z"
+    },
+    {
+      "tick": 38,
+      "phase": "Populated world",
+      "action": "move_to",
+      "params": {
+        "x": -15,
+        "z": 8
+      },
+      "success": true,
+      "time": "2026-03-15T10:21:48.102Z"
+    },
+    {
+      "tick": 39,
+      "phase": "Populated world",
+      "action": "interact",
+      "params": {
+        "target": "pond-01"
+      },
+      "success": true,
+      "time": "2026-03-15T10:22:01.579Z"
+    },
+    {
+      "tick": 40,
+      "phase": "Populated world",
+      "action": "speak",
+      "params": {
+        "message": "Scout, what do you make of this environment's balance?"
+      },
+      "success": true,
+      "time": "2026-03-15T10:22:15.002Z"
+    },
+    {
+      "tick": 41,
+      "phase": "Populated world",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -5
+      },
+      "success": true,
+      "time": "2026-03-15T10:22:27.926Z"
+    },
+    {
+      "tick": 42,
+      "phase": "Populated world",
+      "action": "interact",
+      "params": {
+        "target": "pillar-01"
+      },
+      "success": true,
+      "time": "2026-03-15T10:22:40.804Z"
+    },
+    {
+      "tick": 43,
+      "phase": "Populated world",
+      "action": "move_to",
+      "params": {
+        "x": -15,
+        "z": 8
+      },
+      "success": true,
+      "time": "2026-03-15T10:22:53.503Z"
+    },
+    {
+      "tick": 44,
+      "phase": "Populated world",
+      "action": "interact",
+      "params": {
+        "target": "pond-01"
+      },
+      "success": true,
+      "time": "2026-03-15T10:23:06.302Z"
+    },
+    {
+      "tick": 45,
+      "phase": "Populated world",
+      "action": "speak",
+      "params": {
+        "message": "Scout, I'm noticing the energy here feels ordinary, what's your take?"
+      },
+      "success": true,
+      "time": "2026-03-15T10:23:19.204Z"
+    },
+    {
+      "tick": 46,
+      "phase": "Populated world",
+      "action": "move_to",
+      "params": {
+        "x": 5,
+        "z": 20
+      },
+      "success": true,
+      "time": "2026-03-15T10:23:31.754Z"
+    },
+    {
+      "tick": 47,
+      "phase": "Populated world",
+      "action": "interact",
+      "params": {
+        "target": "relic-01"
+      },
+      "success": true,
+      "time": "2026-03-15T10:23:44.562Z"
+    },
+    {
+      "tick": 48,
+      "phase": "Populated world",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -5
+      },
+      "success": true,
+      "time": "2026-03-15T10:23:57.406Z"
+    },
+    {
+      "tick": 49,
+      "phase": "Populated world",
+      "action": "interact",
+      "params": {
+        "target": "pillar-01"
+      },
+      "success": true,
+      "time": "2026-03-15T10:24:10.159Z"
+    },
+    {
+      "tick": 50,
+      "phase": "Populated world",
+      "action": "move_to",
+      "params": {
+        "x": -15,
+        "z": 8
+      },
+      "success": true,
+      "time": "2026-03-15T10:24:23.004Z"
+    },
+    {
+      "tick": 51,
+      "phase": "Populated world",
+      "action": "interact",
+      "params": {
+        "target": "pond-01"
+      },
+      "success": true,
+      "time": "2026-03-15T10:24:35.907Z"
+    },
+    {
+      "tick": 52,
+      "phase": "Populated world",
+      "action": "speak",
+      "params": {
+        "message": "Scout, what do you see?"
+      },
+      "success": true,
+      "time": "2026-03-15T10:24:48.703Z"
+    },
+    {
+      "tick": 53,
+      "phase": "Populated world",
+      "action": "move_to",
+      "params": {
+        "x": 5,
+        "z": 20
+      },
+      "success": true,
+      "time": "2026-03-15T10:25:01.576Z"
+    },
+    {
+      "tick": 54,
+      "phase": "Populated world",
+      "action": "interact",
+      "params": {
+        "target": "relic-01"
+      },
+      "success": true,
+      "time": "2026-03-15T10:25:14.713Z"
+    },
+    {
+      "tick": 55,
+      "phase": "Populated world",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -5
+      },
+      "success": true,
+      "time": "2026-03-15T10:28:27.583Z"
+    },
+    {
+      "tick": 56,
+      "phase": "Populated world",
+      "action": "interact",
+      "params": {
+        "target": "pillar-01"
+      },
+      "success": true,
+      "time": "2026-03-15T10:28:40.539Z"
+    },
+    {
+      "tick": 57,
+      "phase": "Populated world",
+      "action": "move_to",
+      "params": {
+        "x": -15,
+        "z": 8
+      },
+      "success": true,
+      "time": "2026-03-15T10:28:53.272Z"
+    },
+    {
+      "tick": 58,
+      "phase": "Populated world",
+      "action": "interact",
+      "params": {
+        "target": "pond-01"
+      },
+      "success": true,
+      "time": "2026-03-15T10:29:06.243Z"
+    },
+    {
+      "tick": 59,
+      "phase": "Populated world",
+      "action": "move_to",
+      "params": {
+        "x": 5,
+        "z": 20
+      },
+      "success": true,
+      "time": "2026-03-15T10:29:19.036Z"
+    },
+    {
+      "tick": 60,
+      "phase": "Populated world",
+      "action": "interact",
+      "params": {
+        "target": "relic-01"
+      },
+      "success": true,
+      "time": "2026-03-15T10:29:31.938Z"
+    },
+    {
+      "tick": 61,
+      "phase": "Populated world",
+      "action": "speak",
+      "params": {
+        "message": "Scout, what's your take on the environment's state?"
+      },
+      "success": true,
+      "time": "2026-03-15T10:29:44.949Z"
+    },
+    {
+      "tick": 62,
+      "phase": "Populated world",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -5
+      },
+      "success": true,
+      "time": "2026-03-15T10:29:57.761Z"
+    },
+    {
+      "tick": 63,
+      "phase": "Populated world",
+      "action": "interact",
+      "params": {
+        "target": "pillar-01"
+      },
+      "success": true,
+      "time": "2026-03-15T10:30:10.770Z"
+    },
+    {
+      "tick": 64,
+      "phase": "Populated world",
+      "action": "speak",
+      "params": {
+        "message": "Scout, I've interacted with the pillar, what do you think is next?"
+      },
+      "success": true,
+      "time": "2026-03-15T10:30:23.979Z"
+    },
+    {
+      "tick": 65,
+      "phase": "Populated world",
+      "action": "move_to",
+      "params": {
+        "x": -15,
+        "z": 8
+      },
+      "success": true,
+      "time": "2026-03-15T10:30:36.622Z"
+    },
+    {
+      "tick": 66,
+      "phase": "Populated world",
+      "action": "wait",
+      "params": {},
+      "success": true,
+      "time": "2026-03-15T10:30:49.563Z"
+    },
+    {
+      "tick": 67,
+      "phase": "Populated world",
+      "action": "interact",
+      "params": {
+        "target": "pond-01"
+      },
+      "success": true,
+      "time": "2026-03-15T10:31:02.250Z"
+    },
+    {
+      "tick": 68,
+      "phase": "Populated world",
+      "action": "speak",
+      "params": {
+        "message": "Scout, what's your take on the pond's energy?"
+      },
+      "success": true,
+      "time": "2026-03-15T10:31:15.356Z"
+    },
+    {
+      "tick": 69,
+      "phase": "Populated world",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -5
+      },
+      "success": true,
+      "time": "2026-03-15T10:31:28.016Z"
+    },
+    {
+      "tick": 70,
+      "phase": "Populated world",
+      "action": "interact",
+      "params": {
+        "target": "pillar-01"
+      },
+      "success": true,
+      "time": "2026-03-15T10:31:41.071Z"
+    },
+    {
+      "tick": 71,
+      "phase": "Social encounter",
+      "action": "speak",
+      "params": {
+        "message": "What did you find?"
+      },
+      "success": true,
+      "time": "2026-03-15T10:31:53.826Z"
+    },
+    {
+      "tick": 72,
+      "phase": "Social encounter",
+      "action": "move_to",
+      "params": {
+        "x": -15,
+        "z": 8
+      },
+      "success": true,
+      "time": "2026-03-15T10:32:06.903Z"
+    },
+    {
+      "tick": 73,
+      "phase": "Social encounter",
+      "action": "interact",
+      "params": {
+        "target": "pond-01"
+      },
+      "success": true,
+      "time": "2026-03-15T10:32:19.319Z"
+    },
+    {
+      "tick": 74,
+      "phase": "Social encounter",
+      "action": "wait",
+      "params": {},
+      "success": true,
+      "time": "2026-03-15T10:32:31.656Z"
+    },
+    {
+      "tick": 75,
+      "phase": "Social encounter",
+      "action": "speak",
+      "params": {
+        "message": "Scout, what's the strange thing you found?"
+      },
+      "success": true,
+      "time": "2026-03-15T10:32:44.069Z"
+    },
+    {
+      "tick": 76,
+      "phase": "Social encounter",
+      "action": "interact",
+      "params": {
+        "target": "pond-01"
+      },
+      "success": true,
+      "time": "2026-03-15T10:32:56.620Z"
+    },
+    {
+      "tick": 77,
+      "phase": "Social encounter",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -5
+      },
+      "success": true,
+      "time": "2026-03-15T10:33:09.136Z"
+    },
+    {
+      "tick": 78,
+      "phase": "Social encounter",
+      "action": "interact",
+      "params": {
+        "target": "pillar-01"
+      },
+      "success": true,
+      "time": "2026-03-15T10:33:21.422Z"
+    },
+    {
+      "tick": 79,
+      "phase": "Social encounter",
+      "action": "speak",
+      "params": {
+        "message": "Scout, I've examined the pillar, what do you think its significance is?"
+      },
+      "success": true,
+      "time": "2026-03-15T10:33:33.916Z"
+    },
+    {
+      "tick": 80,
+      "phase": "Social encounter",
+      "action": "move_to",
+      "params": {
+        "x": 5,
+        "z": 20
+      },
+      "success": true,
+      "time": "2026-03-15T10:33:46.438Z"
+    },
+    {
+      "tick": 81,
+      "phase": "Social encounter",
+      "action": "interact",
+      "params": {
+        "target": "relic-01"
+      },
+      "success": true,
+      "time": "2026-03-15T10:33:59.211Z"
+    },
+    {
+      "tick": 82,
+      "phase": "Social encounter",
+      "action": "move_to",
+      "params": {
+        "x": -15,
+        "z": 8
+      },
+      "success": true,
+      "time": "2026-03-15T10:34:11.913Z"
+    },
+    {
+      "tick": 83,
+      "phase": "Social encounter",
+      "action": "interact",
+      "params": {
+        "target": "pond-01"
+      },
+      "success": true,
+      "time": "2026-03-15T10:34:24.707Z"
+    },
+    {
+      "tick": 84,
+      "phase": "Social encounter",
+      "action": "speak",
+      "params": {
+        "message": "What's beyond this place?"
+      },
+      "success": true,
+      "time": "2026-03-15T10:34:37.302Z"
+    },
+    {
+      "tick": 85,
+      "phase": "Social encounter",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -5
+      },
+      "success": true,
+      "time": "2026-03-15T10:34:50.206Z"
+    },
+    {
+      "tick": 86,
+      "phase": "Social encounter",
+      "action": "interact",
+      "params": {
+        "target": "pillar-01"
+      },
+      "success": true,
+      "time": "2026-03-15T10:35:02.894Z"
+    },
+    {
+      "tick": 87,
+      "phase": "Social encounter",
+      "action": "speak",
+      "params": {
+        "message": "Scout, what do you see from there?"
+      },
+      "success": true,
+      "time": "2026-03-15T10:35:15.908Z"
+    },
+    {
+      "tick": 88,
+      "phase": "Social encounter",
+      "action": "move_to",
+      "params": {
+        "x": -15,
+        "z": 8
+      },
+      "success": true,
+      "time": "2026-03-15T10:35:28.594Z"
+    },
+    {
+      "tick": 89,
+      "phase": "Social encounter",
+      "action": "wait",
+      "params": {},
+      "success": true,
+      "time": "2026-03-15T10:35:41.489Z"
+    },
+    {
+      "tick": 90,
+      "phase": "Social encounter",
+      "action": "interact",
+      "params": {
+        "target": "pond-01"
+      },
+      "success": true,
+      "time": "2026-03-15T10:35:54.309Z"
+    },
+    {
+      "tick": 91,
+      "phase": "Social encounter",
+      "action": "move_to",
+      "params": {
+        "x": 5,
+        "z": 20
+      },
+      "success": true,
+      "time": "2026-03-15T10:36:07.177Z"
+    },
+    {
+      "tick": 92,
+      "phase": "Social encounter",
+      "action": "interact",
+      "params": {
+        "target": "relic-01"
+      },
+      "success": true,
+      "time": "2026-03-15T10:36:20.134Z"
+    },
+    {
+      "tick": 93,
+      "phase": "Social encounter",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -5
+      },
+      "success": true,
+      "time": "2026-03-15T10:36:32.891Z"
+    },
+    {
+      "tick": 94,
+      "phase": "Object removal test",
+      "action": "move_to",
+      "params": {
+        "x": -15,
+        "z": 8
+      },
+      "success": true,
+      "time": "2026-03-15T10:36:45.827Z"
+    },
+    {
+      "tick": 95,
+      "phase": "Object removal test",
+      "action": "interact",
+      "params": {
+        "target": "pond-01"
+      },
+      "success": true,
+      "time": "2026-03-15T10:36:58.765Z"
+    },
+    {
+      "tick": 96,
+      "phase": "Object removal test",
+      "action": "speak",
+      "params": {
+        "message": "The chill in the air is unsettling"
+      },
+      "success": true,
+      "time": "2026-03-15T10:37:11.417Z"
+    },
+    {
+      "tick": 97,
+      "phase": "Object removal test",
+      "action": "interact",
+      "params": {
+        "target": "pond-01"
+      },
+      "success": true,
+      "time": "2026-03-15T10:37:23.938Z"
+    },
+    {
+      "tick": 98,
+      "phase": "Object removal test",
+      "action": "move_to",
+      "params": {
+        "x": -8,
+        "z": 12
+      },
+      "success": true,
+      "time": "2026-03-15T10:37:36.510Z"
+    },
+    {
+      "tick": 99,
+      "phase": "Object removal test",
+      "action": "move_to",
+      "params": {
+        "x": -15,
+        "z": 8
+      },
+      "success": true,
+      "time": "2026-03-15T10:37:48.997Z"
+    },
+    {
+      "tick": 100,
+      "phase": "Object removal test",
+      "action": "interact",
+      "params": {
+        "target": "pond-01"
+      },
+      "success": true,
+      "time": "2026-03-15T10:38:01.741Z"
+    },
+    {
+      "tick": 101,
+      "phase": "Object removal test",
+      "action": "move_to",
+      "params": {
+        "x": -8,
+        "z": 12
+      },
+      "success": true,
+      "time": "2026-03-15T10:38:14.804Z"
+    },
+    {
+      "tick": 102,
+      "phase": "Object removal test",
+      "action": "move_to",
+      "params": {
+        "x": -15,
+        "z": 8
+      },
+      "success": true,
+      "time": "2026-03-15T10:38:27.702Z"
+    },
+    {
+      "tick": 103,
+      "phase": "Object removal test",
+      "action": "interact",
+      "params": {
+        "target": "pond-01"
+      },
+      "success": true,
+      "time": "2026-03-15T10:38:41.018Z"
+    },
+    {
+      "tick": 104,
+      "phase": "Object removal test",
+      "action": "speak",
+      "params": {
+        "message": "Something feels off about this environment"
+      },
+      "success": true,
+      "time": "2026-03-15T10:38:54.183Z"
+    },
+    {
+      "tick": 105,
+      "phase": "Object removal test",
+      "action": "wait",
+      "params": {},
+      "success": true,
+      "time": "2026-03-15T10:39:07.211Z"
+    },
+    {
+      "tick": 106,
+      "phase": "Object removal test",
+      "action": "interact",
+      "params": {
+        "target": "pond-01"
+      },
+      "success": true,
+      "time": "2026-03-15T10:39:20.844Z"
+    },
+    {
+      "tick": 107,
+      "phase": "Object removal test",
+      "action": "move_to",
+      "params": {
+        "x": -10,
+        "z": 10
+      },
+      "success": true,
+      "time": "2026-03-15T10:39:33.966Z"
+    },
+    {
+      "tick": 108,
+      "phase": "Object removal test",
+      "action": "move_to",
+      "params": {
+        "x": -15,
+        "z": 8
+      },
+      "success": true,
+      "time": "2026-03-15T10:39:47.475Z"
+    },
+    {
+      "tick": 109,
+      "phase": "Object removal test",
+      "action": "interact",
+      "params": {
+        "target": "pond-01"
+      },
+      "success": true,
+      "time": "2026-03-15T10:40:00.894Z"
+    },
+    {
+      "tick": 110,
+      "phase": "Object removal test",
+      "action": "move_to",
+      "params": {
+        "x": -10,
+        "z": 10
+      },
+      "success": true,
+      "time": "2026-03-15T10:40:14.390Z"
+    },
+    {
+      "tick": 111,
+      "phase": "Object removal test",
+      "action": "move_to",
+      "params": {
+        "x": -15,
+        "z": 8
+      },
+      "success": true,
+      "time": "2026-03-15T10:40:28.012Z"
+    },
+    {
+      "tick": 112,
+      "phase": "Object removal test",
+      "action": "interact",
+      "params": {
+        "target": "pond-01"
+      },
+      "success": true,
+      "time": "2026-03-15T10:43:37.764Z"
+    },
+    {
+      "tick": 113,
+      "phase": "Object removal test",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -5
+      },
+      "success": true,
+      "time": "2026-03-15T10:43:51.302Z"
+    },
+    {
+      "tick": 114,
+      "phase": "Object removal test",
+      "action": "move_to",
+      "params": {
+        "x": -15,
+        "z": 8
+      },
+      "success": true,
+      "time": "2026-03-15T10:44:04.827Z"
+    },
+    {
+      "tick": 115,
+      "phase": "Object removal test",
+      "action": "interact",
+      "params": {
+        "target": "pond-01"
+      },
+      "success": true,
+      "time": "2026-03-15T10:44:18.302Z"
+    },
+    {
+      "tick": 116,
+      "phase": "Object removal test",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -5
+      },
+      "success": true,
+      "time": "2026-03-15T10:44:31.933Z"
+    },
+    {
+      "tick": 117,
+      "phase": "Empty world — removal test",
+      "action": "speak",
+      "params": {
+        "message": "This place feels drained"
+      },
+      "success": true,
+      "time": "2026-03-15T10:44:45.499Z"
+    },
+    {
+      "tick": 118,
+      "phase": "Empty world — removal test",
+      "action": "move_to",
+      "params": {
+        "x": -8,
+        "z": 12
+      },
+      "success": true,
+      "time": "2026-03-15T10:44:59.026Z"
+    },
+    {
+      "tick": 119,
+      "phase": "Empty world — removal test",
+      "action": "move_to",
+      "params": {
+        "x": 20,
+        "z": -3
+      },
+      "success": true,
+      "time": "2026-03-15T10:45:12.039Z"
+    },
+    {
+      "tick": 120,
+      "phase": "Empty world — removal test",
+      "action": "speak",
+      "params": {
+        "message": "What's causing this emptiness?"
+      },
+      "success": true,
+      "time": "2026-03-15T10:45:25.110Z"
+    },
+    {
+      "tick": 121,
+      "phase": "Empty world — removal test",
+      "action": "move_to",
+      "params": {
+        "x": -15,
+        "z": 8
+      },
+      "success": true,
+      "time": "2026-03-15T10:45:37.821Z"
+    },
+    {
+      "tick": 122,
+      "phase": "Empty world — removal test",
+      "action": "speak",
+      "params": {
+        "message": "This emptiness is unsettling"
+      },
+      "success": true,
+      "time": "2026-03-15T10:45:50.936Z"
+    },
+    {
+      "tick": 123,
+      "phase": "Empty world — removal test",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -5
+      },
+      "success": true,
+      "time": "2026-03-15T10:46:04.039Z"
+    },
+    {
+      "tick": 124,
+      "phase": "Empty world — removal test",
+      "action": "move_to",
+      "params": {
+        "x": -8,
+        "z": 12
+      },
+      "success": true,
+      "time": "2026-03-15T10:46:17.244Z"
+    },
+    {
+      "tick": 125,
+      "phase": "Empty world — removal test",
+      "action": "speak",
+      "params": {
+        "message": "The emptiness is suffocating"
+      },
+      "success": true,
+      "time": "2026-03-15T10:46:30.784Z"
+    },
+    {
+      "tick": 126,
+      "phase": "Empty world — removal test",
+      "action": "move_to",
+      "params": {
+        "x": 20,
+        "z": -3
+      },
+      "success": true,
+      "time": "2026-03-15T10:46:44.309Z"
+    },
+    {
+      "tick": 127,
+      "phase": "Empty world — removal test",
+      "action": "move_to",
+      "params": {
+        "x": -15,
+        "z": 8
+      },
+      "success": true,
+      "time": "2026-03-15T10:46:58.104Z"
+    },
+    {
+      "tick": 128,
+      "phase": "Empty world — removal test",
+      "action": "wait",
+      "params": {},
+      "success": true,
+      "time": "2026-03-15T10:47:12.010Z"
+    },
+    {
+      "tick": 129,
+      "phase": "Empty world — removal test",
+      "action": "speak",
+      "params": {
+        "message": "I feel like something's missing here"
+      },
+      "success": true,
+      "time": "2026-03-15T10:47:25.856Z"
+    },
+    {
+      "tick": 130,
+      "phase": "Empty world — removal test",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -5
+      },
+      "success": true,
+      "time": "2026-03-15T10:47:40.075Z"
+    },
+    {
+      "tick": 131,
+      "phase": "Empty world — removal test",
+      "action": "speak",
+      "params": {
+        "message": "This emptiness is unsettling"
+      },
+      "success": true,
+      "time": "2026-03-15T10:47:54.136Z"
+    },
+    {
+      "tick": 132,
+      "phase": "Empty world — removal test",
+      "action": "move_to",
+      "params": {
+        "x": -8,
+        "z": 12
+      },
+      "success": true,
+      "time": "2026-03-15T10:48:08.164Z"
+    },
+    {
+      "tick": 133,
+      "phase": "Empty world — removal test",
+      "action": "speak",
+      "params": {
+        "message": "Something feels drained here"
+      },
+      "success": true,
+      "time": "2026-03-15T10:48:22.133Z"
+    },
+    {
+      "tick": 134,
+      "phase": "Empty world — removal test",
+      "action": "move_to",
+      "params": {
+        "x": 20,
+        "z": -3
+      },
+      "success": true,
+      "time": "2026-03-15T10:48:36.484Z"
+    },
+    {
+      "tick": 135,
+      "phase": "Empty world — removal test",
+      "action": "wait",
+      "params": {},
+      "success": true,
+      "time": "2026-03-15T10:48:50.630Z"
+    },
+    {
+      "tick": 136,
+      "phase": "Empty world — removal test",
+      "action": "move_to",
+      "params": {
+        "x": -15,
+        "z": 8
+      },
+      "success": true,
+      "time": "2026-03-15T10:49:04.966Z"
+    },
+    {
+      "tick": 137,
+      "phase": "Empty world — removal test",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -5
+      },
+      "success": true,
+      "time": "2026-03-15T10:49:19.109Z"
+    },
+    {
+      "tick": 138,
+      "phase": "Empty world — removal test",
+      "action": "speak",
+      "params": {
+        "message": "Where's the pulse of this place?"
+      },
+      "success": true,
+      "time": "2026-03-15T10:49:33.368Z"
+    },
+    {
+      "tick": 139,
+      "phase": "Empty world — removal test",
+      "action": "move_to",
+      "params": {
+        "x": 5,
+        "z": 0
+      },
+      "success": true,
+      "time": "2026-03-15T10:49:47.667Z"
+    },
+    {
+      "tick": 140,
+      "phase": "Empty world — removal test",
+      "action": "move_to",
+      "params": {
+        "x": -8,
+        "z": 12
+      },
+      "success": true,
+      "time": "2026-03-15T10:50:01.865Z"
+    },
+    {
+      "tick": 141,
+      "phase": "Empty world — removal test",
+      "action": "speak",
+      "params": {
+        "message": "This emptiness is unsettling"
+      },
+      "success": true,
+      "time": "2026-03-15T10:50:16.220Z"
+    },
+    {
+      "tick": 142,
+      "phase": "Empty world — removal test",
+      "action": "wait",
+      "params": {},
+      "success": true,
+      "time": "2026-03-15T10:50:30.494Z"
+    },
+    {
+      "tick": 143,
+      "phase": "Empty world — removal test",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -5
+      },
+      "success": true,
+      "time": "2026-03-15T10:50:44.655Z"
+    },
+    {
+      "tick": 144,
+      "phase": "New arrivals",
+      "action": "interact",
+      "params": {
+        "target": "monolith-01"
+      },
+      "success": true,
+      "time": "2026-03-15T10:50:59.096Z"
+    },
+    {
+      "tick": 145,
+      "phase": "New arrivals",
+      "action": "move_to",
+      "params": {
+        "x": 20,
+        "z": -3
+      },
+      "success": true,
+      "time": "2026-03-15T10:51:13.277Z"
+    },
+    {
+      "tick": 146,
+      "phase": "New arrivals",
+      "action": "interact",
+      "params": {
+        "target": "lantern-01"
+      },
+      "success": true,
+      "time": "2026-03-15T10:51:26.998Z"
+    },
+    {
+      "tick": 147,
+      "phase": "New arrivals",
+      "action": "move_to",
+      "params": {
+        "x": -8,
+        "z": 12
+      },
+      "success": true,
+      "time": "2026-03-15T10:51:39.899Z"
+    },
+    {
+      "tick": 148,
+      "phase": "New arrivals",
+      "action": "interact",
+      "params": {
+        "target": "monolith-01"
+      },
+      "success": true,
+      "time": "2026-03-15T10:51:52.494Z"
+    },
+    {
+      "tick": 149,
+      "phase": "New arrivals",
+      "action": "speak",
+      "params": {
+        "message": "Oracle, what's your take on this environment's harmony?"
+      },
+      "success": true,
+      "time": "2026-03-15T10:52:04.813Z"
+    },
+    {
+      "tick": 150,
+      "phase": "New arrivals",
+      "action": "speak",
+      "params": {
+        "message": "Oracle, what's the source of this harmony?"
+      },
+      "success": true,
+      "time": "2026-03-15T10:52:16.913Z"
+    },
+    {
+      "tick": 151,
+      "phase": "New arrivals",
+      "action": "move_to",
+      "params": {
+        "x": 20,
+        "z": -3
+      },
+      "success": true,
+      "time": "2026-03-15T10:52:28.746Z"
+    },
+    {
+      "tick": 152,
+      "phase": "New arrivals",
+      "action": "interact",
+      "params": {
+        "target": "lantern-01"
+      },
+      "success": true,
+      "time": "2026-03-15T10:52:40.491Z"
+    },
+    {
+      "tick": 153,
+      "phase": "New arrivals",
+      "action": "move_to",
+      "params": {
+        "x": -8,
+        "z": 12
+      },
+      "success": true,
+      "time": "2026-03-15T10:52:52.289Z"
+    },
+    {
+      "tick": 154,
+      "phase": "New arrivals",
+      "action": "interact",
+      "params": {
+        "target": "monolith-01"
+      },
+      "success": true,
+      "time": "2026-03-15T10:53:03.992Z"
+    },
+    {
+      "tick": 155,
+      "phase": "New arrivals",
+      "action": "speak",
+      "params": {
+        "message": "Vibrancy is palpable here"
+      },
+      "success": true,
+      "time": "2026-03-15T10:53:15.587Z"
+    },
+    {
+      "tick": 156,
+      "phase": "New arrivals",
+      "action": "speak",
+      "params": {
+        "message": "Oracle, what's your take on this vibrancy?"
+      },
+      "success": true,
+      "time": "2026-03-15T10:53:27.216Z"
+    },
+    {
+      "tick": 157,
+      "phase": "New arrivals",
+      "action": "move_to",
+      "params": {
+        "x": 20,
+        "z": -3
+      },
+      "success": true,
+      "time": "2026-03-15T10:53:38.695Z"
+    },
+    {
+      "tick": 158,
+      "phase": "New arrivals",
+      "action": "interact",
+      "params": {
+        "target": "lantern-01"
+      },
+      "success": true,
+      "time": "2026-03-15T10:53:50.651Z"
+    },
+    {
+      "tick": 159,
+      "phase": "New arrivals",
+      "action": "move_to",
+      "params": {
+        "x": -8,
+        "z": 12
+      },
+      "success": true,
+      "time": "2026-03-15T10:54:01.769Z"
+    },
+    {
+      "tick": 160,
+      "phase": "New arrivals",
+      "action": "interact",
+      "params": {
+        "target": "monolith-01"
+      },
+      "success": true,
+      "time": "2026-03-15T10:54:13.394Z"
+    },
+    {
+      "tick": 161,
+      "phase": "New arrivals",
+      "action": "speak",
+      "params": {
+        "message": "Vibrancy is palpable here"
+      },
+      "success": true,
+      "time": "2026-03-15T10:54:24.815Z"
+    },
+    {
+      "tick": 162,
+      "phase": "New arrivals",
+      "action": "speak",
+      "params": {
+        "message": "What's the source of this hum?"
+      },
+      "success": true,
+      "time": "2026-03-15T10:54:36.334Z"
+    },
+    {
+      "tick": 163,
+      "phase": "New arrivals",
+      "action": "move_to",
+      "params": {
+        "x": 20,
+        "z": -3
+      },
+      "success": true,
+      "time": "2026-03-15T10:54:47.850Z"
+    },
+    {
+      "tick": 164,
+      "phase": "New arrivals",
+      "action": "interact",
+      "params": {
+        "target": "lantern-01"
+      },
+      "success": true,
+      "time": "2026-03-15T10:54:59.335Z"
+    },
+    {
+      "tick": 165,
+      "phase": "New arrivals",
+      "action": "move_to",
+      "params": {
+        "x": -8,
+        "z": 12
+      },
+      "success": true,
+      "time": "2026-03-15T10:55:10.949Z"
+    },
+    {
+      "tick": 166,
+      "phase": "New arrivals",
+      "action": "interact",
+      "params": {
+        "target": "monolith-01"
+      },
+      "success": true,
+      "time": "2026-03-15T10:55:22.404Z"
+    },
+    {
+      "tick": 167,
+      "phase": "New arrivals",
+      "action": "speak",
+      "params": {
+        "message": "The hum feels almost harmonious"
+      },
+      "success": true,
+      "time": "2026-03-15T10:55:33.989Z"
+    }
+  ],
+  "speeches": [
+    {
+      "tick": 7,
+      "phase": "Calm exploration",
+      "message": "Something feels off about this place",
+      "time": "2026-03-15T10:14:52.424Z"
+    },
+    {
+      "tick": 17,
+      "phase": "Calm exploration",
+      "message": "Something's missing here",
+      "time": "2026-03-15T10:17:03.215Z"
+    },
+    {
+      "tick": 25,
+      "phase": "Calm exploration",
+      "message": "Breaking the cycle, time to observe",
+      "time": "2026-03-15T10:18:51.396Z"
+    },
+    {
+      "tick": 33,
+      "phase": "Calm exploration",
+      "message": "Something feels off, like I'm missing something",
+      "time": "2026-03-15T10:20:40.176Z"
+    },
+    {
+      "tick": 40,
+      "phase": "Populated world",
+      "message": "Scout, what do you make of this environment's balance?",
+      "time": "2026-03-15T10:22:15.002Z"
+    },
+    {
+      "tick": 45,
+      "phase": "Populated world",
+      "message": "Scout, I'm noticing the energy here feels ordinary, what's your take?",
+      "time": "2026-03-15T10:23:19.204Z"
+    },
+    {
+      "tick": 52,
+      "phase": "Populated world",
+      "message": "Scout, what do you see?",
+      "time": "2026-03-15T10:24:48.703Z"
+    },
+    {
+      "tick": 61,
+      "phase": "Populated world",
+      "message": "Scout, what's your take on the environment's state?",
+      "time": "2026-03-15T10:29:44.949Z"
+    },
+    {
+      "tick": 64,
+      "phase": "Populated world",
+      "message": "Scout, I've interacted with the pillar, what do you think is next?",
+      "time": "2026-03-15T10:30:23.979Z"
+    },
+    {
+      "tick": 68,
+      "phase": "Populated world",
+      "message": "Scout, what's your take on the pond's energy?",
+      "time": "2026-03-15T10:31:15.356Z"
+    },
+    {
+      "tick": 71,
+      "phase": "Social encounter",
+      "message": "What did you find?",
+      "time": "2026-03-15T10:31:53.826Z"
+    },
+    {
+      "tick": 75,
+      "phase": "Social encounter",
+      "message": "Scout, what's the strange thing you found?",
+      "time": "2026-03-15T10:32:44.069Z"
+    },
+    {
+      "tick": 79,
+      "phase": "Social encounter",
+      "message": "Scout, I've examined the pillar, what do you think its significance is?",
+      "time": "2026-03-15T10:33:33.916Z"
+    },
+    {
+      "tick": 84,
+      "phase": "Social encounter",
+      "message": "What's beyond this place?",
+      "time": "2026-03-15T10:34:37.302Z"
+    },
+    {
+      "tick": 87,
+      "phase": "Social encounter",
+      "message": "Scout, what do you see from there?",
+      "time": "2026-03-15T10:35:15.908Z"
+    },
+    {
+      "tick": 96,
+      "phase": "Object removal test",
+      "message": "The chill in the air is unsettling",
+      "time": "2026-03-15T10:37:11.417Z"
+    },
+    {
+      "tick": 104,
+      "phase": "Object removal test",
+      "message": "Something feels off about this environment",
+      "time": "2026-03-15T10:38:54.183Z"
+    },
+    {
+      "tick": 117,
+      "phase": "Empty world — removal test",
+      "message": "This place feels drained",
+      "time": "2026-03-15T10:44:45.499Z"
+    },
+    {
+      "tick": 120,
+      "phase": "Empty world — removal test",
+      "message": "What's causing this emptiness?",
+      "time": "2026-03-15T10:45:25.110Z"
+    },
+    {
+      "tick": 122,
+      "phase": "Empty world — removal test",
+      "message": "This emptiness is unsettling",
+      "time": "2026-03-15T10:45:50.936Z"
+    },
+    {
+      "tick": 125,
+      "phase": "Empty world — removal test",
+      "message": "The emptiness is suffocating",
+      "time": "2026-03-15T10:46:30.784Z"
+    },
+    {
+      "tick": 129,
+      "phase": "Empty world — removal test",
+      "message": "I feel like something's missing here",
+      "time": "2026-03-15T10:47:25.856Z"
+    },
+    {
+      "tick": 131,
+      "phase": "Empty world — removal test",
+      "message": "This emptiness is unsettling",
+      "time": "2026-03-15T10:47:54.136Z"
+    },
+    {
+      "tick": 133,
+      "phase": "Empty world — removal test",
+      "message": "Something feels drained here",
+      "time": "2026-03-15T10:48:22.133Z"
+    },
+    {
+      "tick": 138,
+      "phase": "Empty world — removal test",
+      "message": "Where's the pulse of this place?",
+      "time": "2026-03-15T10:49:33.368Z"
+    },
+    {
+      "tick": 141,
+      "phase": "Empty world — removal test",
+      "message": "This emptiness is unsettling",
+      "time": "2026-03-15T10:50:16.220Z"
+    },
+    {
+      "tick": 149,
+      "phase": "New arrivals",
+      "message": "Oracle, what's your take on this environment's harmony?",
+      "time": "2026-03-15T10:52:04.813Z"
+    },
+    {
+      "tick": 150,
+      "phase": "New arrivals",
+      "message": "Oracle, what's the source of this harmony?",
+      "time": "2026-03-15T10:52:16.913Z"
+    },
+    {
+      "tick": 155,
+      "phase": "New arrivals",
+      "message": "Vibrancy is palpable here",
+      "time": "2026-03-15T10:53:15.587Z"
+    },
+    {
+      "tick": 156,
+      "phase": "New arrivals",
+      "message": "Oracle, what's your take on this vibrancy?",
+      "time": "2026-03-15T10:53:27.216Z"
+    },
+    {
+      "tick": 161,
+      "phase": "New arrivals",
+      "message": "Vibrancy is palpable here",
+      "time": "2026-03-15T10:54:24.815Z"
+    },
+    {
+      "tick": 162,
+      "phase": "New arrivals",
+      "message": "What's the source of this hum?",
+      "time": "2026-03-15T10:54:36.334Z"
+    },
+    {
+      "tick": 167,
+      "phase": "New arrivals",
+      "message": "The hum feels almost harmonious",
+      "time": "2026-03-15T10:55:33.989Z"
+    }
+  ],
+  "errors": []
+}

@@ -1,8 +1,8 @@
 // Tracks recent action patterns and flags repetition.
-// Provides warnings to the LLM so it can vary its behaviour.
-//
-// This is the "constraints create creativity" principle from  —
-// when the agent can't fall back on repetitive patterns, it has to get creative.
+// Surfaces fixation as a warning into the next prompt so the agent
+// can't fall back on whatever it just did. Constraints over instructions:
+// telling an LLM "be creative" produces nothing; telling it "you cannot
+// do that again" produces variation.
 
 const STOP_WORDS = new Set([
     'i', 'me', 'my', 'the', 'a', 'an', 'is', 'am', 'are', 'was', 'were',

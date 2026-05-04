@@ -1,0 +1,17 @@
+# victor's Skills
+* interact({"target":"monolith-01"})
+* interact({"target":"lantern-01"})
+* interact({"target":"pond-01"})
+* move_to({"x":10,"z":20})
+* move_to({"x":-8,"z":12})
+* move_to({"x":-10,"z":15})
+* move_to({"x":-15,"z":8})
+* move_to({"x":-20,"z":10})
+* speak({"message":"This place feels different today"})
+* speak({"message":"The stillness is unsettling"})
+* speak({"message":"The stillness is captivating"})
+* speak({"message":"This energy feels vibrant, what's behind it?"})
+* speak({"message":"I sense a balance here, what's maintaining it?"})
+* speak({"message":"Oracle, what's your take on this balance?"})
+* speak({"message":"What's the source of this gentle hum?"})
+* speak({"message":"The hum is

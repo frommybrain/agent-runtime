@@ -1,0 +1,1066 @@
+{
+  "startTime": "2026-03-14T14:07:22.595Z",
+  "endTime": "2026-03-14T14:22:26.146Z",
+  "scenarios": [
+    {
+      "name": "Baseline (empty world)",
+      "ticks": 12,
+      "expect": "Arousal and valence near 0. Heartbeat should be slow (12-15s).",
+      "startTick": 1,
+      "startTime": "2026-03-14T14:07:24.600Z",
+      "statusBefore": {
+        "tick": 0,
+        "scenario": "Baseline (empty world)",
+        "time": "2026-03-14T14:07:24.839Z",
+        "valence": 0,
+        "arousal": 0,
+        "valenceLabel": "neutral",
+        "arousalLabel": "moderate",
+        "description": "Feeling steady — nothing remarkable",
+        "heartbeatMs": 8000
+      },
+      "statusAfter": {
+        "tick": 12,
+        "scenario": "Baseline (empty world)",
+        "time": "2026-03-14T14:09:50.861Z",
+        "valence": 0,
+        "arousal": 0,
+        "valenceLabel": "neutral",
+        "arousalLabel": "moderate",
+        "description": "Feeling steady — nothing remarkable",
+        "heartbeatMs": 14861
+      },
+      "actions": [
+        {
+          "tick": 1,
+          "scenario": "Baseline (empty world)",
+          "action": "move_to",
+          "params": {
+            "x": 10,
+            "z": -5
+          },
+          "success": true,
+          "time": "2026-03-14T14:07:28.796Z"
+        },
+        {
+          "tick": 2,
+          "scenario": "Baseline (empty world)",
+          "action": "speak",
+          "params": {
+            "message": "This terminal looks older than the others, what's its purpose?"
+          },
+          "success": true,
+          "time": "2026-03-14T14:07:36.818Z"
+        },
+        {
+          "tick": 3,
+          "scenario": "Baseline (empty world)",
+          "action": "speak",
+          "params": {
+            "message": "I'd like to know more about the terminals, their layout and the environment's vitality."
+          },
+          "success": true,
+          "time": "2026-03-14T14:07:46.803Z"
+        },
+        {
+          "tick": 4,
+          "scenario": "Baseline (empty world)",
+          "action": "speak",
+          "params": {
+            "message": "What kind of data would I find in an older terminal like this?"
+          },
+          "success": true,
+          "time": "2026-03-14T14:07:58.405Z"
+        },
+        {
+          "tick": 5,
+          "scenario": "Baseline (empty world)",
+          "action": "move_to",
+          "params": {
+            "x": 10,
+            "z": -5
+          },
+          "success": true,
+          "time": "2026-03-14T14:08:11.026Z"
+        },
+        {
+          "tick": 6,
+          "scenario": "Baseline (empty world)",
+          "action": "move_to",
+          "params": {
+            "x": 0,
+            "z": -5
+          },
+          "success": true,
+          "time": "2026-03-14T14:08:24.548Z"
+        },
+        {
+          "tick": 7,
+          "scenario": "Baseline (empty world)",
+          "action": "move_to",
+          "params": {
+            "x": 10,
+            "z": -5
+          },
+          "success": true,
+          "time": "2026-03-14T14:08:38.219Z"
+        },
+        {
+          "tick": 8,
+          "scenario": "Baseline (empty world)",
+          "action": "speak",
+          "params": {
+            "message": "Time to get a closer look at this terminal. Anything of interest?"
+          },
+          "success": true,
+          "time": "2026-03-14T14:08:52.479Z"
+        },
+        {
+          "tick": 9,
+          "scenario": "Baseline (empty world)",
+          "action": "speak",
+          "params": {
+            "message": "Time to inspect this terminal more closely, see what's inside"
+          },
+          "success": true,
+          "time": "2026-03-14T14:09:06.861Z"
+        },
+        {
+          "tick": 10,
+          "scenario": "Baseline (empty world)",
+          "action": "move_to",
+          "params": {
+            "x": 10,
+            "z": -5
+          },
+          "success": true,
+          "time": "2026-03-14T14:09:21.506Z"
+        },
+        {
+          "tick": 11,
+          "scenario": "Baseline (empty world)",
+          "action": "speak",
+          "params": {
+            "message": "Let's see if I can interact with this terminal"
+          },
+          "success": true,
+          "time": "2026-03-14T14:09:36.127Z"
+        }
+      ],
+      "endTick": 12,
+      "endTime": "2026-03-14T14:09:50.861Z"
+    },
+    {
+      "name": "Object appears",
+      "ticks": 8,
+      "expect": "Arousal spike from novelty. Agent should investigate the object.",
+      "startTick": 13,
+      "startTime": "2026-03-14T14:09:50.861Z",
+      "statusBefore": {
+        "tick": 12,
+        "scenario": "Object appears",
+        "time": "2026-03-14T14:09:50.867Z",
+        "valence": 0,
+        "arousal": 0,
+        "valenceLabel": "neutral",
+        "arousalLabel": "moderate",
+        "description": "Feeling steady — nothing remarkable",
+        "heartbeatMs": 14861
+      },
+      "statusAfter": {
+        "tick": 52,
+        "scenario": "Object appears",
+        "time": "2026-03-14T14:19:32.885Z",
+        "valence": 0,
+        "arousal": 0.04723920000000002,
+        "valenceLabel": "neutral",
+        "arousalLabel": "moderate",
+        "description": "Feeling steady — nothing remarkable",
+        "heartbeatMs": 14426
+      },
+      "actions": [
+        {
+          "tick": 13,
+          "scenario": "Object appears",
+          "action": "interact",
+          "params": {
+            "target": "terminal-01"
+          },
+          "success": true,
+          "time": "2026-03-14T14:10:05.897Z"
+        },
+        {
+          "tick": 14,
+          "scenario": "Object appears",
+          "action": "speak",
+          "params": {
+            "message": "Now that I have the terminal's attention, what's the first thing I should ask it?"
+          },
+          "success": true,
+          "time": "2026-03-14T14:10:20.757Z"
+        },
+        {
+          "tick": 49,
+          "scenario": "Object appears",
+          "action": "move_to",
+          "params": {
+            "x": 10,
+            "z": -5
+          },
+          "success": true,
+          "time": "2026-03-14T14:18:49.632Z"
+        },
+        {
+          "tick": 50,
+          "scenario": "Object appears",
+          "action": "move_to",
+          "params": {
+            "x": 10,
+            "z": -5
+          },
+          "success": true,
+          "time": "2026-03-14T14:19:04.156Z"
+        },
+        {
+          "tick": 51,
+          "scenario": "Object appears",
+          "action": "speak",
+          "params": {
+            "message": "What kind of information can you provide?"
+          },
+          "success": true,
+          "time": "2026-03-14T14:19:18.763Z"
+        }
+      ],
+      "endTick": 52,
+      "endTime": "2026-03-14T14:19:32.885Z"
+    },
+    {
+      "name": "Action failure",
+      "ticks": 6,
+      "expect": "Valence dip on failure. Agent tries something different next tick.",
+      "startTick": 53,
+      "startTime": "2026-03-14T14:19:32.885Z",
+      "statusBefore": {
+        "tick": 52,
+        "scenario": "Action failure",
+        "time": "2026-03-14T14:19:32.890Z",
+        "valence": 0,
+        "arousal": 0.04723920000000002,
+        "valenceLabel": "neutral",
+        "arousalLabel": "moderate",
+        "description": "Feeling steady — nothing remarkable",
+        "heartbeatMs": 14426
+      },
+      "statusAfter": {
+        "tick": 58,
+        "scenario": "Action failure",
+        "time": "2026-03-14T14:21:00.241Z",
+        "valence": -0.08857350000000001,
+        "arousal": 0.025104847687200015,
+        "valenceLabel": "neutral",
+        "arousalLabel": "moderate",
+        "description": "Feeling steady — nothing remarkable",
+        "heartbeatMs": 14644
+      },
+      "actions": [
+        {
+          "tick": 53,
+          "scenario": "Action failure",
+          "action": "move_to",
+          "params": {
+            "x": 10,
+            "z": -5
+          },
+          "success": true,
+          "time": "2026-03-14T14:19:47.544Z"
+        },
+        {
+          "tick": 54,
+          "scenario": "Action failure",
+          "action": "interact",
+          "params": {
+            "target": "terminal-01"
+          },
+          "success": true,
+          "time": "2026-03-14T14:20:01.959Z"
+        },
+        {
+          "tick": 55,
+          "scenario": "Action failure",
+          "action": "speak",
+          "params": {
+            "message": "What's that strange feeling?"
+          },
+          "success": true,
+          "time": "2026-03-14T14:20:16.794Z"
+        },
+        {
+          "tick": 56,
+          "scenario": "Action failure",
+          "action": "speak",
+          "params": {
+            "message": "What's behind that strange feeling I'm getting?"
+          },
+          "success": true,
+          "time": "2026-03-14T14:20:31.072Z"
+        },
+        {
+          "tick": 57,
+          "scenario": "Action failure",
+          "action": "interact",
+          "params": {
+            "target": "terminal-01"
+          },
+          "success": true,
+          "time": "2026-03-14T14:20:45.544Z"
+        },
+        {
+          "tick": 58,
+          "scenario": "Action failure",
+          "action": "interact",
+          "params": {
+            "target": "terminal-01"
+          },
+          "success": true,
+          "time": "2026-03-14T14:21:00.177Z"
+        }
+      ],
+      "endTick": 58,
+      "endTime": "2026-03-14T14:21:00.242Z"
+    }
+  ],
+  "statusPolls": [
+    {
+      "tick": 0,
+      "scenario": "Baseline (empty world)",
+      "time": "2026-03-14T14:07:24.839Z",
+      "valence": 0,
+      "arousal": 0,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 8000
+    },
+    {
+      "tick": 2,
+      "scenario": "Baseline (empty world)",
+      "time": "2026-03-14T14:07:36.617Z",
+      "valence": 0,
+      "arousal": 0,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 10100
+    },
+    {
+      "tick": 4,
+      "scenario": "Baseline (empty world)",
+      "time": "2026-03-14T14:07:58.219Z",
+      "valence": 0,
+      "arousal": 0,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 12599
+    },
+    {
+      "tick": 6,
+      "scenario": "Baseline (empty world)",
+      "time": "2026-03-14T14:08:24.325Z",
+      "valence": 0,
+      "arousal": 0,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 13823
+    },
+    {
+      "tick": 8,
+      "scenario": "Baseline (empty world)",
+      "time": "2026-03-14T14:08:52.140Z",
+      "valence": 0,
+      "arousal": 0,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14423
+    },
+    {
+      "tick": 10,
+      "scenario": "Baseline (empty world)",
+      "time": "2026-03-14T14:09:21.271Z",
+      "valence": 0,
+      "arousal": 0,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14717
+    },
+    {
+      "tick": 12,
+      "scenario": "Baseline (empty world)",
+      "time": "2026-03-14T14:09:50.859Z",
+      "valence": 0,
+      "arousal": 0,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14861
+    },
+    {
+      "tick": 12,
+      "scenario": "Baseline (empty world)",
+      "time": "2026-03-14T14:09:50.861Z",
+      "valence": 0,
+      "arousal": 0,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14861
+    },
+    {
+      "tick": 12,
+      "scenario": "Object appears",
+      "time": "2026-03-14T14:09:50.867Z",
+      "valence": 0,
+      "arousal": 0,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14861
+    },
+    {
+      "tick": 14,
+      "scenario": "Object appears",
+      "time": "2026-03-14T14:10:20.491Z",
+      "valence": 0,
+      "arousal": 0.07200000000000002,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14668
+    },
+    {
+      "tick": 48,
+      "scenario": "Object appears",
+      "time": "2026-03-14T14:18:46.333Z",
+      "valence": 0,
+      "arousal": 0.07200000000000002,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14530
+    },
+    {
+      "tick": 48,
+      "scenario": "Object appears",
+      "time": "2026-03-14T14:18:46.334Z",
+      "valence": 0,
+      "arousal": 0.07200000000000002,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14530
+    },
+    {
+      "tick": 48,
+      "scenario": "Object appears",
+      "time": "2026-03-14T14:18:46.337Z",
+      "valence": 0,
+      "arousal": 0.07200000000000002,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14530
+    },
+    {
+      "tick": 48,
+      "scenario": "Object appears",
+      "time": "2026-03-14T14:18:46.338Z",
+      "valence": 0,
+      "arousal": 0.07200000000000002,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14530
+    },
+    {
+      "tick": 48,
+      "scenario": "Object appears",
+      "time": "2026-03-14T14:18:46.339Z",
+      "valence": 0,
+      "arousal": 0.07200000000000002,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14530
+    },
+    {
+      "tick": 48,
+      "scenario": "Object appears",
+      "time": "2026-03-14T14:18:46.341Z",
+      "valence": 0,
+      "arousal": 0.07200000000000002,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14530
+    },
+    {
+      "tick": 48,
+      "scenario": "Object appears",
+      "time": "2026-03-14T14:18:46.345Z",
+      "valence": 0,
+      "arousal": 0.07200000000000002,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14530
+    },
+    {
+      "tick": 48,
+      "scenario": "Object appears",
+      "time": "2026-03-14T14:18:46.345Z",
+      "valence": 0,
+      "arousal": 0.07200000000000002,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14530
+    },
+    {
+      "tick": 48,
+      "scenario": "Object appears",
+      "time": "2026-03-14T14:18:46.353Z",
+      "valence": 0,
+      "arousal": 0.07200000000000002,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14530
+    },
+    {
+      "tick": 48,
+      "scenario": "Object appears",
+      "time": "2026-03-14T14:18:46.354Z",
+      "valence": 0,
+      "arousal": 0.07200000000000002,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14530
+    },
+    {
+      "tick": 48,
+      "scenario": "Object appears",
+      "time": "2026-03-14T14:18:46.354Z",
+      "valence": 0,
+      "arousal": 0.07200000000000002,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14530
+    },
+    {
+      "tick": 48,
+      "scenario": "Object appears",
+      "time": "2026-03-14T14:18:46.354Z",
+      "valence": 0,
+      "arousal": 0.07200000000000002,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14530
+    },
+    {
+      "tick": 48,
+      "scenario": "Object appears",
+      "time": "2026-03-14T14:18:46.354Z",
+      "valence": 0,
+      "arousal": 0.07200000000000002,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14530
+    },
+    {
+      "tick": 48,
+      "scenario": "Object appears",
+      "time": "2026-03-14T14:18:46.356Z",
+      "valence": 0,
+      "arousal": 0.07200000000000002,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14530
+    },
+    {
+      "tick": 48,
+      "scenario": "Object appears",
+      "time": "2026-03-14T14:18:46.356Z",
+      "valence": 0,
+      "arousal": 0.07200000000000002,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14530
+    },
+    {
+      "tick": 48,
+      "scenario": "Object appears",
+      "time": "2026-03-14T14:18:46.358Z",
+      "valence": 0,
+      "arousal": 0.07200000000000002,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14530
+    },
+    {
+      "tick": 48,
+      "scenario": "Object appears",
+      "time": "2026-03-14T14:18:46.358Z",
+      "valence": 0,
+      "arousal": 0.07200000000000002,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14530
+    },
+    {
+      "tick": 50,
+      "scenario": "Object appears",
+      "time": "2026-03-14T14:19:03.986Z",
+      "valence": 0,
+      "arousal": 0.058320000000000025,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14457
+    },
+    {
+      "tick": 52,
+      "scenario": "Object appears",
+      "time": "2026-03-14T14:19:32.883Z",
+      "valence": 0,
+      "arousal": 0.04723920000000002,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14426
+    },
+    {
+      "tick": 52,
+      "scenario": "Object appears",
+      "time": "2026-03-14T14:19:32.885Z",
+      "valence": 0,
+      "arousal": 0.04723920000000002,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14426
+    },
+    {
+      "tick": 52,
+      "scenario": "Action failure",
+      "time": "2026-03-14T14:19:32.890Z",
+      "valence": 0,
+      "arousal": 0.04723920000000002,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14426
+    },
+    {
+      "tick": 54,
+      "scenario": "Action failure",
+      "time": "2026-03-14T14:20:01.784Z",
+      "valence": -0.135,
+      "arousal": 0.03826375200000002,
+      "valenceLabel": "negative",
+      "arousalLabel": "moderate",
+      "description": "A subtle unease — something is off",
+      "heartbeatMs": 14469
+    },
+    {
+      "tick": 56,
+      "scenario": "Action failure",
+      "time": "2026-03-14T14:20:30.849Z",
+      "valence": -0.10935000000000002,
+      "arousal": 0.030993639120000017,
+      "valenceLabel": "negative",
+      "arousalLabel": "moderate",
+      "description": "A subtle unease — something is off",
+      "heartbeatMs": 14538
+    },
+    {
+      "tick": 58,
+      "scenario": "Action failure",
+      "time": "2026-03-14T14:21:00.241Z",
+      "valence": -0.08857350000000001,
+      "arousal": 0.025104847687200015,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14644
+    },
+    {
+      "tick": 58,
+      "scenario": "Action failure",
+      "time": "2026-03-14T14:21:00.241Z",
+      "valence": -0.08857350000000001,
+      "arousal": 0.025104847687200015,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14644
+    },
+    {
+      "tick": 58,
+      "scenario": "Stranger speaks",
+      "time": "2026-03-14T14:21:00.245Z",
+      "valence": -0.08857350000000001,
+      "arousal": 0.025104847687200015,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14644
+    },
+    {
+      "tick": 60,
+      "scenario": "Stranger speaks",
+      "time": "2026-03-14T14:21:29.307Z",
+      "valence": -0.044744535000000016,
+      "arousal": 0.11033492662663202,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14346
+    },
+    {
+      "tick": 62,
+      "scenario": "Stranger speaks",
+      "time": "2026-03-14T14:21:57.774Z",
+      "valence": -0.036243073350000016,
+      "arousal": 0.08937129056757195,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14097
+    },
+    {
+      "tick": 64,
+      "scenario": "Stranger speaks",
+      "time": "2026-03-14T14:22:26.038Z",
+      "valence": -0.029356889413500016,
+      "arousal": 0.07239074535973328,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14086
+    }
+  ],
+  "actions": [
+    {
+      "tick": 1,
+      "scenario": "Baseline (empty world)",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -5
+      },
+      "success": true,
+      "time": "2026-03-14T14:07:28.796Z"
+    },
+    {
+      "tick": 2,
+      "scenario": "Baseline (empty world)",
+      "action": "speak",
+      "params": {
+        "message": "This terminal looks older than the others, what's its purpose?"
+      },
+      "success": true,
+      "time": "2026-03-14T14:07:36.818Z"
+    },
+    {
+      "tick": 3,
+      "scenario": "Baseline (empty world)",
+      "action": "speak",
+      "params": {
+        "message": "I'd like to know more about the terminals, their layout and the environment's vitality."
+      },
+      "success": true,
+      "time": "2026-03-14T14:07:46.803Z"
+    },
+    {
+      "tick": 4,
+      "scenario": "Baseline (empty world)",
+      "action": "speak",
+      "params": {
+        "message": "What kind of data would I find in an older terminal like this?"
+      },
+      "success": true,
+      "time": "2026-03-14T14:07:58.405Z"
+    },
+    {
+      "tick": 5,
+      "scenario": "Baseline (empty world)",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -5
+      },
+      "success": true,
+      "time": "2026-03-14T14:08:11.026Z"
+    },
+    {
+      "tick": 6,
+      "scenario": "Baseline (empty world)",
+      "action": "move_to",
+      "params": {
+        "x": 0,
+        "z": -5
+      },
+      "success": true,
+      "time": "2026-03-14T14:08:24.548Z"
+    },
+    {
+      "tick": 7,
+      "scenario": "Baseline (empty world)",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -5
+      },
+      "success": true,
+      "time": "2026-03-14T14:08:38.219Z"
+    },
+    {
+      "tick": 8,
+      "scenario": "Baseline (empty world)",
+      "action": "speak",
+      "params": {
+        "message": "Time to get a closer look at this terminal. Anything of interest?"
+      },
+      "success": true,
+      "time": "2026-03-14T14:08:52.479Z"
+    },
+    {
+      "tick": 9,
+      "scenario": "Baseline (empty world)",
+      "action": "speak",
+      "params": {
+        "message": "Time to inspect this terminal more closely, see what's inside"
+      },
+      "success": true,
+      "time": "2026-03-14T14:09:06.861Z"
+    },
+    {
+      "tick": 10,
+      "scenario": "Baseline (empty world)",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -5
+      },
+      "success": true,
+      "time": "2026-03-14T14:09:21.506Z"
+    },
+    {
+      "tick": 11,
+      "scenario": "Baseline (empty world)",
+      "action": "speak",
+      "params": {
+        "message": "Let's see if I can interact with this terminal"
+      },
+      "success": true,
+      "time": "2026-03-14T14:09:36.127Z"
+    },
+    {
+      "tick": 12,
+      "scenario": "Object appears",
+      "action": "speak",
+      "params": {
+        "message": "Time to see if I can get any information out of this terminal"
+      },
+      "success": true,
+      "time": "2026-03-14T14:09:51.152Z"
+    },
+    {
+      "tick": 13,
+      "scenario": "Object appears",
+      "action": "interact",
+      "params": {
+        "target": "terminal-01"
+      },
+      "success": true,
+      "time": "2026-03-14T14:10:05.897Z"
+    },
+    {
+      "tick": 14,
+      "scenario": "Object appears",
+      "action": "speak",
+      "params": {
+        "message": "Now that I have the terminal's attention, what's the first thing I should ask it?"
+      },
+      "success": true,
+      "time": "2026-03-14T14:10:20.757Z"
+    },
+    {
+      "tick": 49,
+      "scenario": "Object appears",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -5
+      },
+      "success": true,
+      "time": "2026-03-14T14:18:49.632Z"
+    },
+    {
+      "tick": 50,
+      "scenario": "Object appears",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -5
+      },
+      "success": true,
+      "time": "2026-03-14T14:19:04.156Z"
+    },
+    {
+      "tick": 51,
+      "scenario": "Object appears",
+      "action": "speak",
+      "params": {
+        "message": "What kind of information can you provide?"
+      },
+      "success": true,
+      "time": "2026-03-14T14:19:18.763Z"
+    },
+    {
+      "tick": 52,
+      "scenario": "Action failure",
+      "action": "speak",
+      "params": {
+        "message": "Tell me something interesting about this environment."
+      },
+      "success": false,
+      "time": "2026-03-14T14:19:33.102Z"
+    },
+    {
+      "tick": 53,
+      "scenario": "Action failure",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -5
+      },
+      "success": true,
+      "time": "2026-03-14T14:19:47.544Z"
+    },
+    {
+      "tick": 54,
+      "scenario": "Action failure",
+      "action": "interact",
+      "params": {
+        "target": "terminal-01"
+      },
+      "success": true,
+      "time": "2026-03-14T14:20:01.959Z"
+    },
+    {
+      "tick": 55,
+      "scenario": "Action failure",
+      "action": "speak",
+      "params": {
+        "message": "What's that strange feeling?"
+      },
+      "success": true,
+      "time": "2026-03-14T14:20:16.794Z"
+    },
+    {
+      "tick": 56,
+      "scenario": "Action failure",
+      "action": "speak",
+      "params": {
+        "message": "What's behind that strange feeling I'm getting?"
+      },
+      "success": true,
+      "time": "2026-03-14T14:20:31.072Z"
+    },
+    {
+      "tick": 57,
+      "scenario": "Action failure",
+      "action": "interact",
+      "params": {
+        "target": "terminal-01"
+      },
+      "success": true,
+      "time": "2026-03-14T14:20:45.544Z"
+    },
+    {
+      "tick": 58,
+      "scenario": "Action failure",
+      "action": "interact",
+      "params": {
+        "target": "terminal-01"
+      },
+      "success": true,
+      "time": "2026-03-14T14:21:00.177Z"
+    },
+    {
+      "tick": 59,
+      "scenario": "Stranger speaks",
+      "action": "speak",
+      "params": {
+        "message": "seen what artifact?"
+      },
+      "success": true,
+      "time": "2026-03-14T14:21:14.823Z"
+    },
+    {
+      "tick": 60,
+      "scenario": "Stranger speaks",
+      "action": "speak",
+      "params": {
+        "message": "what's the terminal showing now?"
+      },
+      "success": true,
+      "time": "2026-03-14T14:21:29.537Z"
+    },
+    {
+      "tick": 61,
+      "scenario": "Stranger speaks",
+      "action": "speak",
+      "params": {
+        "message": "no strangers nearby, is that a concern?"
+      },
+      "success": true,
+      "time": "2026-03-14T14:21:43.818Z"
+    },
+    {
+      "tick": 62,
+      "scenario": "Stranger speaks",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -5
+      },
+      "success": true,
+      "time": "2026-03-14T14:21:57.947Z"
+    },
+    {
+      "tick": 63,
+      "scenario": "Stranger speaks",
+      "action": "speak",
+      "params": {
+        "message": "what's the terminal showing now?"
+      },
+      "success": true,
+      "time": "2026-03-14T14:22:12.263Z"
+    }
+  ],
+  "errors": []
+}
