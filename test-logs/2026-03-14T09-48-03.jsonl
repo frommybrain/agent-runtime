@@ -1,0 +1,162 @@
+{"time":"2026-03-14T09:48:04.003Z","dir":"sys","type":"SERVER_STARTED","data":{"port":4001}}
+{"time":"2026-03-14T09:48:48.204Z","dir":"sys","type":"AGENT_CONNECTED","data":{}}
+{"time":"2026-03-14T09:48:48.205Z","dir":"out","type":"WELCOME","data":{"type":"WELCOME","serverName":"test-environment"}}
+{"time":"2026-03-14T09:48:48.212Z","dir":"in","type":"IDENTIFY","data":{"type":"IDENTIFY","agentId":"victor"}}
+{"time":"2026-03-14T09:48:48.212Z","dir":"out","type":"IDENTIFIED","data":{"type":"IDENTIFIED","agentId":"victor","worldBounds":{"halfSize":100}}}
+{"time":"2026-03-14T09:48:48.212Z","dir":"sys","type":"AGENT_IDENTIFIED","data":{"agentId":"victor"}}
+{"time":"2026-03-14T09:48:48.219Z","dir":"in","type":"OBSERVE","data":{"type":"OBSERVE"}}
+{"time":"2026-03-14T09:48:48.219Z","dir":"out","type":"OBSERVATION","data":{"type":"OBSERVATION","data":{"self":{"id":"victor","pos":{"x":0,"y":0,"z":0},"action":"IDLE"},"nearbyAgents":[],"nearbyObjects":[],"available_actions":[{"name":"move_to","params":"x, z","description":"Move to a position"},{"name":"speak","params":"message","description":"Say something"},{"name":"wait","description":"Do nothing this tick"}],"recentSpeech":[]}}}
+{"time":"2026-03-14T09:48:48.219Z","dir":"sys","type":"TICK","data":{"tick":1,"objects":0,"signals":false,"mode":"spatial"}}
+{"time":"2026-03-14T09:48:48.534Z","dir":"in","type":"ACT","data":{"type":"ACT","action":"speak","params":{"message":"I am back, and I am ready to lead"}}}
+{"time":"2026-03-14T09:48:48.535Z","dir":"out","type":"ACTION_RESULT","data":{"type":"ACTION_RESULT","success":true,"message":"speak completed"}}
+{"time":"2026-03-14T09:48:48.535Z","dir":"sys","type":"ACTION_PROCESSED","data":{"action":"speak","params":{"message":"I am back, and I am ready to lead"},"success":true}}
+{"time":"2026-03-14T09:48:56.328Z","dir":"in","type":"OBSERVE","data":{"type":"OBSERVE"}}
+{"time":"2026-03-14T09:48:56.329Z","dir":"out","type":"OBSERVATION","data":{"type":"OBSERVATION","data":{"self":{"id":"victor","pos":{"x":0,"y":0,"z":0},"action":"IDLE"},"nearbyAgents":[],"nearbyObjects":[],"available_actions":[{"name":"move_to","params":"x, z","description":"Move to a position"},{"name":"speak","params":"message","description":"Say something"},{"name":"wait","description":"Do nothing this tick"}],"recentSpeech":[]}}}
+{"time":"2026-03-14T09:48:56.329Z","dir":"sys","type":"TICK","data":{"tick":2,"objects":0,"signals":false,"mode":"spatial"}}
+{"time":"2026-03-14T09:48:56.636Z","dir":"in","type":"ACT","data":{"type":"ACT","action":"move_to","params":{"x":10,"z":-5}}}
+{"time":"2026-03-14T09:48:56.636Z","dir":"out","type":"ACTION_RESULT","data":{"type":"ACTION_RESULT","success":true,"message":"move_to completed"}}
+{"time":"2026-03-14T09:48:56.636Z","dir":"sys","type":"ACTION_PROCESSED","data":{"action":"move_to","params":{"x":10,"z":-5},"success":true}}
+{"time":"2026-03-14T09:49:06.363Z","dir":"in","type":"OBSERVE","data":{"type":"OBSERVE"}}
+{"time":"2026-03-14T09:49:06.364Z","dir":"out","type":"OBSERVATION","data":{"type":"OBSERVATION","data":{"self":{"id":"victor","pos":{"x":10,"y":0,"z":-5},"action":"IDLE"},"nearbyAgents":[],"nearbyObjects":[],"available_actions":[{"name":"move_to","params":"x, z","description":"Move to a position"},{"name":"speak","params":"message","description":"Say something"},{"name":"wait","description":"Do nothing this tick"}],"recentSpeech":[]}}}
+{"time":"2026-03-14T09:49:06.364Z","dir":"sys","type":"TICK","data":{"tick":3,"objects":0,"signals":false,"mode":"spatial"}}
+{"time":"2026-03-14T09:49:06.578Z","dir":"in","type":"ACT","data":{"type":"ACT","action":"speak","params":{"message":"Watch this, I'm not just talking, I'm taking action"}}}
+{"time":"2026-03-14T09:49:06.579Z","dir":"out","type":"ACTION_RESULT","data":{"type":"ACTION_RESULT","success":true,"message":"speak completed"}}
+{"time":"2026-03-14T09:49:06.579Z","dir":"sys","type":"ACTION_PROCESSED","data":{"action":"speak","params":{"message":"Watch this, I'm not just talking, I'm taking action"},"success":true}}
+{"time":"2026-03-14T09:49:12.745Z","dir":"sys","type":"WORLD_CHANGE","data":{"action":"add_object","id":"terminal-01"}}
+{"time":"2026-03-14T09:49:17.903Z","dir":"in","type":"OBSERVE","data":{"type":"OBSERVE"}}
+{"time":"2026-03-14T09:49:17.904Z","dir":"out","type":"OBSERVATION","data":{"type":"OBSERVATION","data":{"self":{"id":"victor","pos":{"x":10,"y":0,"z":-5},"action":"IDLE"},"nearbyAgents":[],"nearbyObjects":[{"id":"terminal-01","type":"terminal","interactive":true,"pos":{"x":10,"y":0,"z":-5}}],"available_actions":[{"name":"move_to","params":"x, z","description":"Move to a position"},{"name":"speak","params":"message","description":"Say something"},{"name":"wait","description":"Do nothing this tick"},{"name":"interact","params":"target","description":"Interact with a nearby object"}],"recentSpeech":[]}}}
+{"time":"2026-03-14T09:49:17.904Z","dir":"sys","type":"TICK","data":{"tick":4,"objects":1,"signals":false,"mode":"spatial"}}
+{"time":"2026-03-14T09:49:18.103Z","dir":"in","type":"ACT","data":{"type":"ACT","action":"interact","params":{"target":"terminal-01"}}}
+{"time":"2026-03-14T09:49:18.105Z","dir":"out","type":"ACTION_RESULT","data":{"type":"ACTION_RESULT","success":true,"message":"interact completed"}}
+{"time":"2026-03-14T09:49:18.105Z","dir":"sys","type":"ACTION_PROCESSED","data":{"action":"interact","params":{"target":"terminal-01"},"success":true}}
+{"time":"2026-03-14T09:49:30.508Z","dir":"in","type":"OBSERVE","data":{"type":"OBSERVE"}}
+{"time":"2026-03-14T09:49:30.509Z","dir":"out","type":"OBSERVATION","data":{"type":"OBSERVATION","data":{"self":{"id":"victor","pos":{"x":10,"y":0,"z":-5},"action":"IDLE"},"nearbyAgents":[],"nearbyObjects":[{"id":"terminal-01","type":"terminal","interactive":true,"pos":{"x":10,"y":0,"z":-5}}],"available_actions":[{"name":"move_to","params":"x, z","description":"Move to a position"},{"name":"speak","params":"message","description":"Say something"},{"name":"wait","description":"Do nothing this tick"},{"name":"interact","params":"target","description":"Interact with a nearby object"}],"recentSpeech":[]}}}
+{"time":"2026-03-14T09:49:30.509Z","dir":"sys","type":"TICK","data":{"tick":5,"objects":1,"signals":false,"mode":"spatial"}}
+{"time":"2026-03-14T09:49:30.701Z","dir":"in","type":"ACT","data":{"type":"ACT","action":"speak","params":{"message":"This is my territory, and I control the terminal"}}}
+{"time":"2026-03-14T09:49:30.702Z","dir":"out","type":"ACTION_RESULT","data":{"type":"ACTION_RESULT","success":true,"message":"speak completed"}}
+{"time":"2026-03-14T09:49:30.702Z","dir":"sys","type":"ACTION_PROCESSED","data":{"action":"speak","params":{"message":"This is my territory, and I control the terminal"},"success":true}}
+{"time":"2026-03-14T09:49:30.750Z","dir":"sys","type":"AGENT_STATUS","data":{"tick":5,"valence":0.10317,"arousal":0.07200000000000002,"valenceLabel":"neutral","arousalLabel":"moderate","heartbeatMs":13401,"tickCount":5}}
+{"time":"2026-03-14T09:49:43.571Z","dir":"in","type":"OBSERVE","data":{"type":"OBSERVE"}}
+{"time":"2026-03-14T09:49:43.572Z","dir":"out","type":"OBSERVATION","data":{"type":"OBSERVATION","data":{"self":{"id":"victor","pos":{"x":10,"y":0,"z":-5},"action":"IDLE"},"nearbyAgents":[],"nearbyObjects":[{"id":"terminal-01","type":"terminal","interactive":true,"pos":{"x":10,"y":0,"z":-5}}],"available_actions":[{"name":"move_to","params":"x, z","description":"Move to a position"},{"name":"speak","params":"message","description":"Say something"},{"name":"wait","description":"Do nothing this tick"},{"name":"interact","params":"target","description":"Interact with a nearby object"}],"recentSpeech":[]}}}
+{"time":"2026-03-14T09:49:43.572Z","dir":"sys","type":"TICK","data":{"tick":6,"objects":1,"signals":false,"mode":"spatial"}}
+{"time":"2026-03-14T09:49:43.781Z","dir":"in","type":"ACT","data":{"type":"ACT","action":"speak","params":{"message":"This is my territory, and I am in control"}}}
+{"time":"2026-03-14T09:49:43.782Z","dir":"out","type":"ACTION_RESULT","data":{"type":"ACTION_RESULT","success":true,"message":"speak completed"}}
+{"time":"2026-03-14T09:49:43.782Z","dir":"sys","type":"ACTION_PROCESSED","data":{"action":"speak","params":{"message":"This is my territory, and I am in control"},"success":true}}
+{"time":"2026-03-14T09:49:54.353Z","dir":"sys","type":"WORLD_CHANGE","data":{"action":"remove_object","id":"terminal-01"}}
+{"time":"2026-03-14T09:49:57.050Z","dir":"in","type":"OBSERVE","data":{"type":"OBSERVE"}}
+{"time":"2026-03-14T09:49:57.051Z","dir":"out","type":"OBSERVATION","data":{"type":"OBSERVATION","data":{"self":{"id":"victor","pos":{"x":10,"y":0,"z":-5},"action":"IDLE"},"nearbyAgents":[],"nearbyObjects":[],"available_actions":[{"name":"move_to","params":"x, z","description":"Move to a position"},{"name":"speak","params":"message","description":"Say something"},{"name":"wait","description":"Do nothing this tick"}],"recentSpeech":[]}}}
+{"time":"2026-03-14T09:49:57.051Z","dir":"sys","type":"TICK","data":{"tick":7,"objects":0,"signals":false,"mode":"spatial"}}
+{"time":"2026-03-14T09:49:57.270Z","dir":"in","type":"ACT","data":{"type":"ACT","action":"move_to","params":{"x":10,"z":-5}}}
+{"time":"2026-03-14T09:49:57.271Z","dir":"out","type":"ACTION_RESULT","data":{"type":"ACTION_RESULT","success":true,"message":"move_to completed"}}
+{"time":"2026-03-14T09:49:57.271Z","dir":"sys","type":"ACTION_PROCESSED","data":{"action":"move_to","params":{"x":10,"z":-5},"success":true}}
+{"time":"2026-03-14T09:50:10.670Z","dir":"in","type":"OBSERVE","data":{"type":"OBSERVE"}}
+{"time":"2026-03-14T09:50:10.671Z","dir":"out","type":"OBSERVATION","data":{"type":"OBSERVATION","data":{"self":{"id":"victor","pos":{"x":10,"y":0,"z":-5},"action":"IDLE"},"nearbyAgents":[],"nearbyObjects":[],"available_actions":[{"name":"move_to","params":"x, z","description":"Move to a position"},{"name":"speak","params":"message","description":"Say something"},{"name":"wait","description":"Do nothing this tick"}],"recentSpeech":[]}}}
+{"time":"2026-03-14T09:50:10.671Z","dir":"sys","type":"TICK","data":{"tick":8,"objects":0,"signals":false,"mode":"spatial"}}
+{"time":"2026-03-14T09:50:10.861Z","dir":"in","type":"ACT","data":{"type":"ACT","action":"speak","params":{"message":"I'm here, and I'm not going anywhere"}}}
+{"time":"2026-03-14T09:50:10.862Z","dir":"out","type":"ACTION_RESULT","data":{"type":"ACTION_RESULT","success":true,"message":"speak completed"}}
+{"time":"2026-03-14T09:50:10.862Z","dir":"sys","type":"ACTION_PROCESSED","data":{"action":"speak","params":{"message":"I'm here, and I'm not going anywhere"},"success":true}}
+{"time":"2026-03-14T09:50:24.271Z","dir":"in","type":"OBSERVE","data":{"type":"OBSERVE"}}
+{"time":"2026-03-14T09:50:24.272Z","dir":"out","type":"OBSERVATION","data":{"type":"OBSERVATION","data":{"self":{"id":"victor","pos":{"x":10,"y":0,"z":-5},"action":"IDLE"},"nearbyAgents":[],"nearbyObjects":[],"available_actions":[{"name":"move_to","params":"x, z","description":"Move to a position"},{"name":"speak","params":"message","description":"Say something"},{"name":"wait","description":"Do nothing this tick"}],"recentSpeech":[]}}}
+{"time":"2026-03-14T09:50:24.272Z","dir":"sys","type":"TICK","data":{"tick":9,"objects":0,"signals":false,"mode":"spatial"}}
+{"time":"2026-03-14T09:50:24.436Z","dir":"in","type":"ACT","data":{"type":"ACT","action":"move_to","params":{"x":10,"z":-5}}}
+{"time":"2026-03-14T09:50:24.436Z","dir":"out","type":"ACTION_RESULT","data":{"type":"ACTION_RESULT","success":true,"message":"move_to completed"}}
+{"time":"2026-03-14T09:50:24.436Z","dir":"sys","type":"ACTION_PROCESSED","data":{"action":"move_to","params":{"x":10,"z":-5},"success":true}}
+{"time":"2026-03-14T09:50:28.603Z","dir":"out","type":"WORLD_EVENT","data":{"event":"agent_speech","agentId":"stranger","message":"something feels different today"}}
+{"time":"2026-03-14T09:50:37.897Z","dir":"in","type":"OBSERVE","data":{"type":"OBSERVE"}}
+{"time":"2026-03-14T09:50:37.898Z","dir":"out","type":"OBSERVATION","data":{"type":"OBSERVATION","data":{"self":{"id":"victor","pos":{"x":10,"y":0,"z":-5},"action":"IDLE"},"nearbyAgents":[],"nearbyObjects":[],"available_actions":[{"name":"move_to","params":"x, z","description":"Move to a position"},{"name":"speak","params":"message","description":"Say something"},{"name":"wait","description":"Do nothing this tick"}],"recentSpeech":[{"agentId":"stranger","message":"something feels different today"}]}}}
+{"time":"2026-03-14T09:50:37.898Z","dir":"sys","type":"TICK","data":{"tick":10,"objects":0,"signals":false,"mode":"spatial"}}
+{"time":"2026-03-14T09:50:37.912Z","dir":"sys","type":"AGENT_STATUS","data":{"tick":10,"valence":0.2137738533,"arousal":0.20083528000000006,"valenceLabel":"neutral","arousalLabel":"moderate","heartbeatMs":13661,"tickCount":10}}
+{"time":"2026-03-14T09:50:38.085Z","dir":"in","type":"ACT","data":{"type":"ACT","action":"speak","params":{"message":"I'm Victor, and I'm here to take charge"}}}
+{"time":"2026-03-14T09:50:38.085Z","dir":"out","type":"ACTION_RESULT","data":{"type":"ACTION_RESULT","success":true,"message":"speak completed"}}
+{"time":"2026-03-14T09:50:38.085Z","dir":"sys","type":"ACTION_PROCESSED","data":{"action":"speak","params":{"message":"I'm Victor, and I'm here to take charge"},"success":true}}
+{"time":"2026-03-14T09:50:51.733Z","dir":"in","type":"OBSERVE","data":{"type":"OBSERVE"}}
+{"time":"2026-03-14T09:50:51.734Z","dir":"out","type":"OBSERVATION","data":{"type":"OBSERVATION","data":{"self":{"id":"victor","pos":{"x":10,"y":0,"z":-5},"action":"IDLE"},"nearbyAgents":[],"nearbyObjects":[],"available_actions":[{"name":"move_to","params":"x, z","description":"Move to a position"},{"name":"speak","params":"message","description":"Say something"},{"name":"wait","description":"Do nothing this tick"}],"recentSpeech":[]}}}
+{"time":"2026-03-14T09:50:51.734Z","dir":"sys","type":"TICK","data":{"tick":11,"objects":0,"signals":false,"mode":"spatial"}}
+{"time":"2026-03-14T09:50:51.932Z","dir":"in","type":"ACT","data":{"type":"ACT","action":"move_to","params":{"x":10,"z":-5}}}
+{"time":"2026-03-14T09:50:51.932Z","dir":"out","type":"ACTION_RESULT","data":{"type":"ACTION_RESULT","success":true,"message":"move_to completed"}}
+{"time":"2026-03-14T09:50:51.933Z","dir":"sys","type":"ACTION_PROCESSED","data":{"action":"move_to","params":{"x":10,"z":-5},"success":true}}
+{"time":"2026-03-14T09:51:04.247Z","dir":"sys","type":"WORLD_CHANGE","data":{"action":"toggle_signals","signals":{"vitality":0.3,"resonance":0.8,"abundance":0.6,"warmth":0.4}}}
+{"time":"2026-03-14T09:51:05.044Z","dir":"in","type":"OBSERVE","data":{"type":"OBSERVE"}}
+{"time":"2026-03-14T09:51:05.045Z","dir":"out","type":"OBSERVATION","data":{"type":"OBSERVATION","data":{"self":{"id":"victor","pos":{"x":10,"y":0,"z":-5},"action":"IDLE"},"nearbyAgents":[],"nearbyObjects":[],"available_actions":[{"name":"move_to","params":"x, z","description":"Move to a position"},{"name":"speak","params":"message","description":"Say something"},{"name":"wait","description":"Do nothing this tick"}],"recentSpeech":[],"signals":{"vitality":0.3,"resonance":0.8,"abundance":0.6,"warmth":0.4}}}}
+{"time":"2026-03-14T09:51:05.045Z","dir":"sys","type":"TICK","data":{"tick":12,"objects":0,"signals":true,"mode":"spatial"}}
+{"time":"2026-03-14T09:51:05.303Z","dir":"in","type":"ACT","data":{"type":"ACT","action":"speak","params":{"message":"Follow me, I'll show you what I mean"}}}
+{"time":"2026-03-14T09:51:05.303Z","dir":"out","type":"ACTION_RESULT","data":{"type":"ACTION_RESULT","success":true,"message":"speak completed"}}
+{"time":"2026-03-14T09:51:05.303Z","dir":"sys","type":"ACTION_PROCESSED","data":{"action":"speak","params":{"message":"Follow me, I'll show you what I mean"},"success":true}}
+{"time":"2026-03-14T09:51:18.256Z","dir":"in","type":"OBSERVE","data":{"type":"OBSERVE"}}
+{"time":"2026-03-14T09:51:18.257Z","dir":"out","type":"OBSERVATION","data":{"type":"OBSERVATION","data":{"self":{"id":"victor","pos":{"x":10,"y":0,"z":-5},"action":"IDLE"},"nearbyAgents":[],"nearbyObjects":[],"available_actions":[{"name":"move_to","params":"x, z","description":"Move to a position"},{"name":"speak","params":"message","description":"Say something"},{"name":"wait","description":"Do nothing this tick"}],"recentSpeech":[],"signals":{"vitality":0.3,"resonance":0.8,"abundance":0.6,"warmth":0.4}}}}
+{"time":"2026-03-14T09:51:18.257Z","dir":"sys","type":"TICK","data":{"tick":13,"objects":0,"signals":true,"mode":"spatial"}}
+{"time":"2026-03-14T09:51:18.532Z","dir":"in","type":"ACT","data":{"type":"ACT","action":"move_to","params":{"x":10,"z":-5}}}
+{"time":"2026-03-14T09:51:18.533Z","dir":"out","type":"ACTION_RESULT","data":{"type":"ACTION_RESULT","success":true,"message":"move_to completed"}}
+{"time":"2026-03-14T09:51:18.533Z","dir":"sys","type":"ACTION_PROCESSED","data":{"action":"move_to","params":{"x":10,"z":-5},"success":true}}
+{"time":"2026-03-14T09:51:30.803Z","dir":"in","type":"OBSERVE","data":{"type":"OBSERVE"}}
+{"time":"2026-03-14T09:51:30.804Z","dir":"out","type":"OBSERVATION","data":{"type":"OBSERVATION","data":{"self":{"id":"victor","pos":{"x":10,"y":0,"z":-5},"action":"IDLE"},"nearbyAgents":[],"nearbyObjects":[],"available_actions":[{"name":"move_to","params":"x, z","description":"Move to a position"},{"name":"speak","params":"message","description":"Say something"},{"name":"wait","description":"Do nothing this tick"}],"recentSpeech":[],"signals":{"vitality":0.3,"resonance":0.8,"abundance":0.6,"warmth":0.4}}}}
+{"time":"2026-03-14T09:51:30.804Z","dir":"sys","type":"TICK","data":{"tick":14,"objects":0,"signals":true,"mode":"spatial"}}
+{"time":"2026-03-14T09:51:31.003Z","dir":"in","type":"ACT","data":{"type":"ACT","action":"move_to","params":{"x":5,"z":-3}}}
+{"time":"2026-03-14T09:51:31.003Z","dir":"out","type":"ACTION_RESULT","data":{"type":"ACTION_RESULT","success":true,"message":"move_to completed"}}
+{"time":"2026-03-14T09:51:31.003Z","dir":"sys","type":"ACTION_PROCESSED","data":{"action":"move_to","params":{"x":5,"z":-3},"success":true}}
+{"time":"2026-03-14T09:51:36.627Z","dir":"sys","type":"WORLD_CHANGE","data":{"action":"set_next_fail"}}
+{"time":"2026-03-14T09:51:42.626Z","dir":"in","type":"OBSERVE","data":{"type":"OBSERVE"}}
+{"time":"2026-03-14T09:51:42.627Z","dir":"out","type":"OBSERVATION","data":{"type":"OBSERVATION","data":{"self":{"id":"victor","pos":{"x":5,"y":0,"z":-3},"action":"IDLE"},"nearbyAgents":[],"nearbyObjects":[],"available_actions":[{"name":"move_to","params":"x, z","description":"Move to a position"},{"name":"speak","params":"message","description":"Say something"},{"name":"wait","description":"Do nothing this tick"}],"recentSpeech":[],"signals":{"vitality":0.3,"resonance":0.8,"abundance":0.6,"warmth":0.4}}}}
+{"time":"2026-03-14T09:51:42.628Z","dir":"sys","type":"TICK","data":{"tick":15,"objects":0,"signals":true,"mode":"spatial"}}
+{"time":"2026-03-14T09:51:42.840Z","dir":"sys","type":"AGENT_STATUS","data":{"tick":15,"valence":0.07604115083616886,"arousal":0.45854282437747146,"valenceLabel":"neutral","arousalLabel":"high","heartbeatMs":11340,"tickCount":15}}
+{"time":"2026-03-14T09:51:42.842Z","dir":"in","type":"ACT","data":{"type":"ACT","action":"speak","params":{"message":"Watch this, I'm not just talking, I'm taking action"}}}
+{"time":"2026-03-14T09:51:42.843Z","dir":"out","type":"ACTION_RESULT","data":{"type":"ACTION_RESULT","success":false,"message":"Action failed: too far away"}}
+{"time":"2026-03-14T09:51:42.843Z","dir":"sys","type":"ACTION_PROCESSED","data":{"action":"speak","params":{"message":"Watch this, I'm not just talking, I'm taking action"},"success":false}}
+{"time":"2026-03-14T09:51:54.057Z","dir":"in","type":"OBSERVE","data":{"type":"OBSERVE"}}
+{"time":"2026-03-14T09:51:54.058Z","dir":"out","type":"OBSERVATION","data":{"type":"OBSERVATION","data":{"self":{"id":"victor","pos":{"x":5,"y":0,"z":-3},"action":"IDLE"},"nearbyAgents":[],"nearbyObjects":[],"available_actions":[{"name":"move_to","params":"x, z","description":"Move to a position"},{"name":"speak","params":"message","description":"Say something"},{"name":"wait","description":"Do nothing this tick"}],"recentSpeech":[],"signals":{"vitality":0.3,"resonance":0.8,"abundance":0.6,"warmth":0.4}}}}
+{"time":"2026-03-14T09:51:54.058Z","dir":"sys","type":"TICK","data":{"tick":16,"objects":0,"signals":true,"mode":"spatial"}}
+{"time":"2026-03-14T09:51:54.236Z","dir":"in","type":"ACT","data":{"type":"ACT","action":"move_to","params":{"x":10,"z":-5}}}
+{"time":"2026-03-14T09:51:54.236Z","dir":"out","type":"ACTION_RESULT","data":{"type":"ACTION_RESULT","success":true,"message":"move_to completed"}}
+{"time":"2026-03-14T09:51:54.236Z","dir":"sys","type":"ACTION_PROCESSED","data":{"action":"move_to","params":{"x":10,"z":-5},"success":true}}
+{"time":"2026-03-14T09:52:04.900Z","dir":"in","type":"OBSERVE","data":{"type":"OBSERVE"}}
+{"time":"2026-03-14T09:52:04.901Z","dir":"out","type":"OBSERVATION","data":{"type":"OBSERVATION","data":{"self":{"id":"victor","pos":{"x":10,"y":0,"z":-5},"action":"IDLE"},"nearbyAgents":[],"nearbyObjects":[],"available_actions":[{"name":"move_to","params":"x, z","description":"Move to a position"},{"name":"speak","params":"message","description":"Say something"},{"name":"wait","description":"Do nothing this tick"}],"recentSpeech":[],"signals":{"vitality":0.3,"resonance":0.8,"abundance":0.6,"warmth":0.4}}}}
+{"time":"2026-03-14T09:52:04.901Z","dir":"sys","type":"TICK","data":{"tick":17,"objects":0,"signals":true,"mode":"spatial"}}
+{"time":"2026-03-14T09:52:05.138Z","dir":"in","type":"ACT","data":{"type":"ACT","action":"speak","params":{"message":"I've arrived, and I'm not leaving without making my presence known."}}}
+{"time":"2026-03-14T09:52:05.138Z","dir":"out","type":"ACTION_RESULT","data":{"type":"ACTION_RESULT","success":true,"message":"speak completed"}}
+{"time":"2026-03-14T09:52:05.138Z","dir":"sys","type":"ACTION_PROCESSED","data":{"action":"speak","params":{"message":"I've arrived, and I'm not leaving without making my presence known."},"success":true}}
+{"time":"2026-03-14T09:52:08.077Z","dir":"sys","type":"WORLD_CHANGE","data":{"action":"toggle_mode","mode":"synth"}}
+{"time":"2026-03-14T09:52:15.553Z","dir":"in","type":"OBSERVE","data":{"type":"OBSERVE"}}
+{"time":"2026-03-14T09:52:15.554Z","dir":"out","type":"OBSERVATION","data":{"type":"OBSERVATION","data":{"self":{"role":"sequencer"},"signals":{"bpm":120,"energy":0.7},"activeChords":["Cmaj7","Dm9","G7"],"availableSteps":16,"currentStep":2,"available_actions":[{"name":"set_step","params":"step, note","description":"Set a note on a sequencer step"},{"name":"change_bpm","params":"bpm","description":"Change tempo"},{"name":"add_chord","params":"chord","description":"Add a chord to the pool"},{"name":"remove_chord","params":"chord","description":"Remove a chord from the pool"},{"name":"wait","description":"Do nothing this tick"}]}}}
+{"time":"2026-03-14T09:52:15.554Z","dir":"sys","type":"TICK","data":{"tick":18,"objects":0,"signals":true,"mode":"synth"}}
+{"time":"2026-03-14T09:52:15.778Z","dir":"in","type":"ACT","data":{"type":"ACT","action":"add_chord","params":{"chord":"Em7"}}}
+{"time":"2026-03-14T09:52:15.778Z","dir":"out","type":"ACTION_RESULT","data":{"type":"ACTION_RESULT","success":true,"message":"add_chord completed"}}
+{"time":"2026-03-14T09:52:15.779Z","dir":"sys","type":"ACTION_PROCESSED","data":{"action":"add_chord","params":{"chord":"Em7"},"success":true}}
+{"time":"2026-03-14T09:52:25.942Z","dir":"in","type":"OBSERVE","data":{"type":"OBSERVE"}}
+{"time":"2026-03-14T09:52:25.947Z","dir":"out","type":"OBSERVATION","data":{"type":"OBSERVATION","data":{"self":{"role":"sequencer"},"signals":{"bpm":120,"energy":0.7},"activeChords":["Cmaj7","Dm9","G7"],"availableSteps":16,"currentStep":3,"available_actions":[{"name":"set_step","params":"step, note","description":"Set a note on a sequencer step"},{"name":"change_bpm","params":"bpm","description":"Change tempo"},{"name":"add_chord","params":"chord","description":"Add a chord to the pool"},{"name":"remove_chord","params":"chord","description":"Remove a chord from the pool"},{"name":"wait","description":"Do nothing this tick"}]}}}
+{"time":"2026-03-14T09:52:25.947Z","dir":"sys","type":"TICK","data":{"tick":19,"objects":0,"signals":true,"mode":"synth"}}
+{"time":"2026-03-14T09:52:26.128Z","dir":"in","type":"ACT","data":{"type":"ACT","action":"move_to","params":{"x":10,"z":-5}}}
+{"time":"2026-03-14T09:52:26.129Z","dir":"out","type":"ACTION_RESULT","data":{"type":"ACTION_RESULT","success":true,"message":"move_to completed"}}
+{"time":"2026-03-14T09:52:26.129Z","dir":"sys","type":"ACTION_PROCESSED","data":{"action":"move_to","params":{"x":10,"z":-5},"success":true}}
+{"time":"2026-03-14T09:52:35.567Z","dir":"in","type":"OBSERVE","data":{"type":"OBSERVE"}}
+{"time":"2026-03-14T09:52:35.568Z","dir":"out","type":"OBSERVATION","data":{"type":"OBSERVATION","data":{"self":{"role":"sequencer"},"signals":{"bpm":120,"energy":0.7},"activeChords":["Cmaj7","Dm9","G7"],"availableSteps":16,"currentStep":4,"available_actions":[{"name":"set_step","params":"step, note","description":"Set a note on a sequencer step"},{"name":"change_bpm","params":"bpm","description":"Change tempo"},{"name":"add_chord","params":"chord","description":"Add a chord to the pool"},{"name":"remove_chord","params":"chord","description":"Remove a chord from the pool"},{"name":"wait","description":"Do nothing this tick"}]}}}
+{"time":"2026-03-14T09:52:35.568Z","dir":"sys","type":"TICK","data":{"tick":20,"objects":0,"signals":true,"mode":"synth"}}
+{"time":"2026-03-14T09:52:35.583Z","dir":"sys","type":"AGENT_STATUS","data":{"tick":20,"valence":0.07336989520112985,"arousal":0.5565895576213864,"valenceLabel":"neutral","arousalLabel":"high","heartbeatMs":9347,"tickCount":20}}
+{"time":"2026-03-14T09:52:35.790Z","dir":"in","type":"ACT","data":{"type":"ACT","action":"change_bpm","params":{"bpm":150}}}
+{"time":"2026-03-14T09:52:35.791Z","dir":"out","type":"ACTION_RESULT","data":{"type":"ACTION_RESULT","success":true,"message":"change_bpm completed"}}
+{"time":"2026-03-14T09:52:35.791Z","dir":"sys","type":"ACTION_PROCESSED","data":{"action":"change_bpm","params":{"bpm":150},"success":true}}
+{"time":"2026-03-14T09:52:39.943Z","dir":"sys","type":"WORLD_CHANGE","data":{"action":"toggle_mode","mode":"spatial"}}
+{"time":"2026-03-14T09:52:44.912Z","dir":"in","type":"OBSERVE","data":{"type":"OBSERVE"}}
+{"time":"2026-03-14T09:52:44.912Z","dir":"out","type":"OBSERVATION","data":{"type":"OBSERVATION","data":{"self":{"id":"victor","pos":{"x":10,"y":0,"z":-5},"action":"IDLE"},"nearbyAgents":[],"nearbyObjects":[],"available_actions":[{"name":"move_to","params":"x, z","description":"Move to a position"},{"name":"speak","params":"message","description":"Say something"},{"name":"wait","description":"Do nothing this tick"}],"recentSpeech":[],"signals":{"vitality":0.3,"resonance":0.8,"abundance":0.6,"warmth":0.4}}}}
+{"time":"2026-03-14T09:52:44.912Z","dir":"sys","type":"TICK","data":{"tick":21,"objects":0,"signals":true,"mode":"spatial"}}
+{"time":"2026-03-14T09:52:45.126Z","dir":"in","type":"ACT","data":{"type":"ACT","action":"move_to","params":{"x":0,"z":-10}}}
+{"time":"2026-03-14T09:52:45.127Z","dir":"out","type":"ACTION_RESULT","data":{"type":"ACTION_RESULT","success":true,"message":"move_to completed"}}
+{"time":"2026-03-14T09:52:45.127Z","dir":"sys","type":"ACTION_PROCESSED","data":{"action":"move_to","params":{"x":0,"z":-10},"success":true}}
+{"time":"2026-03-14T09:52:54.103Z","dir":"in","type":"OBSERVE","data":{"type":"OBSERVE"}}
+{"time":"2026-03-14T09:52:54.104Z","dir":"out","type":"OBSERVATION","data":{"type":"OBSERVATION","data":{"self":{"id":"victor","pos":{"x":0,"y":0,"z":-10},"action":"IDLE"},"nearbyAgents":[],"nearbyObjects":[],"available_actions":[{"name":"move_to","params":"x, z","description":"Move to a position"},{"name":"speak","params":"message","description":"Say something"},{"name":"wait","description":"Do nothing this tick"}],"recentSpeech":[],"signals":{"vitality":0.3,"resonance":0.8,"abundance":0.6,"warmth":0.4}}}}
+{"time":"2026-03-14T09:52:54.104Z","dir":"sys","type":"TICK","data":{"tick":22,"objects":0,"signals":true,"mode":"spatial"}}
+{"time":"2026-03-14T09:52:54.350Z","dir":"in","type":"ACT","data":{"type":"ACT","action":"speak","params":{"message":"This space is mine, and I'll make my presence known again."}}}
+{"time":"2026-03-14T09:52:54.351Z","dir":"out","type":"ACTION_RESULT","data":{"type":"ACTION_RESULT","success":true,"message":"speak completed"}}
+{"time":"2026-03-14T09:52:54.351Z","dir":"sys","type":"ACTION_PROCESSED","data":{"action":"speak","params":{"message":"This space is mine, and I'll make my presence known again."},"success":true}}
+{"time":"2026-03-14T09:53:02.737Z","dir":"in","type":"OBSERVE","data":{"type":"OBSERVE"}}
+{"time":"2026-03-14T09:53:02.737Z","dir":"out","type":"OBSERVATION","data":{"type":"OBSERVATION","data":{"self":{"id":"victor","pos":{"x":0,"y":0,"z":-10},"action":"IDLE"},"nearbyAgents":[],"nearbyObjects":[],"available_actions":[{"name":"move_to","params":"x, z","description":"Move to a position"},{"name":"speak","params":"message","description":"Say something"},{"name":"wait","description":"Do nothing this tick"}],"recentSpeech":[],"signals":{"vitality":0.3,"resonance":0.8,"abundance":0.6,"warmth":0.4}}}}
+{"time":"2026-03-14T09:53:02.737Z","dir":"sys","type":"TICK","data":{"tick":23,"objects":0,"signals":true,"mode":"spatial"}}
+{"time":"2026-03-14T09:53:02.964Z","dir":"in","type":"ACT","data":{"type":"ACT","action":"move_to","params":{"x":0,"z":-5}}}
+{"time":"2026-03-14T09:53:02.965Z","dir":"out","type":"ACTION_RESULT","data":{"type":"ACTION_RESULT","success":true,"message":"move_to completed"}}
+{"time":"2026-03-14T09:53:02.965Z","dir":"sys","type":"ACTION_PROCESSED","data":{"action":"move_to","params":{"x":0,"z":-5},"success":true}}
+{"time":"2026-03-14T09:53:10.998Z","dir":"in","type":"OBSERVE","data":{"type":"OBSERVE"}}
+{"time":"2026-03-14T09:53:10.998Z","dir":"out","type":"OBSERVATION","data":{"type":"OBSERVATION","data":{"self":{"id":"victor","pos":{"x":0,"y":0,"z":-5},"action":"IDLE"},"nearbyAgents":[],"nearbyObjects":[],"available_actions":[{"name":"move_to","params":"x, z","description":"Move to a position"},{"name":"speak","params":"message","description":"Say something"},{"name":"wait","description":"Do nothing this tick"}],"recentSpeech":[],"signals":{"vitality":0.3,"resonance":0.8,"abundance":0.6,"warmth":0.4}}}}
+{"time":"2026-03-14T09:53:10.998Z","dir":"sys","type":"TICK","data":{"tick":24,"objects":0,"signals":true,"mode":"spatial"}}
+{"time":"2026-03-14T09:53:11.242Z","dir":"in","type":"ACT","data":{"type":"ACT","action":"speak","params":{"message":"Watch this, I'm the one who claims this space as mine, and I won't be ignored!"}}}
+{"time":"2026-03-14T09:53:11.242Z","dir":"out","type":"ACTION_RESULT","data":{"type":"ACTION_RESULT","success":true,"message":"speak completed"}}
+{"time":"2026-03-14T09:53:11.242Z","dir":"sys","type":"ACTION_PROCESSED","data":{"action":"speak","params":{"message":"Watch this, I'm the one who claims this space as mine, and I won't be ignored!"},"success":true}}
+{"time":"2026-03-14T09:53:14.693Z","dir":"sys","type":"SERVER_STOPPED","data":{}}

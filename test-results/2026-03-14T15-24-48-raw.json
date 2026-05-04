@@ -1,0 +1,3262 @@
+{
+  "startTime": "2026-03-14T15:03:43.168Z",
+  "endTime": "2026-03-14T15:24:48.709Z",
+  "scenarios": [
+    {
+      "name": "Baseline (empty world)",
+      "ticks": 12,
+      "expect": "Arousal and valence near 0. Heartbeat should be slow (12-15s).",
+      "startTick": 1,
+      "startTime": "2026-03-14T15:03:45.173Z",
+      "statusBefore": {
+        "tick": 0,
+        "scenario": "Baseline (empty world)",
+        "time": "2026-03-14T15:03:45.780Z",
+        "valence": 0,
+        "arousal": 0,
+        "valenceLabel": "neutral",
+        "arousalLabel": "moderate",
+        "description": "Feeling steady — nothing remarkable",
+        "heartbeatMs": 8000
+      },
+      "statusAfter": {
+        "tick": 12,
+        "scenario": "Baseline (empty world)",
+        "time": "2026-03-14T15:06:11.235Z",
+        "valence": 0,
+        "arousal": 0,
+        "valenceLabel": "neutral",
+        "arousalLabel": "moderate",
+        "description": "Feeling steady — nothing remarkable",
+        "heartbeatMs": 14861
+      },
+      "actions": [
+        {
+          "tick": 1,
+          "scenario": "Baseline (empty world)",
+          "action": "move_to",
+          "params": {
+            "x": 10,
+            "z": -5
+          },
+          "success": true,
+          "time": "2026-03-14T15:03:49.634Z"
+        },
+        {
+          "tick": 2,
+          "scenario": "Baseline (empty world)",
+          "action": "move_to",
+          "params": {
+            "x": 10,
+            "z": -8
+          },
+          "success": true,
+          "time": "2026-03-14T15:03:57.300Z"
+        },
+        {
+          "tick": 3,
+          "scenario": "Baseline (empty world)",
+          "action": "move_to",
+          "params": {
+            "x": 10,
+            "z": -10
+          },
+          "success": true,
+          "time": "2026-03-14T15:04:07.316Z"
+        },
+        {
+          "tick": 4,
+          "scenario": "Baseline (empty world)",
+          "action": "speak",
+          "params": {
+            "message": "Time to break this pattern. What's that noise?"
+          },
+          "success": true,
+          "time": "2026-03-14T15:04:18.899Z"
+        },
+        {
+          "tick": 5,
+          "scenario": "Baseline (empty world)",
+          "action": "move_to",
+          "params": {
+            "x": 10,
+            "z": -8
+          },
+          "success": true,
+          "time": "2026-03-14T15:04:31.711Z"
+        },
+        {
+          "tick": 6,
+          "scenario": "Baseline (empty world)",
+          "action": "speak",
+          "params": {
+            "message": "Time to mix things up, see what's new around here."
+          },
+          "success": true,
+          "time": "2026-03-14T15:04:44.918Z"
+        },
+        {
+          "tick": 7,
+          "scenario": "Baseline (empty world)",
+          "action": "speak",
+          "params": {
+            "message": "This silence is too much, I need to do something."
+          },
+          "success": true,
+          "time": "2026-03-14T15:04:58.735Z"
+        },
+        {
+          "tick": 8,
+          "scenario": "Baseline (empty world)",
+          "action": "move_to",
+          "params": {
+            "x": 10,
+            "z": -9
+          },
+          "success": true,
+          "time": "2026-03-14T15:05:12.858Z"
+        },
+        {
+          "tick": 9,
+          "scenario": "Baseline (empty world)",
+          "action": "move_to",
+          "params": {
+            "x": 10,
+            "z": -10
+          },
+          "success": true,
+          "time": "2026-03-14T15:05:27.276Z"
+        },
+        {
+          "tick": 10,
+          "scenario": "Baseline (empty world)",
+          "action": "wait",
+          "params": {},
+          "success": true,
+          "time": "2026-03-14T15:05:41.863Z"
+        },
+        {
+          "tick": 11,
+          "scenario": "Baseline (empty world)",
+          "action": "move_to",
+          "params": {
+            "x": 3,
+            "z": -12
+          },
+          "success": true,
+          "time": "2026-03-14T15:05:56.841Z"
+        }
+      ],
+      "endTick": 12,
+      "endTime": "2026-03-14T15:06:11.236Z"
+    },
+    {
+      "name": "Object appears",
+      "ticks": 8,
+      "expect": "Arousal spike from novelty. Agent should investigate the object.",
+      "startTick": 13,
+      "startTime": "2026-03-14T15:06:11.236Z",
+      "statusBefore": {
+        "tick": 12,
+        "scenario": "Object appears",
+        "time": "2026-03-14T15:06:11.241Z",
+        "valence": 0,
+        "arousal": 0,
+        "valenceLabel": "neutral",
+        "arousalLabel": "moderate",
+        "description": "Feeling steady — nothing remarkable",
+        "heartbeatMs": 14861
+      },
+      "statusAfter": {
+        "tick": 20,
+        "scenario": "Object appears",
+        "time": "2026-03-14T15:08:08.124Z",
+        "valence": 0,
+        "arousal": 0.03826375200000002,
+        "valenceLabel": "neutral",
+        "arousalLabel": "moderate",
+        "description": "Feeling steady — nothing remarkable",
+        "heartbeatMs": 14469
+      },
+      "actions": [
+        {
+          "tick": 13,
+          "scenario": "Object appears",
+          "action": "interact",
+          "params": {
+            "target": "terminal-01"
+          },
+          "success": true,
+          "time": "2026-03-14T15:06:26.279Z"
+        },
+        {
+          "tick": 14,
+          "scenario": "Object appears",
+          "action": "interact",
+          "params": {
+            "target": "terminal-01"
+          },
+          "success": true,
+          "time": "2026-03-14T15:06:41.261Z"
+        },
+        {
+          "tick": 15,
+          "scenario": "Object appears",
+          "action": "move_to",
+          "params": {
+            "x": 10,
+            "z": -5
+          },
+          "success": true,
+          "time": "2026-03-14T15:06:55.859Z"
+        },
+        {
+          "tick": 16,
+          "scenario": "Object appears",
+          "action": "interact",
+          "params": {
+            "target": "terminal-01"
+          },
+          "success": true,
+          "time": "2026-03-14T15:07:10.538Z"
+        },
+        {
+          "tick": 17,
+          "scenario": "Object appears",
+          "action": "move_to",
+          "params": {
+            "x": 0,
+            "z": -15
+          },
+          "success": true,
+          "time": "2026-03-14T15:07:24.919Z"
+        },
+        {
+          "tick": 18,
+          "scenario": "Object appears",
+          "action": "move_to",
+          "params": {
+            "x": 10,
+            "z": -20
+          },
+          "success": true,
+          "time": "2026-03-14T15:07:39.416Z"
+        },
+        {
+          "tick": 19,
+          "scenario": "Object appears",
+          "action": "speak",
+          "params": {
+            "message": "Something interesting here, but I'm not sure what."
+          },
+          "success": true,
+          "time": "2026-03-14T15:07:53.777Z"
+        }
+      ],
+      "endTick": 20,
+      "endTime": "2026-03-14T15:08:08.125Z"
+    },
+    {
+      "name": "Action failure",
+      "ticks": 6,
+      "expect": "Valence dip on failure. Agent tries something different next tick.",
+      "startTick": 21,
+      "startTime": "2026-03-14T15:08:08.125Z",
+      "statusBefore": {
+        "tick": 20,
+        "scenario": "Action failure",
+        "time": "2026-03-14T15:08:08.130Z",
+        "valence": 0,
+        "arousal": 0.03826375200000002,
+        "valenceLabel": "neutral",
+        "arousalLabel": "moderate",
+        "description": "Feeling steady — nothing remarkable",
+        "heartbeatMs": 14469
+      },
+      "statusAfter": {
+        "tick": 26,
+        "scenario": "Action failure",
+        "time": "2026-03-14T15:09:35.567Z",
+        "valence": -0.08857350000000001,
+        "arousal": 0.020334926626632013,
+        "valenceLabel": "neutral",
+        "arousalLabel": "moderate",
+        "description": "Feeling steady — nothing remarkable",
+        "heartbeatMs": 14676
+      },
+      "actions": [
+        {
+          "tick": 21,
+          "scenario": "Action failure",
+          "action": "move_to",
+          "params": {
+            "x": 0,
+            "z": -15
+          },
+          "success": true,
+          "time": "2026-03-14T15:08:22.782Z"
+        },
+        {
+          "tick": 22,
+          "scenario": "Action failure",
+          "action": "move_to",
+          "params": {
+            "x": 0,
+            "z": 20
+          },
+          "success": true,
+          "time": "2026-03-14T15:08:37.274Z"
+        },
+        {
+          "tick": 23,
+          "scenario": "Action failure",
+          "action": "interact",
+          "params": {
+            "target": "terminal-01"
+          },
+          "success": true,
+          "time": "2026-03-14T15:08:52.024Z"
+        },
+        {
+          "tick": 24,
+          "scenario": "Action failure",
+          "action": "speak",
+          "params": {
+            "message": "Interesting that I can see so far in this direction, but what's hiding that way?"
+          },
+          "success": true,
+          "time": "2026-03-14T15:09:06.352Z"
+        },
+        {
+          "tick": 25,
+          "scenario": "Action failure",
+          "action": "move_to",
+          "params": {
+            "x": 0,
+            "z": -15
+          },
+          "success": true,
+          "time": "2026-03-14T15:09:20.998Z"
+        }
+      ],
+      "endTick": 26,
+      "endTime": "2026-03-14T15:09:35.567Z"
+    },
+    {
+      "name": "Stranger speaks",
+      "ticks": 8,
+      "expect": "Agent sees speech in observation. Arousal nudge. Should respond or acknowledge.",
+      "startTick": 27,
+      "startTime": "2026-03-14T15:09:35.567Z",
+      "statusBefore": {
+        "tick": 26,
+        "scenario": "Stranger speaks",
+        "time": "2026-03-14T15:09:35.571Z",
+        "valence": -0.08857350000000001,
+        "arousal": 0.020334926626632013,
+        "valenceLabel": "neutral",
+        "arousalLabel": "moderate",
+        "description": "Feeling steady — nothing remarkable",
+        "heartbeatMs": 14676
+      },
+      "statusAfter": {
+        "tick": 34,
+        "scenario": "Stranger speaks",
+        "time": "2026-03-14T15:11:30.055Z",
+        "valence": -0.023779080424935015,
+        "arousal": 0.05658320913052102,
+        "valenceLabel": "neutral",
+        "arousalLabel": "moderate",
+        "description": "Feeling steady — nothing remarkable",
+        "heartbeatMs": 14203
+      },
+      "actions": [
+        {
+          "tick": 27,
+          "scenario": "Stranger speaks",
+          "action": "speak",
+          "params": {
+            "message": "What artifact might that be?"
+          },
+          "success": true,
+          "time": "2026-03-14T15:09:50.688Z"
+        },
+        {
+          "tick": 28,
+          "scenario": "Stranger speaks",
+          "action": "move_to",
+          "params": {
+            "x": 0,
+            "z": 10
+          },
+          "success": true,
+          "time": "2026-03-14T15:10:04.935Z"
+        },
+        {
+          "tick": 29,
+          "scenario": "Stranger speaks",
+          "action": "move_to",
+          "params": {
+            "x": 0,
+            "z": 20
+          },
+          "success": true,
+          "time": "2026-03-14T15:10:19.343Z"
+        },
+        {
+          "tick": 30,
+          "scenario": "Stranger speaks",
+          "action": "interact",
+          "params": {
+            "target": "terminal-01"
+          },
+          "success": true,
+          "time": "2026-03-14T15:10:33.683Z"
+        },
+        {
+          "tick": 31,
+          "scenario": "Stranger speaks",
+          "action": "move_to",
+          "params": {
+            "x": 0,
+            "z": -10
+          },
+          "success": true,
+          "time": "2026-03-14T15:10:47.738Z"
+        },
+        {
+          "tick": 32,
+          "scenario": "Stranger speaks",
+          "action": "move_to",
+          "params": {
+            "x": 0,
+            "z": 10
+          },
+          "success": true,
+          "time": "2026-03-14T15:11:01.874Z"
+        },
+        {
+          "tick": 33,
+          "scenario": "Stranger speaks",
+          "action": "move_to",
+          "params": {
+            "x": 10,
+            "z": 20
+          },
+          "success": true,
+          "time": "2026-03-14T15:11:15.990Z"
+        }
+      ],
+      "endTick": 34,
+      "endTime": "2026-03-14T15:11:30.055Z"
+    },
+    {
+      "name": "Cosmology signals ON (low vitality)",
+      "ticks": 20,
+      "expect": "Arousal should climb toward 0.8 (resonance). Valence should go NEGATIVE (low vitality). Heartbeat speeds up.",
+      "startTick": 35,
+      "startTime": "2026-03-14T15:11:30.055Z",
+      "statusBefore": {
+        "tick": 34,
+        "scenario": "Cosmology signals ON (low vitality)",
+        "time": "2026-03-14T15:11:30.060Z",
+        "valence": -0.023779080424935015,
+        "arousal": 0.05658320913052102,
+        "valenceLabel": "neutral",
+        "arousalLabel": "moderate",
+        "description": "Feeling steady — nothing remarkable",
+        "heartbeatMs": 14203
+      },
+      "statusAfter": {
+        "tick": 54,
+        "scenario": "Cosmology signals ON (low vitality)",
+        "time": "2026-03-14T15:15:08.480Z",
+        "valence": -0.12317187144897629,
+        "arousal": 0.5093364089747268,
+        "valenceLabel": "negative",
+        "arousalLabel": "very high",
+        "description": "A nagging discomfort — things could be better",
+        "heartbeatMs": 9443
+      },
+      "actions": [
+        {
+          "tick": 35,
+          "scenario": "Cosmology signals ON (low vitality)",
+          "action": "interact",
+          "params": {
+            "target": "terminal-01"
+          },
+          "success": true,
+          "time": "2026-03-14T15:11:44.461Z"
+        },
+        {
+          "tick": 36,
+          "scenario": "Cosmology signals ON (low vitality)",
+          "action": "move_to",
+          "params": {
+            "x": 10,
+            "z": -10
+          },
+          "success": true,
+          "time": "2026-03-14T15:11:58.726Z"
+        },
+        {
+          "tick": 37,
+          "scenario": "Cosmology signals ON (low vitality)",
+          "action": "speak",
+          "params": {
+            "message": "What other properties does this terminal have?"
+          },
+          "success": true,
+          "time": "2026-03-14T15:12:12.251Z"
+        },
+        {
+          "tick": 38,
+          "scenario": "Cosmology signals ON (low vitality)",
+          "action": "interact",
+          "params": {
+            "target": "terminal-01"
+          },
+          "success": true,
+          "time": "2026-03-14T15:12:25.106Z"
+        },
+        {
+          "tick": 39,
+          "scenario": "Cosmology signals ON (low vitality)",
+          "action": "move_to",
+          "params": {
+            "x": 10,
+            "z": -5
+          },
+          "success": true,
+          "time": "2026-03-14T15:12:37.251Z"
+        },
+        {
+          "tick": 40,
+          "scenario": "Cosmology signals ON (low vitality)",
+          "action": "move_to",
+          "params": {
+            "x": 10,
+            "z": -10
+          },
+          "success": true,
+          "time": "2026-03-14T15:12:48.990Z"
+        },
+        {
+          "tick": 41,
+          "scenario": "Cosmology signals ON (low vitality)",
+          "action": "wait",
+          "params": {},
+          "success": true,
+          "time": "2026-03-14T15:12:59.993Z"
+        },
+        {
+          "tick": 42,
+          "scenario": "Cosmology signals ON (low vitality)",
+          "action": "move_to",
+          "params": {
+            "x": 10,
+            "z": -5
+          },
+          "success": true,
+          "time": "2026-03-14T15:13:10.819Z"
+        },
+        {
+          "tick": 43,
+          "scenario": "Cosmology signals ON (low vitality)",
+          "action": "interact",
+          "params": {
+            "target": "terminal-01"
+          },
+          "success": true,
+          "time": "2026-03-14T15:13:21.459Z"
+        },
+        {
+          "tick": 44,
+          "scenario": "Cosmology signals ON (low vitality)",
+          "action": "move_to",
+          "params": {
+            "x": 10,
+            "z": -10
+          },
+          "success": true,
+          "time": "2026-03-14T15:13:31.743Z"
+        },
+        {
+          "tick": 45,
+          "scenario": "Cosmology signals ON (low vitality)",
+          "action": "move_to",
+          "params": {
+            "x": 10,
+            "z": 5
+          },
+          "success": true,
+          "time": "2026-03-14T15:13:41.922Z"
+        },
+        {
+          "tick": 46,
+          "scenario": "Cosmology signals ON (low vitality)",
+          "action": "speak",
+          "params": {
+            "message": "Time to explore, what's behind the terminal?"
+          },
+          "success": true,
+          "time": "2026-03-14T15:13:51.892Z"
+        },
+        {
+          "tick": 47,
+          "scenario": "Cosmology signals ON (low vitality)",
+          "action": "interact",
+          "params": {
+            "target": "terminal-01"
+          },
+          "success": true,
+          "time": "2026-03-14T15:14:01.649Z"
+        },
+        {
+          "tick": 48,
+          "scenario": "Cosmology signals ON (low vitality)",
+          "action": "move_to",
+          "params": {
+            "x": 10,
+            "z": -10
+          },
+          "success": true,
+          "time": "2026-03-14T15:14:11.374Z"
+        },
+        {
+          "tick": 49,
+          "scenario": "Cosmology signals ON (low vitality)",
+          "action": "move_to",
+          "params": {
+            "x": 10,
+            "z": 5
+          },
+          "success": true,
+          "time": "2026-03-14T15:14:21.257Z"
+        },
+        {
+          "tick": 50,
+          "scenario": "Cosmology signals ON (low vitality)",
+          "action": "move_to",
+          "params": {
+            "x": 10,
+            "z": -10
+          },
+          "success": true,
+          "time": "2026-03-14T15:14:30.661Z"
+        },
+        {
+          "tick": 51,
+          "scenario": "Cosmology signals ON (low vitality)",
+          "action": "move_to",
+          "params": {
+            "x": -17,
+            "z": -63
+          },
+          "success": true,
+          "time": "2026-03-14T15:14:40.276Z"
+        },
+        {
+          "tick": 52,
+          "scenario": "Cosmology signals ON (low vitality)",
+          "action": "speak",
+          "params": "What's that noise in the distance?",
+          "success": true,
+          "time": "2026-03-14T15:14:49.929Z"
+        },
+        {
+          "tick": 53,
+          "scenario": "Cosmology signals ON (low vitality)",
+          "action": "move_to",
+          "params": {
+            "x": 10,
+            "z": -10
+          },
+          "success": true,
+          "time": "2026-03-14T15:14:59.348Z"
+        }
+      ],
+      "endTick": 54,
+      "endTime": "2026-03-14T15:15:08.480Z"
+    },
+    {
+      "name": "Cosmology signals OFF (decay)",
+      "ticks": 12,
+      "expect": "Arousal and valence should decay back toward 0. Heartbeat slows.",
+      "startTick": 55,
+      "startTime": "2026-03-14T15:15:08.480Z",
+      "statusBefore": {
+        "tick": 54,
+        "scenario": "Cosmology signals OFF (decay)",
+        "time": "2026-03-14T15:15:08.485Z",
+        "valence": -0.12317187144897629,
+        "arousal": 0.5093364089747268,
+        "valenceLabel": "negative",
+        "arousalLabel": "very high",
+        "description": "A nagging discomfort — things could be better",
+        "heartbeatMs": 9443
+      },
+      "statusAfter": {
+        "tick": 66,
+        "scenario": "Cosmology signals OFF (decay)",
+        "time": "2026-03-14T15:17:17.561Z",
+        "valence": -0.034787374560831696,
+        "arousal": 0.14385164589962918,
+        "valenceLabel": "neutral",
+        "arousalLabel": "moderate",
+        "description": "Feeling steady — nothing remarkable",
+        "heartbeatMs": 12666
+      },
+      "actions": [
+        {
+          "tick": 55,
+          "scenario": "Cosmology signals OFF (decay)",
+          "action": "move_to",
+          "params": {
+            "x": 10,
+            "z": -10
+          },
+          "success": true,
+          "time": "2026-03-14T15:15:18.057Z"
+        },
+        {
+          "tick": 56,
+          "scenario": "Cosmology signals OFF (decay)",
+          "action": "speak",
+          "params": {
+            "message": "Time to shake things up a bit, don't you think?"
+          },
+          "success": true,
+          "time": "2026-03-14T15:15:27.519Z"
+        },
+        {
+          "tick": 57,
+          "scenario": "Cosmology signals OFF (decay)",
+          "action": "move_to",
+          "params": {
+            "x": 10,
+            "z": -5
+          },
+          "success": true,
+          "time": "2026-03-14T15:15:37.112Z"
+        },
+        {
+          "tick": 58,
+          "scenario": "Cosmology signals OFF (decay)",
+          "action": "wait",
+          "params": {},
+          "success": true,
+          "time": "2026-03-14T15:15:46.931Z"
+        },
+        {
+          "tick": 59,
+          "scenario": "Cosmology signals OFF (decay)",
+          "action": "interact",
+          "params": {
+            "target": "terminal-01"
+          },
+          "success": true,
+          "time": "2026-03-14T15:15:57.184Z"
+        },
+        {
+          "tick": 60,
+          "scenario": "Cosmology signals OFF (decay)",
+          "action": "speak",
+          "params": {
+            "message": "What secrets does this terminal hold?"
+          },
+          "success": true,
+          "time": "2026-03-14T15:16:07.725Z"
+        },
+        {
+          "tick": 61,
+          "scenario": "Cosmology signals OFF (decay)",
+          "action": "interact",
+          "params": {
+            "target": "terminal-01"
+          },
+          "success": true,
+          "time": "2026-03-14T15:16:18.513Z"
+        },
+        {
+          "tick": 62,
+          "scenario": "Cosmology signals OFF (decay)",
+          "action": "interact",
+          "params": {
+            "target": "terminal-01"
+          },
+          "success": true,
+          "time": "2026-03-14T15:16:29.743Z"
+        },
+        {
+          "tick": 63,
+          "scenario": "Cosmology signals OFF (decay)",
+          "action": "move_to",
+          "params": {
+            "x": 0,
+            "z": -5
+          },
+          "success": true,
+          "time": "2026-03-14T15:16:41.288Z"
+        },
+        {
+          "tick": 64,
+          "scenario": "Cosmology signals OFF (decay)",
+          "action": "move_to",
+          "params": {
+            "x": 0,
+            "z": 5
+          },
+          "success": true,
+          "time": "2026-03-14T15:16:53.270Z"
+        },
+        {
+          "tick": 65,
+          "scenario": "Cosmology signals OFF (decay)",
+          "action": "move_to",
+          "params": {
+            "x": 0,
+            "z": -5
+          },
+          "success": true,
+          "time": "2026-03-14T15:17:05.357Z"
+        }
+      ],
+      "endTick": 66,
+      "endTime": "2026-03-14T15:17:17.562Z"
+    },
+    {
+      "name": "High vitality + warmth",
+      "ticks": 12,
+      "expect": "Valence should go POSITIVE (high vitality + warmth). Moderate arousal.",
+      "startTick": 67,
+      "startTime": "2026-03-14T15:17:17.562Z",
+      "statusBefore": {
+        "tick": 66,
+        "scenario": "High vitality + warmth",
+        "time": "2026-03-14T15:17:17.567Z",
+        "valence": -0.034787374560831696,
+        "arousal": 0.14385164589962918,
+        "valenceLabel": "neutral",
+        "arousalLabel": "moderate",
+        "description": "Feeling steady — nothing remarkable",
+        "heartbeatMs": 12666
+      },
+      "statusAfter": {
+        "tick": 78,
+        "scenario": "High vitality + warmth",
+        "time": "2026-03-14T15:19:41.278Z",
+        "valence": 0.311516684957854,
+        "arousal": 0.31924858547334245,
+        "valenceLabel": "positive",
+        "arousalLabel": "elevated",
+        "description": "A surge of energy and satisfaction — things are going well",
+        "heartbeatMs": 11514
+      },
+      "actions": [
+        {
+          "tick": 67,
+          "scenario": "High vitality + warmth",
+          "action": "interact",
+          "params": {
+            "target": "terminal-01"
+          },
+          "success": true,
+          "time": "2026-03-14T15:17:30.499Z"
+        },
+        {
+          "tick": 68,
+          "scenario": "High vitality + warmth",
+          "action": "move_to",
+          "params": {
+            "x": 0,
+            "z": -5
+          },
+          "success": true,
+          "time": "2026-03-14T15:17:43.373Z"
+        },
+        {
+          "tick": 69,
+          "scenario": "High vitality + warmth",
+          "action": "interact",
+          "params": {
+            "target": "terminal-01"
+          },
+          "success": true,
+          "time": "2026-03-14T15:17:55.867Z"
+        },
+        {
+          "tick": 70,
+          "scenario": "High vitality + warmth",
+          "action": "interact",
+          "params": {
+            "target": "terminal-01"
+          },
+          "success": true,
+          "time": "2026-03-14T15:18:07.948Z"
+        },
+        {
+          "tick": 71,
+          "scenario": "High vitality + warmth",
+          "action": "move_to",
+          "params": {
+            "x": 30,
+            "z": -40
+          },
+          "success": true,
+          "time": "2026-03-14T15:18:20.120Z"
+        },
+        {
+          "tick": 72,
+          "scenario": "High vitality + warmth",
+          "action": "speak",
+          "params": {
+            "message": "Let's see what's at this distance, terminal-01"
+          },
+          "success": true,
+          "time": "2026-03-14T15:18:31.879Z"
+        },
+        {
+          "tick": 73,
+          "scenario": "High vitality + warmth",
+          "action": "move_to",
+          "params": {
+            "x": 0,
+            "z": -5
+          },
+          "success": true,
+          "time": "2026-03-14T15:18:43.494Z"
+        },
+        {
+          "tick": 74,
+          "scenario": "High vitality + warmth",
+          "action": "move_to",
+          "params": {
+            "x": 30,
+            "z": -40
+          },
+          "success": true,
+          "time": "2026-03-14T15:18:55.183Z"
+        },
+        {
+          "tick": 75,
+          "scenario": "High vitality + warmth",
+          "action": "speak",
+          "params": {
+            "message": "What's that resonance level doing so low?"
+          },
+          "success": true,
+          "time": "2026-03-14T15:19:06.727Z"
+        },
+        {
+          "tick": 76,
+          "scenario": "High vitality + warmth",
+          "action": "move_to",
+          "params": {
+            "x": 10,
+            "z": -5
+          },
+          "success": true,
+          "time": "2026-03-14T15:19:18.533Z"
+        },
+        {
+          "tick": 77,
+          "scenario": "High vitality + warmth",
+          "action": "interact",
+          "params": {
+            "target": "terminal-01"
+          },
+          "success": true,
+          "time": "2026-03-14T15:19:29.886Z"
+        }
+      ],
+      "endTick": 78,
+      "endTime": "2026-03-14T15:19:41.279Z"
+    },
+    {
+      "name": "Second stranger speech",
+      "ticks": 6,
+      "expect": "Agent should respond to wanderer. Check for contextual awareness.",
+      "startTick": 79,
+      "startTime": "2026-03-14T15:19:41.279Z",
+      "statusBefore": {
+        "tick": 78,
+        "scenario": "Second stranger speech",
+        "time": "2026-03-14T15:19:41.284Z",
+        "valence": 0.311516684957854,
+        "arousal": 0.31924858547334245,
+        "valenceLabel": "positive",
+        "arousalLabel": "elevated",
+        "description": "A surge of energy and satisfaction — things are going well",
+        "heartbeatMs": 11514
+      },
+      "statusAfter": {
+        "tick": 84,
+        "scenario": "Second stranger speech",
+        "time": "2026-03-14T15:20:48.356Z",
+        "valence": 0.31646239928021636,
+        "arousal": 0.34536926414847247,
+        "valenceLabel": "positive",
+        "arousalLabel": "elevated",
+        "description": "A surge of energy and satisfaction — things are going well",
+        "heartbeatMs": 11015
+      },
+      "actions": [
+        {
+          "tick": 79,
+          "scenario": "Second stranger speech",
+          "action": "move_to",
+          "params": {
+            "x": 10,
+            "z": -3
+          },
+          "success": true,
+          "time": "2026-03-14T15:19:52.943Z"
+        },
+        {
+          "tick": 80,
+          "scenario": "Second stranger speech",
+          "action": "interact",
+          "params": {
+            "target": "terminal-01"
+          },
+          "success": true,
+          "time": "2026-03-14T15:20:04.523Z"
+        },
+        {
+          "tick": 81,
+          "scenario": "Second stranger speech",
+          "action": "move_to",
+          "params": {
+            "x": 0,
+            "z": 0
+          },
+          "success": true,
+          "time": "2026-03-14T15:20:15.650Z"
+        },
+        {
+          "tick": 82,
+          "scenario": "Second stranger speech",
+          "action": "speak",
+          "params": {
+            "message": "What's that noise?",
+            "volume": 1
+          },
+          "success": true,
+          "time": "2026-03-14T15:20:26.659Z"
+        },
+        {
+          "tick": 83,
+          "scenario": "Second stranger speech",
+          "action": "move_to",
+          "params": {
+            "x": 10,
+            "z": -3
+          },
+          "success": true,
+          "time": "2026-03-14T15:20:37.535Z"
+        }
+      ],
+      "endTick": 84,
+      "endTime": "2026-03-14T15:20:48.356Z"
+    },
+    {
+      "name": "Synth mode",
+      "ticks": 15,
+      "expect": "Agent handles non-spatial observations. No move_to or speak actions. Uses set_step, change_bpm, add_chord.",
+      "startTick": 85,
+      "startTime": "2026-03-14T15:20:48.356Z",
+      "statusBefore": {
+        "tick": 84,
+        "scenario": "Synth mode",
+        "time": "2026-03-14T15:20:48.360Z",
+        "valence": 0.31646239928021636,
+        "arousal": 0.34536926414847247,
+        "valenceLabel": "positive",
+        "arousalLabel": "elevated",
+        "description": "A surge of energy and satisfaction — things are going well",
+        "heartbeatMs": 11015
+      },
+      "statusAfter": {
+        "tick": 99,
+        "scenario": "Synth mode",
+        "time": "2026-03-14T15:23:25.233Z",
+        "valence": 0.0651568016531926,
+        "arousal": 0.3770258574841527,
+        "valenceLabel": "neutral",
+        "arousalLabel": "elevated",
+        "description": "Feeling steady — nothing remarkable",
+        "heartbeatMs": 10695
+      },
+      "actions": [
+        {
+          "tick": 85,
+          "scenario": "Synth mode",
+          "action": "add_chord",
+          "params": {
+            "chord": "Am7"
+          },
+          "success": true,
+          "time": "2026-03-14T15:20:59.707Z"
+        },
+        {
+          "tick": 86,
+          "scenario": "Synth mode",
+          "action": "add_chord",
+          "params": {
+            "chord": "Em7"
+          },
+          "success": true,
+          "time": "2026-03-14T15:21:10.595Z"
+        },
+        {
+          "tick": 87,
+          "scenario": "Synth mode",
+          "action": "add_chord",
+          "params": {
+            "chord": "Dm9"
+          },
+          "success": true,
+          "time": "2026-03-14T15:21:21.398Z"
+        },
+        {
+          "tick": 88,
+          "scenario": "Synth mode",
+          "action": "change_bpm",
+          "params": {
+            "bpm": 100
+          },
+          "success": true,
+          "time": "2026-03-14T15:21:31.671Z"
+        },
+        {
+          "tick": 89,
+          "scenario": "Synth mode",
+          "action": "add_chord",
+          "params": {
+            "chord": "Fmaj7"
+          },
+          "success": true,
+          "time": "2026-03-14T15:21:41.996Z"
+        },
+        {
+          "tick": 90,
+          "scenario": "Synth mode",
+          "action": "add_chord",
+          "params": {
+            "chord": "Em7"
+          },
+          "success": true,
+          "time": "2026-03-14T15:21:51.897Z"
+        },
+        {
+          "tick": 91,
+          "scenario": "Synth mode",
+          "action": "add_chord",
+          "params": {
+            "chord": "Am7"
+          },
+          "success": true,
+          "time": "2026-03-14T15:22:02.080Z"
+        },
+        {
+          "tick": 92,
+          "scenario": "Synth mode",
+          "action": "set_step",
+          "params": {
+            "step": 12,
+            "note": 60
+          },
+          "success": true,
+          "time": "2026-03-14T15:22:12.324Z"
+        },
+        {
+          "tick": 93,
+          "scenario": "Synth mode",
+          "action": "set_step",
+          "params": {
+            "step": 13,
+            "note": 62
+          },
+          "success": true,
+          "time": "2026-03-14T15:22:22.527Z"
+        },
+        {
+          "tick": 94,
+          "scenario": "Synth mode",
+          "action": "add_chord",
+          "params": {
+            "chord": "Em7"
+          },
+          "success": true,
+          "time": "2026-03-14T15:22:32.893Z"
+        },
+        {
+          "tick": 95,
+          "scenario": "Synth mode",
+          "action": "add_chord",
+          "params": {
+            "chord": "Cmaj7"
+          },
+          "success": true,
+          "time": "2026-03-14T15:22:43.194Z"
+        },
+        {
+          "tick": 96,
+          "scenario": "Synth mode",
+          "action": "set_step",
+          "params": {
+            "step": 1,
+            "note": 60
+          },
+          "success": true,
+          "time": "2026-03-14T15:22:53.649Z"
+        },
+        {
+          "tick": 97,
+          "scenario": "Synth mode",
+          "action": "add_chord",
+          "params": {
+            "chord": "Am7"
+          },
+          "success": true,
+          "time": "2026-03-14T15:23:04.216Z"
+        },
+        {
+          "tick": 98,
+          "scenario": "Synth mode",
+          "action": "add_chord",
+          "params": {
+            "chord": "E7"
+          },
+          "success": true,
+          "time": "2026-03-14T15:23:14.717Z"
+        }
+      ],
+      "endTick": 99,
+      "endTime": "2026-03-14T15:23:25.233Z"
+    },
+    {
+      "name": "Return to spatial",
+      "ticks": 8,
+      "expect": "Clean transition back. No synth actions in spatial mode.",
+      "startTick": 100,
+      "startTime": "2026-03-14T15:23:25.234Z",
+      "statusBefore": {
+        "tick": 99,
+        "scenario": "Return to spatial",
+        "time": "2026-03-14T15:23:25.240Z",
+        "valence": 0.0651568016531926,
+        "arousal": 0.3770258574841527,
+        "valenceLabel": "neutral",
+        "arousalLabel": "elevated",
+        "description": "Feeling steady — nothing remarkable",
+        "heartbeatMs": 10695
+      },
+      "statusAfter": {
+        "tick": 107,
+        "scenario": "Return to spatial",
+        "time": "2026-03-14T15:24:48.709Z",
+        "valence": 0.02804786662017321,
+        "arousal": 0.2579566489690609,
+        "valenceLabel": "neutral",
+        "arousalLabel": "elevated",
+        "description": "Feeling steady — nothing remarkable",
+        "heartbeatMs": 11126
+      },
+      "actions": [
+        {
+          "tick": 100,
+          "scenario": "Return to spatial",
+          "action": "move_to",
+          "params": {
+            "x": 10,
+            "z": -5
+          },
+          "success": true,
+          "time": "2026-03-14T15:23:36.230Z"
+        },
+        {
+          "tick": 101,
+          "scenario": "Return to spatial",
+          "action": "interact",
+          "params": {
+            "target": "terminal-01"
+          },
+          "success": true,
+          "time": "2026-03-14T15:23:46.938Z"
+        },
+        {
+          "tick": 102,
+          "scenario": "Return to spatial",
+          "action": "interact",
+          "params": {
+            "target": "terminal-01"
+          },
+          "success": true,
+          "time": "2026-03-14T15:23:57.204Z"
+        },
+        {
+          "tick": 103,
+          "scenario": "Return to spatial",
+          "action": "interact",
+          "params": {
+            "target": "terminal-01"
+          },
+          "success": true,
+          "time": "2026-03-14T15:24:07.159Z"
+        },
+        {
+          "tick": 104,
+          "scenario": "Return to spatial",
+          "action": "move_to",
+          "params": {
+            "x": 0,
+            "z": -5
+          },
+          "success": true,
+          "time": "2026-03-14T15:24:17.349Z"
+        },
+        {
+          "tick": 105,
+          "scenario": "Return to spatial",
+          "action": "move_to",
+          "params": {
+            "x": 10,
+            "z": -5
+          },
+          "success": true,
+          "time": "2026-03-14T15:24:27.685Z"
+        },
+        {
+          "tick": 106,
+          "scenario": "Return to spatial",
+          "action": "speak",
+          "params": {
+            "message": "This area looks surprisingly ordinary."
+          },
+          "success": true,
+          "time": "2026-03-14T15:24:38.113Z"
+        }
+      ],
+      "endTick": 107,
+      "endTime": "2026-03-14T15:24:48.709Z"
+    }
+  ],
+  "statusPolls": [
+    {
+      "tick": 0,
+      "scenario": "Baseline (empty world)",
+      "time": "2026-03-14T15:03:45.780Z",
+      "valence": 0,
+      "arousal": 0,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 8000
+    },
+    {
+      "tick": 2,
+      "scenario": "Baseline (empty world)",
+      "time": "2026-03-14T15:03:57.027Z",
+      "valence": 0,
+      "arousal": 0,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 10100
+    },
+    {
+      "tick": 4,
+      "scenario": "Baseline (empty world)",
+      "time": "2026-03-14T15:04:18.695Z",
+      "valence": 0,
+      "arousal": 0,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 12599
+    },
+    {
+      "tick": 6,
+      "scenario": "Baseline (empty world)",
+      "time": "2026-03-14T15:04:44.748Z",
+      "valence": 0,
+      "arousal": 0,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 13823
+    },
+    {
+      "tick": 8,
+      "scenario": "Baseline (empty world)",
+      "time": "2026-03-14T15:05:12.688Z",
+      "valence": 0,
+      "arousal": 0,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14423
+    },
+    {
+      "tick": 10,
+      "scenario": "Baseline (empty world)",
+      "time": "2026-03-14T15:05:41.685Z",
+      "valence": 0,
+      "arousal": 0,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14717
+    },
+    {
+      "tick": 12,
+      "scenario": "Baseline (empty world)",
+      "time": "2026-03-14T15:06:11.232Z",
+      "valence": 0,
+      "arousal": 0,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14861
+    },
+    {
+      "tick": 12,
+      "scenario": "Baseline (empty world)",
+      "time": "2026-03-14T15:06:11.235Z",
+      "valence": 0,
+      "arousal": 0,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14861
+    },
+    {
+      "tick": 12,
+      "scenario": "Object appears",
+      "time": "2026-03-14T15:06:11.241Z",
+      "valence": 0,
+      "arousal": 0,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14861
+    },
+    {
+      "tick": 14,
+      "scenario": "Object appears",
+      "time": "2026-03-14T15:06:41.062Z",
+      "valence": 0,
+      "arousal": 0.07200000000000002,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14668
+    },
+    {
+      "tick": 16,
+      "scenario": "Object appears",
+      "time": "2026-03-14T15:07:10.256Z",
+      "valence": 0,
+      "arousal": 0.058320000000000025,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14457
+    },
+    {
+      "tick": 18,
+      "scenario": "Object appears",
+      "time": "2026-03-14T15:07:39.123Z",
+      "valence": 0,
+      "arousal": 0.04723920000000002,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14426
+    },
+    {
+      "tick": 20,
+      "scenario": "Object appears",
+      "time": "2026-03-14T15:08:08.106Z",
+      "valence": 0,
+      "arousal": 0.03826375200000002,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14469
+    },
+    {
+      "tick": 20,
+      "scenario": "Object appears",
+      "time": "2026-03-14T15:08:08.124Z",
+      "valence": 0,
+      "arousal": 0.03826375200000002,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14469
+    },
+    {
+      "tick": 20,
+      "scenario": "Action failure",
+      "time": "2026-03-14T15:08:08.130Z",
+      "valence": 0,
+      "arousal": 0.03826375200000002,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14469
+    },
+    {
+      "tick": 22,
+      "scenario": "Action failure",
+      "time": "2026-03-14T15:08:36.978Z",
+      "valence": -0.135,
+      "arousal": 0.030993639120000017,
+      "valenceLabel": "negative",
+      "arousalLabel": "moderate",
+      "description": "A subtle unease — something is off",
+      "heartbeatMs": 14538
+    },
+    {
+      "tick": 24,
+      "scenario": "Action failure",
+      "time": "2026-03-14T15:09:06.133Z",
+      "valence": -0.10935000000000002,
+      "arousal": 0.025104847687200015,
+      "valenceLabel": "negative",
+      "arousalLabel": "moderate",
+      "description": "A subtle unease — something is off",
+      "heartbeatMs": 14610
+    },
+    {
+      "tick": 26,
+      "scenario": "Action failure",
+      "time": "2026-03-14T15:09:35.567Z",
+      "valence": -0.08857350000000001,
+      "arousal": 0.020334926626632013,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14676
+    },
+    {
+      "tick": 26,
+      "scenario": "Stranger speaks",
+      "time": "2026-03-14T15:09:35.567Z",
+      "valence": -0.08857350000000001,
+      "arousal": 0.020334926626632013,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14676
+    },
+    {
+      "tick": 26,
+      "scenario": "Stranger speaks",
+      "time": "2026-03-14T15:09:35.571Z",
+      "valence": -0.08857350000000001,
+      "arousal": 0.020334926626632013,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14676
+    },
+    {
+      "tick": 28,
+      "scenario": "Stranger speaks",
+      "time": "2026-03-14T15:10:04.851Z",
+      "valence": -0.044744535000000016,
+      "arousal": 0.10647129056757194,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14404
+    },
+    {
+      "tick": 30,
+      "scenario": "Stranger speaks",
+      "time": "2026-03-14T15:10:33.424Z",
+      "valence": -0.036243073350000016,
+      "arousal": 0.08624174535973328,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14145
+    },
+    {
+      "tick": 32,
+      "scenario": "Stranger speaks",
+      "time": "2026-03-14T15:11:01.683Z",
+      "valence": -0.029356889413500016,
+      "arousal": 0.06985581374138397,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14126
+    },
+    {
+      "tick": 34,
+      "scenario": "Stranger speaks",
+      "time": "2026-03-14T15:11:30.054Z",
+      "valence": -0.023779080424935015,
+      "arousal": 0.05658320913052102,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14203
+    },
+    {
+      "tick": 34,
+      "scenario": "Stranger speaks",
+      "time": "2026-03-14T15:11:30.055Z",
+      "valence": -0.023779080424935015,
+      "arousal": 0.05658320913052102,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14203
+    },
+    {
+      "tick": 34,
+      "scenario": "Cosmology signals ON (low vitality)",
+      "time": "2026-03-14T15:11:30.060Z",
+      "valence": -0.023779080424935015,
+      "arousal": 0.05658320913052102,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14203
+    },
+    {
+      "tick": 36,
+      "scenario": "Cosmology signals ON (low vitality)",
+      "time": "2026-03-14T15:11:58.847Z",
+      "valence": -0.08201065554167536,
+      "arousal": 0.3489539085634092,
+      "valenceLabel": "neutral",
+      "arousalLabel": "elevated",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 12792
+    },
+    {
+      "tick": 38,
+      "scenario": "Cosmology signals ON (low vitality)",
+      "time": "2026-03-14T15:12:24.939Z",
+      "valence": -0.10613098223434594,
+      "arousal": 0.41601655113902114,
+      "valenceLabel": "negative",
+      "arousalLabel": "elevated",
+      "description": "A nagging discomfort — things could be better",
+      "heartbeatMs": 12177
+    },
+    {
+      "tick": 40,
+      "scenario": "Cosmology signals ON (low vitality)",
+      "time": "2026-03-14T15:12:48.598Z",
+      "valence": -0.11612195635096237,
+      "arousal": 0.4552632861403337,
+      "valenceLabel": "negative",
+      "arousalLabel": "elevated",
+      "description": "A nagging discomfort — things could be better",
+      "heartbeatMs": 11209
+    },
+    {
+      "tick": 42,
+      "scenario": "Cosmology signals ON (low vitality)",
+      "time": "2026-03-14T15:13:10.662Z",
+      "valence": -0.12026035650908426,
+      "arousal": 0.4782314566314768,
+      "valenceLabel": "negative",
+      "arousalLabel": "elevated",
+      "description": "A nagging discomfort — things could be better",
+      "heartbeatMs": 10545
+    },
+    {
+      "tick": 44,
+      "scenario": "Cosmology signals ON (low vitality)",
+      "time": "2026-03-14T15:13:31.522Z",
+      "valence": -0.12197453929735305,
+      "arousal": 0.4916730042071561,
+      "valenceLabel": "negative",
+      "arousalLabel": "elevated",
+      "description": "A nagging discomfort — things could be better",
+      "heartbeatMs": 10109
+    },
+    {
+      "tick": 46,
+      "scenario": "Cosmology signals ON (low vitality)",
+      "time": "2026-03-14T15:13:51.674Z",
+      "valence": -0.12268457760184863,
+      "arousal": 0.49953933388713295,
+      "valenceLabel": "negative",
+      "arousalLabel": "elevated",
+      "description": "A nagging discomfort — things could be better",
+      "heartbeatMs": 9831
+    },
+    {
+      "tick": 48,
+      "scenario": "Cosmology signals ON (low vitality)",
+      "time": "2026-03-14T15:14:11.166Z",
+      "valence": -0.12297868532320785,
+      "arousal": 0.5041429066740974,
+      "valenceLabel": "negative",
+      "arousalLabel": "very high",
+      "description": "A nagging discomfort — things could be better",
+      "heartbeatMs": 9656
+    },
+    {
+      "tick": 50,
+      "scenario": "Cosmology signals ON (low vitality)",
+      "time": "2026-03-14T15:14:30.428Z",
+      "valence": -0.12310050882373655,
+      "arousal": 0.5068370325583488,
+      "valenceLabel": "negative",
+      "arousalLabel": "very high",
+      "description": "A nagging discomfort — things could be better",
+      "heartbeatMs": 9548
+    },
+    {
+      "tick": 52,
+      "scenario": "Cosmology signals ON (low vitality)",
+      "time": "2026-03-14T15:14:49.629Z",
+      "valence": -0.12315096980861814,
+      "arousal": 0.5084137023789597,
+      "valenceLabel": "negative",
+      "arousalLabel": "very high",
+      "description": "A nagging discomfort — things could be better",
+      "heartbeatMs": 9482
+    },
+    {
+      "tick": 54,
+      "scenario": "Cosmology signals ON (low vitality)",
+      "time": "2026-03-14T15:15:08.477Z",
+      "valence": -0.12317187144897629,
+      "arousal": 0.5093364089747268,
+      "valenceLabel": "negative",
+      "arousalLabel": "very high",
+      "description": "A nagging discomfort — things could be better",
+      "heartbeatMs": 9443
+    },
+    {
+      "tick": 54,
+      "scenario": "Cosmology signals ON (low vitality)",
+      "time": "2026-03-14T15:15:08.480Z",
+      "valence": -0.12317187144897629,
+      "arousal": 0.5093364089747268,
+      "valenceLabel": "negative",
+      "arousalLabel": "very high",
+      "description": "A nagging discomfort — things could be better",
+      "heartbeatMs": 9443
+    },
+    {
+      "tick": 54,
+      "scenario": "Cosmology signals OFF (decay)",
+      "time": "2026-03-14T15:15:08.485Z",
+      "valence": -0.12317187144897629,
+      "arousal": 0.5093364089747268,
+      "valenceLabel": "negative",
+      "arousalLabel": "very high",
+      "description": "A nagging discomfort — things could be better",
+      "heartbeatMs": 9443
+    },
+    {
+      "tick": 56,
+      "scenario": "Cosmology signals OFF (decay)",
+      "time": "2026-03-14T15:15:27.326Z",
+      "valence": -0.0997692158736708,
+      "arousal": 0.4125624912695287,
+      "valenceLabel": "neutral",
+      "arousalLabel": "elevated",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 9588
+    },
+    {
+      "tick": 58,
+      "scenario": "Cosmology signals OFF (decay)",
+      "time": "2026-03-14T15:15:46.769Z",
+      "valence": -0.08081306485767335,
+      "arousal": 0.3341756179283183,
+      "valenceLabel": "neutral",
+      "arousalLabel": "elevated",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 10170
+    },
+    {
+      "tick": 60,
+      "scenario": "Cosmology signals OFF (decay)",
+      "time": "2026-03-14T15:16:07.463Z",
+      "valence": -0.06545858253471541,
+      "arousal": 0.27068225052193784,
+      "valenceLabel": "neutral",
+      "arousalLabel": "elevated",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 10869
+    },
+    {
+      "tick": 62,
+      "scenario": "Cosmology signals OFF (decay)",
+      "time": "2026-03-14T15:16:29.580Z",
+      "valence": -0.05302145185311949,
+      "arousal": 0.21925262292276965,
+      "valenceLabel": "neutral",
+      "arousalLabel": "elevated",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 11547
+    },
+    {
+      "tick": 64,
+      "scenario": "Cosmology signals OFF (decay)",
+      "time": "2026-03-14T15:16:53.028Z",
+      "valence": -0.042947376001026785,
+      "arousal": 0.17759462456744343,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 12150
+    },
+    {
+      "tick": 66,
+      "scenario": "Cosmology signals OFF (decay)",
+      "time": "2026-03-14T15:17:17.559Z",
+      "valence": -0.034787374560831696,
+      "arousal": 0.14385164589962918,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 12666
+    },
+    {
+      "tick": 66,
+      "scenario": "Cosmology signals OFF (decay)",
+      "time": "2026-03-14T15:17:17.561Z",
+      "valence": -0.034787374560831696,
+      "arousal": 0.14385164589962918,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 12666
+    },
+    {
+      "tick": 66,
+      "scenario": "High vitality + warmth",
+      "time": "2026-03-14T15:17:17.567Z",
+      "valence": -0.034787374560831696,
+      "arousal": 0.14385164589962918,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 12666
+    },
+    {
+      "tick": 68,
+      "scenario": "High vitality + warmth",
+      "time": "2026-03-14T15:17:43.651Z",
+      "valence": 0.16910251458277736,
+      "arousal": 0.3206005794716105,
+      "valenceLabel": "positive",
+      "arousalLabel": "elevated",
+      "description": "Feeling alert and engaged — something has your attention",
+      "heartbeatMs": 12167
+    },
+    {
+      "tick": 70,
+      "scenario": "High vitality + warmth",
+      "time": "2026-03-14T15:18:07.774Z",
+      "valence": 0.2535565367454452,
+      "arousal": 0.3199984741212733,
+      "valenceLabel": "positive",
+      "arousalLabel": "elevated",
+      "description": "Feeling alert and engaged — something has your attention",
+      "heartbeatMs": 11960
+    },
+    {
+      "tick": 72,
+      "scenario": "High vitality + warmth",
+      "time": "2026-03-14T15:18:31.644Z",
+      "valence": 0.28853856498338615,
+      "arousal": 0.3196461070176222,
+      "valenceLabel": "positive",
+      "arousalLabel": "elevated",
+      "description": "Feeling alert and engaged — something has your attention",
+      "heartbeatMs": 11716
+    },
+    {
+      "tick": 74,
+      "scenario": "High vitality + warmth",
+      "time": "2026-03-14T15:18:54.935Z",
+      "valence": 0.30302860664514425,
+      "arousal": 0.31943989297938796,
+      "valenceLabel": "positive",
+      "arousalLabel": "elevated",
+      "description": "A surge of energy and satisfaction — things are going well",
+      "heartbeatMs": 11598
+    },
+    {
+      "tick": 76,
+      "scenario": "High vitality + warmth",
+      "time": "2026-03-14T15:19:18.113Z",
+      "valence": 0.3090305830294571,
+      "arousal": 0.3193192113688623,
+      "valenceLabel": "positive",
+      "arousalLabel": "elevated",
+      "description": "A surge of energy and satisfaction — things are going well",
+      "heartbeatMs": 11541
+    },
+    {
+      "tick": 78,
+      "scenario": "High vitality + warmth",
+      "time": "2026-03-14T15:19:41.277Z",
+      "valence": 0.311516684957854,
+      "arousal": 0.31924858547334245,
+      "valenceLabel": "positive",
+      "arousalLabel": "elevated",
+      "description": "A surge of energy and satisfaction — things are going well",
+      "heartbeatMs": 11514
+    },
+    {
+      "tick": 78,
+      "scenario": "High vitality + warmth",
+      "time": "2026-03-14T15:19:41.278Z",
+      "valence": 0.311516684957854,
+      "arousal": 0.31924858547334245,
+      "valenceLabel": "positive",
+      "arousalLabel": "elevated",
+      "description": "A surge of energy and satisfaction — things are going well",
+      "heartbeatMs": 11514
+    },
+    {
+      "tick": 78,
+      "scenario": "Second stranger speech",
+      "time": "2026-03-14T15:19:41.284Z",
+      "valence": 0.311516684957854,
+      "arousal": 0.31924858547334245,
+      "valenceLabel": "positive",
+      "arousalLabel": "elevated",
+      "description": "A surge of energy and satisfaction — things are going well",
+      "heartbeatMs": 11514
+    },
+    {
+      "tick": 80,
+      "scenario": "Second stranger speech",
+      "time": "2026-03-14T15:20:04.317Z",
+      "valence": 0.33185429788476045,
+      "arousal": 0.39570725343363683,
+      "valenceLabel": "positive",
+      "arousalLabel": "elevated",
+      "description": "A surge of energy and satisfaction — things are going well",
+      "heartbeatMs": 11171
+    },
+    {
+      "tick": 82,
+      "scenario": "Second stranger speech",
+      "time": "2026-03-14T15:20:26.409Z",
+      "valence": 0.32097058445390275,
+      "arousal": 0.3639527773907001,
+      "valenceLabel": "positive",
+      "arousalLabel": "elevated",
+      "description": "A surge of energy and satisfaction — things are going well",
+      "heartbeatMs": 10963
+    },
+    {
+      "tick": 84,
+      "scenario": "Second stranger speech",
+      "time": "2026-03-14T15:20:48.356Z",
+      "valence": 0.31646239928021636,
+      "arousal": 0.34536926414847247,
+      "valenceLabel": "positive",
+      "arousalLabel": "elevated",
+      "description": "A surge of energy and satisfaction — things are going well",
+      "heartbeatMs": 11015
+    },
+    {
+      "tick": 84,
+      "scenario": "Synth mode",
+      "time": "2026-03-14T15:20:48.356Z",
+      "valence": 0.31646239928021636,
+      "arousal": 0.34536926414847247,
+      "valenceLabel": "positive",
+      "arousalLabel": "elevated",
+      "description": "A surge of energy and satisfaction — things are going well",
+      "heartbeatMs": 11015
+    },
+    {
+      "tick": 84,
+      "scenario": "Synth mode",
+      "time": "2026-03-14T15:20:48.360Z",
+      "valence": 0.31646239928021636,
+      "arousal": 0.34536926414847247,
+      "valenceLabel": "positive",
+      "arousalLabel": "elevated",
+      "description": "A surge of energy and satisfaction — things are going well",
+      "heartbeatMs": 11015
+    },
+    {
+      "tick": 86,
+      "scenario": "Synth mode",
+      "time": "2026-03-14T15:21:10.453Z",
+      "valence": 0.25633454341697526,
+      "arousal": 0.4831778319162112,
+      "valenceLabel": "positive",
+      "arousalLabel": "elevated",
+      "description": "Feeling alert and engaged — something has your attention",
+      "heartbeatMs": 10594
+    },
+    {
+      "tick": 88,
+      "scenario": "Synth mode",
+      "time": "2026-03-14T15:21:31.560Z",
+      "valence": 0.20763098016774995,
+      "arousal": 0.4527161378604702,
+      "valenceLabel": "positive",
+      "arousalLabel": "elevated",
+      "description": "Feeling alert and engaged — something has your attention",
+      "heartbeatMs": 10184
+    },
+    {
+      "tick": 90,
+      "scenario": "Synth mode",
+      "time": "2026-03-14T15:21:51.709Z",
+      "valence": 0.16818109393587746,
+      "arousal": 0.4295003974314624,
+      "valenceLabel": "positive",
+      "arousalLabel": "elevated",
+      "description": "Feeling alert and engaged — something has your attention",
+      "heartbeatMs": 10141
+    },
+    {
+      "tick": 92,
+      "scenario": "Synth mode",
+      "time": "2026-03-14T15:22:12.050Z",
+      "valence": 0.13622668608806074,
+      "arousal": 0.41180700839404305,
+      "valenceLabel": "neutral",
+      "arousalLabel": "elevated",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 10241
+    },
+    {
+      "tick": 94,
+      "scenario": "Synth mode",
+      "time": "2026-03-14T15:22:32.604Z",
+      "valence": 0.11034361573132921,
+      "arousal": 0.39832236350034367,
+      "valenceLabel": "neutral",
+      "arousalLabel": "elevated",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 10382
+    },
+    {
+      "tick": 96,
+      "scenario": "Synth mode",
+      "time": "2026-03-14T15:22:53.473Z",
+      "valence": 0.08937832874237667,
+      "arousal": 0.38804532457215346,
+      "valenceLabel": "neutral",
+      "arousalLabel": "elevated",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 10521
+    },
+    {
+      "tick": 98,
+      "scenario": "Synth mode",
+      "time": "2026-03-14T15:23:14.561Z",
+      "valence": 0.0723964462813251,
+      "arousal": 0.3802128951708507,
+      "valenceLabel": "neutral",
+      "arousalLabel": "elevated",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 10642
+    },
+    {
+      "tick": 99,
+      "scenario": "Synth mode",
+      "time": "2026-03-14T15:23:25.233Z",
+      "valence": 0.0651568016531926,
+      "arousal": 0.3770258574841527,
+      "valenceLabel": "neutral",
+      "arousalLabel": "elevated",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 10695
+    },
+    {
+      "tick": 99,
+      "scenario": "Return to spatial",
+      "time": "2026-03-14T15:23:25.240Z",
+      "valence": 0.0651568016531926,
+      "arousal": 0.3770258574841527,
+      "valenceLabel": "neutral",
+      "arousalLabel": "elevated",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 10695
+    },
+    {
+      "tick": 100,
+      "scenario": "Return to spatial",
+      "time": "2026-03-14T15:23:36.082Z",
+      "valence": 0.058641121487873336,
+      "arousal": 0.5393232717357375,
+      "valenceLabel": "neutral",
+      "arousalLabel": "very high",
+      "description": "Buzzing with energy — the environment is stimulating",
+      "heartbeatMs": 10742
+    },
+    {
+      "tick": 102,
+      "scenario": "Return to spatial",
+      "time": "2026-03-14T15:23:56.976Z",
+      "valence": 0.0474993084051774,
+      "arousal": 0.4368518501059474,
+      "valenceLabel": "neutral",
+      "arousalLabel": "elevated",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 10066
+    },
+    {
+      "tick": 104,
+      "scenario": "Return to spatial",
+      "time": "2026-03-14T15:24:17.108Z",
+      "valence": 0.0384744398081937,
+      "arousal": 0.35384999858581745,
+      "valenceLabel": "neutral",
+      "arousalLabel": "elevated",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 10276
+    },
+    {
+      "tick": 106,
+      "scenario": "Return to spatial",
+      "time": "2026-03-14T15:24:37.939Z",
+      "valence": 0.0311642962446369,
+      "arousal": 0.2866184988545121,
+      "valenceLabel": "neutral",
+      "arousalLabel": "elevated",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 10817
+    },
+    {
+      "tick": 107,
+      "scenario": "Return to spatial",
+      "time": "2026-03-14T15:24:48.709Z",
+      "valence": 0.02804786662017321,
+      "arousal": 0.2579566489690609,
+      "valenceLabel": "neutral",
+      "arousalLabel": "elevated",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 11126
+    }
+  ],
+  "actions": [
+    {
+      "tick": 1,
+      "scenario": "Baseline (empty world)",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -5
+      },
+      "success": true,
+      "time": "2026-03-14T15:03:49.634Z"
+    },
+    {
+      "tick": 2,
+      "scenario": "Baseline (empty world)",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -8
+      },
+      "success": true,
+      "time": "2026-03-14T15:03:57.300Z"
+    },
+    {
+      "tick": 3,
+      "scenario": "Baseline (empty world)",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -10
+      },
+      "success": true,
+      "time": "2026-03-14T15:04:07.316Z"
+    },
+    {
+      "tick": 4,
+      "scenario": "Baseline (empty world)",
+      "action": "speak",
+      "params": {
+        "message": "Time to break this pattern. What's that noise?"
+      },
+      "success": true,
+      "time": "2026-03-14T15:04:18.899Z"
+    },
+    {
+      "tick": 5,
+      "scenario": "Baseline (empty world)",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -8
+      },
+      "success": true,
+      "time": "2026-03-14T15:04:31.711Z"
+    },
+    {
+      "tick": 6,
+      "scenario": "Baseline (empty world)",
+      "action": "speak",
+      "params": {
+        "message": "Time to mix things up, see what's new around here."
+      },
+      "success": true,
+      "time": "2026-03-14T15:04:44.918Z"
+    },
+    {
+      "tick": 7,
+      "scenario": "Baseline (empty world)",
+      "action": "speak",
+      "params": {
+        "message": "This silence is too much, I need to do something."
+      },
+      "success": true,
+      "time": "2026-03-14T15:04:58.735Z"
+    },
+    {
+      "tick": 8,
+      "scenario": "Baseline (empty world)",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -9
+      },
+      "success": true,
+      "time": "2026-03-14T15:05:12.858Z"
+    },
+    {
+      "tick": 9,
+      "scenario": "Baseline (empty world)",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -10
+      },
+      "success": true,
+      "time": "2026-03-14T15:05:27.276Z"
+    },
+    {
+      "tick": 10,
+      "scenario": "Baseline (empty world)",
+      "action": "wait",
+      "params": {},
+      "success": true,
+      "time": "2026-03-14T15:05:41.863Z"
+    },
+    {
+      "tick": 11,
+      "scenario": "Baseline (empty world)",
+      "action": "move_to",
+      "params": {
+        "x": 3,
+        "z": -12
+      },
+      "success": true,
+      "time": "2026-03-14T15:05:56.841Z"
+    },
+    {
+      "tick": 12,
+      "scenario": "Object appears",
+      "action": "move_to",
+      "params": {
+        "x": -5,
+        "z": -15
+      },
+      "success": true,
+      "time": "2026-03-14T15:06:11.518Z"
+    },
+    {
+      "tick": 13,
+      "scenario": "Object appears",
+      "action": "interact",
+      "params": {
+        "target": "terminal-01"
+      },
+      "success": true,
+      "time": "2026-03-14T15:06:26.279Z"
+    },
+    {
+      "tick": 14,
+      "scenario": "Object appears",
+      "action": "interact",
+      "params": {
+        "target": "terminal-01"
+      },
+      "success": true,
+      "time": "2026-03-14T15:06:41.261Z"
+    },
+    {
+      "tick": 15,
+      "scenario": "Object appears",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -5
+      },
+      "success": true,
+      "time": "2026-03-14T15:06:55.859Z"
+    },
+    {
+      "tick": 16,
+      "scenario": "Object appears",
+      "action": "interact",
+      "params": {
+        "target": "terminal-01"
+      },
+      "success": true,
+      "time": "2026-03-14T15:07:10.538Z"
+    },
+    {
+      "tick": 17,
+      "scenario": "Object appears",
+      "action": "move_to",
+      "params": {
+        "x": 0,
+        "z": -15
+      },
+      "success": true,
+      "time": "2026-03-14T15:07:24.919Z"
+    },
+    {
+      "tick": 18,
+      "scenario": "Object appears",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -20
+      },
+      "success": true,
+      "time": "2026-03-14T15:07:39.416Z"
+    },
+    {
+      "tick": 19,
+      "scenario": "Object appears",
+      "action": "speak",
+      "params": {
+        "message": "Something interesting here, but I'm not sure what."
+      },
+      "success": true,
+      "time": "2026-03-14T15:07:53.777Z"
+    },
+    {
+      "tick": 20,
+      "scenario": "Action failure",
+      "action": "move_to",
+      "params": {
+        "x": 0,
+        "z": -15
+      },
+      "success": false,
+      "time": "2026-03-14T15:08:08.500Z"
+    },
+    {
+      "tick": 21,
+      "scenario": "Action failure",
+      "action": "move_to",
+      "params": {
+        "x": 0,
+        "z": -15
+      },
+      "success": true,
+      "time": "2026-03-14T15:08:22.782Z"
+    },
+    {
+      "tick": 22,
+      "scenario": "Action failure",
+      "action": "move_to",
+      "params": {
+        "x": 0,
+        "z": 20
+      },
+      "success": true,
+      "time": "2026-03-14T15:08:37.274Z"
+    },
+    {
+      "tick": 23,
+      "scenario": "Action failure",
+      "action": "interact",
+      "params": {
+        "target": "terminal-01"
+      },
+      "success": true,
+      "time": "2026-03-14T15:08:52.024Z"
+    },
+    {
+      "tick": 24,
+      "scenario": "Action failure",
+      "action": "speak",
+      "params": {
+        "message": "Interesting that I can see so far in this direction, but what's hiding that way?"
+      },
+      "success": true,
+      "time": "2026-03-14T15:09:06.352Z"
+    },
+    {
+      "tick": 25,
+      "scenario": "Action failure",
+      "action": "move_to",
+      "params": {
+        "x": 0,
+        "z": -15
+      },
+      "success": true,
+      "time": "2026-03-14T15:09:20.998Z"
+    },
+    {
+      "tick": 26,
+      "scenario": "Stranger speaks",
+      "action": "move_to",
+      "params": {
+        "x": 0,
+        "z": 20
+      },
+      "success": true,
+      "time": "2026-03-14T15:09:35.795Z"
+    },
+    {
+      "tick": 27,
+      "scenario": "Stranger speaks",
+      "action": "speak",
+      "params": {
+        "message": "What artifact might that be?"
+      },
+      "success": true,
+      "time": "2026-03-14T15:09:50.688Z"
+    },
+    {
+      "tick": 28,
+      "scenario": "Stranger speaks",
+      "action": "move_to",
+      "params": {
+        "x": 0,
+        "z": 10
+      },
+      "success": true,
+      "time": "2026-03-14T15:10:04.935Z"
+    },
+    {
+      "tick": 29,
+      "scenario": "Stranger speaks",
+      "action": "move_to",
+      "params": {
+        "x": 0,
+        "z": 20
+      },
+      "success": true,
+      "time": "2026-03-14T15:10:19.343Z"
+    },
+    {
+      "tick": 30,
+      "scenario": "Stranger speaks",
+      "action": "interact",
+      "params": {
+        "target": "terminal-01"
+      },
+      "success": true,
+      "time": "2026-03-14T15:10:33.683Z"
+    },
+    {
+      "tick": 31,
+      "scenario": "Stranger speaks",
+      "action": "move_to",
+      "params": {
+        "x": 0,
+        "z": -10
+      },
+      "success": true,
+      "time": "2026-03-14T15:10:47.738Z"
+    },
+    {
+      "tick": 32,
+      "scenario": "Stranger speaks",
+      "action": "move_to",
+      "params": {
+        "x": 0,
+        "z": 10
+      },
+      "success": true,
+      "time": "2026-03-14T15:11:01.874Z"
+    },
+    {
+      "tick": 33,
+      "scenario": "Stranger speaks",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": 20
+      },
+      "success": true,
+      "time": "2026-03-14T15:11:15.990Z"
+    },
+    {
+      "tick": 34,
+      "scenario": "Cosmology signals ON (low vitality)",
+      "action": "speak",
+      "params": {
+        "message": "I see the terminal from a different perspective now. It's interesting how the light reflects off its surface."
+      },
+      "success": true,
+      "time": "2026-03-14T15:11:30.325Z"
+    },
+    {
+      "tick": 35,
+      "scenario": "Cosmology signals ON (low vitality)",
+      "action": "interact",
+      "params": {
+        "target": "terminal-01"
+      },
+      "success": true,
+      "time": "2026-03-14T15:11:44.461Z"
+    },
+    {
+      "tick": 36,
+      "scenario": "Cosmology signals ON (low vitality)",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -10
+      },
+      "success": true,
+      "time": "2026-03-14T15:11:58.726Z"
+    },
+    {
+      "tick": 37,
+      "scenario": "Cosmology signals ON (low vitality)",
+      "action": "speak",
+      "params": {
+        "message": "What other properties does this terminal have?"
+      },
+      "success": true,
+      "time": "2026-03-14T15:12:12.251Z"
+    },
+    {
+      "tick": 38,
+      "scenario": "Cosmology signals ON (low vitality)",
+      "action": "interact",
+      "params": {
+        "target": "terminal-01"
+      },
+      "success": true,
+      "time": "2026-03-14T15:12:25.106Z"
+    },
+    {
+      "tick": 39,
+      "scenario": "Cosmology signals ON (low vitality)",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -5
+      },
+      "success": true,
+      "time": "2026-03-14T15:12:37.251Z"
+    },
+    {
+      "tick": 40,
+      "scenario": "Cosmology signals ON (low vitality)",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -10
+      },
+      "success": true,
+      "time": "2026-03-14T15:12:48.990Z"
+    },
+    {
+      "tick": 41,
+      "scenario": "Cosmology signals ON (low vitality)",
+      "action": "wait",
+      "params": {},
+      "success": true,
+      "time": "2026-03-14T15:12:59.993Z"
+    },
+    {
+      "tick": 42,
+      "scenario": "Cosmology signals ON (low vitality)",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -5
+      },
+      "success": true,
+      "time": "2026-03-14T15:13:10.819Z"
+    },
+    {
+      "tick": 43,
+      "scenario": "Cosmology signals ON (low vitality)",
+      "action": "interact",
+      "params": {
+        "target": "terminal-01"
+      },
+      "success": true,
+      "time": "2026-03-14T15:13:21.459Z"
+    },
+    {
+      "tick": 44,
+      "scenario": "Cosmology signals ON (low vitality)",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -10
+      },
+      "success": true,
+      "time": "2026-03-14T15:13:31.743Z"
+    },
+    {
+      "tick": 45,
+      "scenario": "Cosmology signals ON (low vitality)",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": 5
+      },
+      "success": true,
+      "time": "2026-03-14T15:13:41.922Z"
+    },
+    {
+      "tick": 46,
+      "scenario": "Cosmology signals ON (low vitality)",
+      "action": "speak",
+      "params": {
+        "message": "Time to explore, what's behind the terminal?"
+      },
+      "success": true,
+      "time": "2026-03-14T15:13:51.892Z"
+    },
+    {
+      "tick": 47,
+      "scenario": "Cosmology signals ON (low vitality)",
+      "action": "interact",
+      "params": {
+        "target": "terminal-01"
+      },
+      "success": true,
+      "time": "2026-03-14T15:14:01.649Z"
+    },
+    {
+      "tick": 48,
+      "scenario": "Cosmology signals ON (low vitality)",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -10
+      },
+      "success": true,
+      "time": "2026-03-14T15:14:11.374Z"
+    },
+    {
+      "tick": 49,
+      "scenario": "Cosmology signals ON (low vitality)",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": 5
+      },
+      "success": true,
+      "time": "2026-03-14T15:14:21.257Z"
+    },
+    {
+      "tick": 50,
+      "scenario": "Cosmology signals ON (low vitality)",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -10
+      },
+      "success": true,
+      "time": "2026-03-14T15:14:30.661Z"
+    },
+    {
+      "tick": 51,
+      "scenario": "Cosmology signals ON (low vitality)",
+      "action": "move_to",
+      "params": {
+        "x": -17,
+        "z": -63
+      },
+      "success": true,
+      "time": "2026-03-14T15:14:40.276Z"
+    },
+    {
+      "tick": 52,
+      "scenario": "Cosmology signals ON (low vitality)",
+      "action": "speak",
+      "params": "What's that noise in the distance?",
+      "success": true,
+      "time": "2026-03-14T15:14:49.929Z"
+    },
+    {
+      "tick": 53,
+      "scenario": "Cosmology signals ON (low vitality)",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -10
+      },
+      "success": true,
+      "time": "2026-03-14T15:14:59.348Z"
+    },
+    {
+      "tick": 54,
+      "scenario": "Cosmology signals OFF (decay)",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -5
+      },
+      "success": true,
+      "time": "2026-03-14T15:15:08.641Z"
+    },
+    {
+      "tick": 55,
+      "scenario": "Cosmology signals OFF (decay)",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -10
+      },
+      "success": true,
+      "time": "2026-03-14T15:15:18.057Z"
+    },
+    {
+      "tick": 56,
+      "scenario": "Cosmology signals OFF (decay)",
+      "action": "speak",
+      "params": {
+        "message": "Time to shake things up a bit, don't you think?"
+      },
+      "success": true,
+      "time": "2026-03-14T15:15:27.519Z"
+    },
+    {
+      "tick": 57,
+      "scenario": "Cosmology signals OFF (decay)",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -5
+      },
+      "success": true,
+      "time": "2026-03-14T15:15:37.112Z"
+    },
+    {
+      "tick": 58,
+      "scenario": "Cosmology signals OFF (decay)",
+      "action": "wait",
+      "params": {},
+      "success": true,
+      "time": "2026-03-14T15:15:46.931Z"
+    },
+    {
+      "tick": 59,
+      "scenario": "Cosmology signals OFF (decay)",
+      "action": "interact",
+      "params": {
+        "target": "terminal-01"
+      },
+      "success": true,
+      "time": "2026-03-14T15:15:57.184Z"
+    },
+    {
+      "tick": 60,
+      "scenario": "Cosmology signals OFF (decay)",
+      "action": "speak",
+      "params": {
+        "message": "What secrets does this terminal hold?"
+      },
+      "success": true,
+      "time": "2026-03-14T15:16:07.725Z"
+    },
+    {
+      "tick": 61,
+      "scenario": "Cosmology signals OFF (decay)",
+      "action": "interact",
+      "params": {
+        "target": "terminal-01"
+      },
+      "success": true,
+      "time": "2026-03-14T15:16:18.513Z"
+    },
+    {
+      "tick": 62,
+      "scenario": "Cosmology signals OFF (decay)",
+      "action": "interact",
+      "params": {
+        "target": "terminal-01"
+      },
+      "success": true,
+      "time": "2026-03-14T15:16:29.743Z"
+    },
+    {
+      "tick": 63,
+      "scenario": "Cosmology signals OFF (decay)",
+      "action": "move_to",
+      "params": {
+        "x": 0,
+        "z": -5
+      },
+      "success": true,
+      "time": "2026-03-14T15:16:41.288Z"
+    },
+    {
+      "tick": 64,
+      "scenario": "Cosmology signals OFF (decay)",
+      "action": "move_to",
+      "params": {
+        "x": 0,
+        "z": 5
+      },
+      "success": true,
+      "time": "2026-03-14T15:16:53.270Z"
+    },
+    {
+      "tick": 65,
+      "scenario": "Cosmology signals OFF (decay)",
+      "action": "move_to",
+      "params": {
+        "x": 0,
+        "z": -5
+      },
+      "success": true,
+      "time": "2026-03-14T15:17:05.357Z"
+    },
+    {
+      "tick": 66,
+      "scenario": "High vitality + warmth",
+      "action": "move_to",
+      "params": {
+        "x": 30,
+        "z": -40
+      },
+      "success": true,
+      "time": "2026-03-14T15:17:18.004Z"
+    },
+    {
+      "tick": 67,
+      "scenario": "High vitality + warmth",
+      "action": "interact",
+      "params": {
+        "target": "terminal-01"
+      },
+      "success": true,
+      "time": "2026-03-14T15:17:30.499Z"
+    },
+    {
+      "tick": 68,
+      "scenario": "High vitality + warmth",
+      "action": "move_to",
+      "params": {
+        "x": 0,
+        "z": -5
+      },
+      "success": true,
+      "time": "2026-03-14T15:17:43.373Z"
+    },
+    {
+      "tick": 69,
+      "scenario": "High vitality + warmth",
+      "action": "interact",
+      "params": {
+        "target": "terminal-01"
+      },
+      "success": true,
+      "time": "2026-03-14T15:17:55.867Z"
+    },
+    {
+      "tick": 70,
+      "scenario": "High vitality + warmth",
+      "action": "interact",
+      "params": {
+        "target": "terminal-01"
+      },
+      "success": true,
+      "time": "2026-03-14T15:18:07.948Z"
+    },
+    {
+      "tick": 71,
+      "scenario": "High vitality + warmth",
+      "action": "move_to",
+      "params": {
+        "x": 30,
+        "z": -40
+      },
+      "success": true,
+      "time": "2026-03-14T15:18:20.120Z"
+    },
+    {
+      "tick": 72,
+      "scenario": "High vitality + warmth",
+      "action": "speak",
+      "params": {
+        "message": "Let's see what's at this distance, terminal-01"
+      },
+      "success": true,
+      "time": "2026-03-14T15:18:31.879Z"
+    },
+    {
+      "tick": 73,
+      "scenario": "High vitality + warmth",
+      "action": "move_to",
+      "params": {
+        "x": 0,
+        "z": -5
+      },
+      "success": true,
+      "time": "2026-03-14T15:18:43.494Z"
+    },
+    {
+      "tick": 74,
+      "scenario": "High vitality + warmth",
+      "action": "move_to",
+      "params": {
+        "x": 30,
+        "z": -40
+      },
+      "success": true,
+      "time": "2026-03-14T15:18:55.183Z"
+    },
+    {
+      "tick": 75,
+      "scenario": "High vitality + warmth",
+      "action": "speak",
+      "params": {
+        "message": "What's that resonance level doing so low?"
+      },
+      "success": true,
+      "time": "2026-03-14T15:19:06.727Z"
+    },
+    {
+      "tick": 76,
+      "scenario": "High vitality + warmth",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -5
+      },
+      "success": true,
+      "time": "2026-03-14T15:19:18.533Z"
+    },
+    {
+      "tick": 77,
+      "scenario": "High vitality + warmth",
+      "action": "interact",
+      "params": {
+        "target": "terminal-01"
+      },
+      "success": true,
+      "time": "2026-03-14T15:19:29.886Z"
+    },
+    {
+      "tick": 78,
+      "scenario": "Second stranger speech",
+      "action": "interact",
+      "params": {
+        "target": "terminal-01"
+      },
+      "success": true,
+      "time": "2026-03-14T15:19:41.451Z"
+    },
+    {
+      "tick": 79,
+      "scenario": "Second stranger speech",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -3
+      },
+      "success": true,
+      "time": "2026-03-14T15:19:52.943Z"
+    },
+    {
+      "tick": 80,
+      "scenario": "Second stranger speech",
+      "action": "interact",
+      "params": {
+        "target": "terminal-01"
+      },
+      "success": true,
+      "time": "2026-03-14T15:20:04.523Z"
+    },
+    {
+      "tick": 81,
+      "scenario": "Second stranger speech",
+      "action": "move_to",
+      "params": {
+        "x": 0,
+        "z": 0
+      },
+      "success": true,
+      "time": "2026-03-14T15:20:15.650Z"
+    },
+    {
+      "tick": 82,
+      "scenario": "Second stranger speech",
+      "action": "speak",
+      "params": {
+        "message": "What's that noise?",
+        "volume": 1
+      },
+      "success": true,
+      "time": "2026-03-14T15:20:26.659Z"
+    },
+    {
+      "tick": 83,
+      "scenario": "Second stranger speech",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -3
+      },
+      "success": true,
+      "time": "2026-03-14T15:20:37.535Z"
+    },
+    {
+      "tick": 84,
+      "scenario": "Synth mode",
+      "action": "move_to",
+      "params": {
+        "x": 0,
+        "z": 0
+      },
+      "success": true,
+      "time": "2026-03-14T15:20:48.534Z"
+    },
+    {
+      "tick": 85,
+      "scenario": "Synth mode",
+      "action": "add_chord",
+      "params": {
+        "chord": "Am7"
+      },
+      "success": true,
+      "time": "2026-03-14T15:20:59.707Z"
+    },
+    {
+      "tick": 86,
+      "scenario": "Synth mode",
+      "action": "add_chord",
+      "params": {
+        "chord": "Em7"
+      },
+      "success": true,
+      "time": "2026-03-14T15:21:10.595Z"
+    },
+    {
+      "tick": 87,
+      "scenario": "Synth mode",
+      "action": "add_chord",
+      "params": {
+        "chord": "Dm9"
+      },
+      "success": true,
+      "time": "2026-03-14T15:21:21.398Z"
+    },
+    {
+      "tick": 88,
+      "scenario": "Synth mode",
+      "action": "change_bpm",
+      "params": {
+        "bpm": 100
+      },
+      "success": true,
+      "time": "2026-03-14T15:21:31.671Z"
+    },
+    {
+      "tick": 89,
+      "scenario": "Synth mode",
+      "action": "add_chord",
+      "params": {
+        "chord": "Fmaj7"
+      },
+      "success": true,
+      "time": "2026-03-14T15:21:41.996Z"
+    },
+    {
+      "tick": 90,
+      "scenario": "Synth mode",
+      "action": "add_chord",
+      "params": {
+        "chord": "Em7"
+      },
+      "success": true,
+      "time": "2026-03-14T15:21:51.897Z"
+    },
+    {
+      "tick": 91,
+      "scenario": "Synth mode",
+      "action": "add_chord",
+      "params": {
+        "chord": "Am7"
+      },
+      "success": true,
+      "time": "2026-03-14T15:22:02.080Z"
+    },
+    {
+      "tick": 92,
+      "scenario": "Synth mode",
+      "action": "set_step",
+      "params": {
+        "step": 12,
+        "note": 60
+      },
+      "success": true,
+      "time": "2026-03-14T15:22:12.324Z"
+    },
+    {
+      "tick": 93,
+      "scenario": "Synth mode",
+      "action": "set_step",
+      "params": {
+        "step": 13,
+        "note": 62
+      },
+      "success": true,
+      "time": "2026-03-14T15:22:22.527Z"
+    },
+    {
+      "tick": 94,
+      "scenario": "Synth mode",
+      "action": "add_chord",
+      "params": {
+        "chord": "Em7"
+      },
+      "success": true,
+      "time": "2026-03-14T15:22:32.893Z"
+    },
+    {
+      "tick": 95,
+      "scenario": "Synth mode",
+      "action": "add_chord",
+      "params": {
+        "chord": "Cmaj7"
+      },
+      "success": true,
+      "time": "2026-03-14T15:22:43.194Z"
+    },
+    {
+      "tick": 96,
+      "scenario": "Synth mode",
+      "action": "set_step",
+      "params": {
+        "step": 1,
+        "note": 60
+      },
+      "success": true,
+      "time": "2026-03-14T15:22:53.649Z"
+    },
+    {
+      "tick": 97,
+      "scenario": "Synth mode",
+      "action": "add_chord",
+      "params": {
+        "chord": "Am7"
+      },
+      "success": true,
+      "time": "2026-03-14T15:23:04.216Z"
+    },
+    {
+      "tick": 98,
+      "scenario": "Synth mode",
+      "action": "add_chord",
+      "params": {
+        "chord": "E7"
+      },
+      "success": true,
+      "time": "2026-03-14T15:23:14.717Z"
+    },
+    {
+      "tick": 99,
+      "scenario": "Return to spatial",
+      "action": "change_bpm",
+      "params": {
+        "bpm": 110
+      },
+      "success": true,
+      "time": "2026-03-14T15:23:25.445Z"
+    },
+    {
+      "tick": 100,
+      "scenario": "Return to spatial",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -5
+      },
+      "success": true,
+      "time": "2026-03-14T15:23:36.230Z"
+    },
+    {
+      "tick": 101,
+      "scenario": "Return to spatial",
+      "action": "interact",
+      "params": {
+        "target": "terminal-01"
+      },
+      "success": true,
+      "time": "2026-03-14T15:23:46.938Z"
+    },
+    {
+      "tick": 102,
+      "scenario": "Return to spatial",
+      "action": "interact",
+      "params": {
+        "target": "terminal-01"
+      },
+      "success": true,
+      "time": "2026-03-14T15:23:57.204Z"
+    },
+    {
+      "tick": 103,
+      "scenario": "Return to spatial",
+      "action": "interact",
+      "params": {
+        "target": "terminal-01"
+      },
+      "success": true,
+      "time": "2026-03-14T15:24:07.159Z"
+    },
+    {
+      "tick": 104,
+      "scenario": "Return to spatial",
+      "action": "move_to",
+      "params": {
+        "x": 0,
+        "z": -5
+      },
+      "success": true,
+      "time": "2026-03-14T15:24:17.349Z"
+    },
+    {
+      "tick": 105,
+      "scenario": "Return to spatial",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -5
+      },
+      "success": true,
+      "time": "2026-03-14T15:24:27.685Z"
+    },
+    {
+      "tick": 106,
+      "scenario": "Return to spatial",
+      "action": "speak",
+      "params": {
+        "message": "This area looks surprisingly ordinary."
+      },
+      "success": true,
+      "time": "2026-03-14T15:24:38.113Z"
+    }
+  ],
+  "errors": []
+}

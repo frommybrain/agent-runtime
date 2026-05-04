@@ -1,0 +1,403 @@
+{
+  "startTime": "2026-03-14T10:25:38.855Z",
+  "endTime": "2026-03-14T10:28:25.524Z",
+  "scenarios": [
+    {
+      "name": "Baseline (empty world)",
+      "ticks": 12,
+      "expect": "Arousal and valence near 0. Heartbeat should be slow (12-15s).",
+      "startTick": 1,
+      "startTime": "2026-03-14T10:25:40.862Z",
+      "statusBefore": {
+        "tick": 0,
+        "scenario": "Baseline (empty world)",
+        "time": "2026-03-14T10:25:41.023Z",
+        "valence": 0,
+        "arousal": 0,
+        "valenceLabel": "neutral",
+        "arousalLabel": "moderate",
+        "description": "Feeling steady — nothing remarkable",
+        "heartbeatMs": 8000
+      },
+      "statusAfter": {
+        "tick": 12,
+        "scenario": "Baseline (empty world)",
+        "time": "2026-03-14T10:28:04.277Z",
+        "valence": 0.20585682117300003,
+        "arousal": 0,
+        "valenceLabel": "positive",
+        "arousalLabel": "moderate",
+        "description": "Feeling steady — nothing remarkable",
+        "heartbeatMs": 14903
+      },
+      "actions": [
+        {
+          "tick": 1,
+          "scenario": "Baseline (empty world)",
+          "action": "move_to",
+          "params": {
+            "x": 10,
+            "z": -5
+          },
+          "success": true,
+          "time": "2026-03-14T10:25:42.346Z"
+        },
+        {
+          "tick": 2,
+          "scenario": "Baseline (empty world)",
+          "action": "speak",
+          "params": {
+            "message": "Hello, I'm here."
+          },
+          "success": true,
+          "time": "2026-03-14T10:25:50.227Z"
+        },
+        {
+          "tick": 3,
+          "scenario": "Baseline (empty world)",
+          "action": "speak",
+          "params": {
+            "message": "Let's see what this terminal has to say."
+          },
+          "success": true,
+          "time": "2026-03-14T10:26:00.153Z"
+        },
+        {
+          "tick": 4,
+          "scenario": "Baseline (empty world)",
+          "action": "speak",
+          "params": {
+            "message": "Let's take a closer look."
+          },
+          "success": true,
+          "time": "2026-03-14T10:26:11.725Z"
+        },
+        {
+          "tick": 5,
+          "scenario": "Baseline (empty world)",
+          "action": "move_to",
+          "params": {
+            "x": 10,
+            "z": -10
+          },
+          "success": true,
+          "time": "2026-03-14T10:26:24.323Z"
+        },
+        {
+          "tick": 6,
+          "scenario": "Baseline (empty world)",
+          "action": "speak",
+          "params": {
+            "message": "What's that over there?"
+          },
+          "success": true,
+          "time": "2026-03-14T10:26:37.681Z"
+        },
+        {
+          "tick": 7,
+          "scenario": "Baseline (empty world)",
+          "action": "move_to",
+          "params": {
+            "x": 10,
+            "z": -5
+          },
+          "success": true,
+          "time": "2026-03-14T10:26:51.490Z"
+        },
+        {
+          "tick": 8,
+          "scenario": "Baseline (empty world)",
+          "action": "move_to",
+          "params": {
+            "x": 10,
+            "z": -10
+          },
+          "success": true,
+          "time": "2026-03-14T10:27:05.654Z"
+        },
+        {
+          "tick": 9,
+          "scenario": "Baseline (empty world)",
+          "action": "move_to",
+          "params": {
+            "x": 10,
+            "z": -5
+          },
+          "success": true,
+          "time": "2026-03-14T10:27:20.241Z"
+        },
+        {
+          "tick": 10,
+          "scenario": "Baseline (empty world)",
+          "action": "speak",
+          "params": {
+            "message": "Something new, I hope"
+          },
+          "success": true,
+          "time": "2026-03-14T10:27:34.827Z"
+        },
+        {
+          "tick": 11,
+          "scenario": "Baseline (empty world)",
+          "action": "speak",
+          "params": {
+            "message": "What's this terminal doing here?"
+          },
+          "success": true,
+          "time": "2026-03-14T10:27:49.485Z"
+        },
+        {
+          "tick": 12,
+          "scenario": "Baseline (empty world)",
+          "action": "speak",
+          "params": {
+            "message": "Let's see what this terminal can do"
+          },
+          "success": true,
+          "time": "2026-03-14T10:28:04.255Z"
+        }
+      ],
+      "endTick": 12,
+      "endTime": "2026-03-14T10:28:04.278Z"
+    }
+  ],
+  "statusPolls": [
+    {
+      "tick": 0,
+      "scenario": "Baseline (empty world)",
+      "time": "2026-03-14T10:25:41.023Z",
+      "valence": 0,
+      "arousal": 0,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 8000
+    },
+    {
+      "tick": 2,
+      "scenario": "Baseline (empty world)",
+      "time": "2026-03-14T10:25:49.940Z",
+      "valence": 0.03,
+      "arousal": 0,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 10100
+    },
+    {
+      "tick": 4,
+      "scenario": "Baseline (empty world)",
+      "time": "2026-03-14T10:26:11.519Z",
+      "valence": 0.0813,
+      "arousal": 0,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 12599
+    },
+    {
+      "tick": 6,
+      "scenario": "Baseline (empty world)",
+      "time": "2026-03-14T10:26:37.450Z",
+      "valence": 0.122853,
+      "arousal": 0,
+      "valenceLabel": "neutral",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 13823
+    },
+    {
+      "tick": 8,
+      "scenario": "Baseline (empty world)",
+      "time": "2026-03-14T10:27:05.463Z",
+      "valence": 0.15651093000000002,
+      "arousal": 0,
+      "valenceLabel": "positive",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14423
+    },
+    {
+      "tick": 10,
+      "scenario": "Baseline (empty world)",
+      "time": "2026-03-14T10:27:34.586Z",
+      "valence": 0.1837738533,
+      "arousal": 0,
+      "valenceLabel": "positive",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14717
+    },
+    {
+      "tick": 12,
+      "scenario": "Baseline (empty world)",
+      "time": "2026-03-14T10:28:04.277Z",
+      "valence": 0.20585682117300003,
+      "arousal": 0,
+      "valenceLabel": "positive",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14903
+    },
+    {
+      "tick": 12,
+      "scenario": "Object appears",
+      "time": "2026-03-14T10:28:04.280Z",
+      "valence": 0.20585682117300003,
+      "arousal": 0,
+      "valenceLabel": "positive",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14903
+    },
+    {
+      "tick": 12,
+      "scenario": "Object appears",
+      "time": "2026-03-14T10:28:04.284Z",
+      "valence": 0.20585682117300003,
+      "arousal": 0,
+      "valenceLabel": "positive",
+      "arousalLabel": "moderate",
+      "description": "Feeling steady — nothing remarkable",
+      "heartbeatMs": 14903
+    }
+  ],
+  "actions": [
+    {
+      "tick": 1,
+      "scenario": "Baseline (empty world)",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -5
+      },
+      "success": true,
+      "time": "2026-03-14T10:25:42.346Z"
+    },
+    {
+      "tick": 2,
+      "scenario": "Baseline (empty world)",
+      "action": "speak",
+      "params": {
+        "message": "Hello, I'm here."
+      },
+      "success": true,
+      "time": "2026-03-14T10:25:50.227Z"
+    },
+    {
+      "tick": 3,
+      "scenario": "Baseline (empty world)",
+      "action": "speak",
+      "params": {
+        "message": "Let's see what this terminal has to say."
+      },
+      "success": true,
+      "time": "2026-03-14T10:26:00.153Z"
+    },
+    {
+      "tick": 4,
+      "scenario": "Baseline (empty world)",
+      "action": "speak",
+      "params": {
+        "message": "Let's take a closer look."
+      },
+      "success": true,
+      "time": "2026-03-14T10:26:11.725Z"
+    },
+    {
+      "tick": 5,
+      "scenario": "Baseline (empty world)",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -10
+      },
+      "success": true,
+      "time": "2026-03-14T10:26:24.323Z"
+    },
+    {
+      "tick": 6,
+      "scenario": "Baseline (empty world)",
+      "action": "speak",
+      "params": {
+        "message": "What's that over there?"
+      },
+      "success": true,
+      "time": "2026-03-14T10:26:37.681Z"
+    },
+    {
+      "tick": 7,
+      "scenario": "Baseline (empty world)",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -5
+      },
+      "success": true,
+      "time": "2026-03-14T10:26:51.490Z"
+    },
+    {
+      "tick": 8,
+      "scenario": "Baseline (empty world)",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -10
+      },
+      "success": true,
+      "time": "2026-03-14T10:27:05.654Z"
+    },
+    {
+      "tick": 9,
+      "scenario": "Baseline (empty world)",
+      "action": "move_to",
+      "params": {
+        "x": 10,
+        "z": -5
+      },
+      "success": true,
+      "time": "2026-03-14T10:27:20.241Z"
+    },
+    {
+      "tick": 10,
+      "scenario": "Baseline (empty world)",
+      "action": "speak",
+      "params": {
+        "message": "Something new, I hope"
+      },
+      "success": true,
+      "time": "2026-03-14T10:27:34.827Z"
+    },
+    {
+      "tick": 11,
+      "scenario": "Baseline (empty world)",
+      "action": "speak",
+      "params": {
+        "message": "What's this terminal doing here?"
+      },
+      "success": true,
+      "time": "2026-03-14T10:27:49.485Z"
+    },
+    {
+      "tick": 12,
+      "scenario": "Baseline (empty world)",
+      "action": "speak",
+      "params": {
+        "message": "Let's see what this terminal can do"
+      },
+      "success": true,
+      "time": "2026-03-14T10:28:04.255Z"
+    },
+    {
+      "tick": 13,
+      "scenario": "Object appears",
+      "action": "interact",
+      "params": {
+        "target": "terminal-01"
+      },
+      "success": true,
+      "time": "2026-03-14T10:28:19.326Z"
+    }
+  ],
+  "errors": []
+}

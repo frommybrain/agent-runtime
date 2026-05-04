@@ -4,7 +4,10 @@
 			"path": "."
 		},
 		{
-			"path": "../anon-ai-world"
+			"path": "../lucia-agent-bridge"
+		},
+		{
+			"path": "../3eyes-website"
 		}
 	],
 	"settings": {}
