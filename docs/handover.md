@@ -9,7 +9,7 @@ If you're a developer with thirty minutes, read this file, then
 `quickstart.md`, then run the agent.
 If you're a patent attorney, read `codebase-audit-memo.md` and
 `3aiii-overview.md`.
-If you're a lawyer, read `../LICENCE`, `sbom/`, and `security.md`.
+If you're a lawyer, read `../LICENCE` and `sbom/`.
 
 ---
 
@@ -34,7 +34,7 @@ src/
 ```
 
 Each module is single-responsibility and intentionally short. Comments
-explain *why*, not *what*. See `../CONTRIBUTING.md` for the conventions.
+explain *why*, not *what*.
 
 ### Documentation
 
@@ -138,9 +138,6 @@ new persona doesn't require touching runtime code.
 
 - `../LICENCE` — All Rights Reserved (pre-acquisition; rights transfer at
   closing per the deal terms)
-- `security.md` — vulnerability reporting + honest read on current
-  security posture and the production-hardening backlog
-- `../CONTRIBUTING.md` — local setup, conventions, testing pattern
 - `.env.example` — annotated environment-variable template
 - `.gitignore` — covers `.env`, `data/`, `node_modules/`, `test-logs/`
 
