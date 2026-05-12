@@ -1,5 +1,5 @@
-// Assembles system + user prompts for the LLM.
-// Now includes: internal state, delta narrative, action results,
+// assembles system + user prompts for the LLM.
+// includes: internal state, delta narrative, action results,
 // repetition warnings, and time awareness.
 
 export class PromptBuilder {
@@ -7,7 +7,7 @@ export class PromptBuilder {
         this.persona = persona
     }
 
-    // Hot-swap persona (called by API server on PUT /persona)
+    // hot-swap persona (called by API server on PUT /persona)
     setPersona(persona) {
         this.persona = persona
     }
@@ -21,12 +21,12 @@ export class PromptBuilder {
         const voice = p.voice?.style || 'natural'
         const vocab = p.voice?.vocabulary?.join(', ') || ''
 
-        // Extract action names for conditional rules
+        // extract action names for conditional rules
         const actionNames = new Set(
             (availableActions || []).map(a => typeof a === 'string' ? a : a.name)
         )
 
-        // Build interaction rules based on what actions exist
+        // build interaction rules based on what actions exist
         const interactionRules = []
         if (actionNames.has('speak')) {
             interactionRules.push('- If another agent speaks to you, consider responding')
@@ -98,47 +98,47 @@ ${toolsContent || '(none yet)'}`
     buildUserPrompt(perceivedSituation, recentLogLines, workingMemoryLines, extras = {}) {
         const parts = []
 
-        // Time awareness
+        // time awareness
         if (extras.tickCount !== undefined || extras.uptimeMinutes !== undefined) {
             const time = new Date().toLocaleTimeString()
             const uptime = extras.uptimeMinutes !== undefined ? `${extras.uptimeMinutes} minutes` : 'unknown'
             parts.push(`TIME: ${time} (awake for ${uptime}, tick #${extras.tickCount || '?'})`)
         }
 
-        // Internal state — sensation only, no raw numbers
+        // internal state. sensation only, no raw numbers
         if (extras.internalState) {
             const s = extras.internalState
             parts.push(`HOW YOU FEEL:\n${s.description}`)
         }
 
-        // What changed since last tick
+        // what changed since last tick
         if (extras.deltaNarrative) {
             parts.push(extras.deltaNarrative)
         }
 
-        // Result of last action — consequence feedback
+        // result of last action. consequence feedback
         if (extras.lastActionResult) {
             const r = extras.lastActionResult
             const status = r.success ? 'succeeded' : 'failed'
             parts.push(`LAST ACTION RESULT:\n${r.action || 'unknown'} ${status}${r.message ? ': ' + r.message : ''}`)
         }
 
-        // Recently disappeared objects — hard warning to prevent hallucination
+        // recently disappeared objects. hard warning to prevent hallucination
         if (extras.recentlyDisappeared?.length > 0) {
             parts.push(`GONE: The following objects have DISAPPEARED and are NO LONGER HERE: ${extras.recentlyDisappeared.join(', ')}. Do NOT interact with or move toward them. If you mention them, use past tense only ("I remember when..." / "there used to be...").`)
         }
 
-        // Repetition warnings
+        // repetition warnings
         if (extras.repetitionWarnings) {
             parts.push('NOTICE:\n' + extras.repetitionWarnings.join('\n'))
         }
 
-        // Exploration context — what you've explored vs what's new
+        // exploration context. what youve explored vs whats new
         if (extras.explorationHint) {
             parts.push('EXPLORATION:\n' + extras.explorationHint)
         }
 
-        // Persistent speech history — survives sleep cycles
+        // persistent speech history. survives sleep cycles
         if (extras.recentSpeeches) {
             parts.push('YOUR RECENT SPEECHES (do NOT repeat these — say something fresh each time):\n' + extras.recentSpeeches)
         }

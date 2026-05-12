@@ -22,7 +22,7 @@ async function main() {
     const config = loadConfig()
     const logger = new Logger(config)
 
-    logger.info(`=== Agent Runtime v0.3.10 ===`)
+    logger.info(`=== 3aiii v0.3.10 ===`)
     logger.info(`Agent: ${config.agentId}`)
     logger.info(`Server: ${config.serverUrl}`)
     logger.info(`LLM: quality=${config.cloudModel}, fast=${config.cloudModelFast}, local=${config.ollamaModel}`)
@@ -32,7 +32,7 @@ async function main() {
         logger.info(`Quiet hours: ${config.quietHours} UTC (${config.quietActiveMinutes}m active / ${config.quietSleepMinutes}m sleep)`)
     }
 
-    // Load persona
+    // load persona
     let persona
     try {
         const raw = await readFile(config.personaPath, 'utf-8')
@@ -43,7 +43,7 @@ async function main() {
         process.exit(1)
     }
 
-    // Init modules
+    // init modules
     const socket = new EnvironmentSocket(config, logger)
     const workingMemory = new WorkingMemory(config)
     const memoryFiles = new MemoryFiles(config, logger)
@@ -51,7 +51,7 @@ async function main() {
     const llmClient = new LLMClient(config, logger)
     const promptBuilder = new PromptBuilder(persona)
 
-    // New cognitive modules
+    // new cognitive modules
     const internalState = new InternalState(config, logger)
     const deltaDetector = new DeltaDetector(logger)
     const repetitionGuard = new RepetitionGuard(config, logger)
@@ -73,13 +73,13 @@ async function main() {
         config, logger
     )
 
-    // Restore tick counter from checkpoint (prevents reset on restart)
+    // restore tick counter from checkpoint (prevents reset on restart)
     if (checkpoint?.tickCount) {
         heartbeat.tickCount = checkpoint.tickCount
         logger.info(`Tick counter restored: ${checkpoint.tickCount}`)
     }
 
-    // Start API server — shared state object passed in
+    // start API server. shared state object passed in
     const apiState = {
         persona, heartbeat, sleepCycle, memoryFiles, dailyLog,
         workingMemory, socket, promptBuilder, internalState,
@@ -88,10 +88,10 @@ async function main() {
     const api = new ApiServer(config.apiPort, apiState, logger)
     api.start()
 
-    // Wire API emitter into heartbeat so tick/sleep events flow to SSE clients
+    // wire API emitter into heartbeat so tick/sleep events flow to SSE clients
     heartbeat.api = api
 
-    // Also emit sleep/wake events from sleepCycle
+    // also emit sleep/wake events from sleepCycle
     const origStart = sleepCycle._startSleep.bind(sleepCycle)
     sleepCycle._startSleep = async (quiet) => {
         await origStart(quiet)
@@ -103,7 +103,7 @@ async function main() {
         api.emit('wake', { agent: persona.name, timestamp: Date.now() })
     }
 
-    // Connect to environment server
+    // connect to environment server
     try {
         await socket.connect()
         logger.info('Connected and identified with environment server')
@@ -112,14 +112,14 @@ async function main() {
         logger.info('Will keep trying via reconnect...')
     }
 
-    // Log startup
+    // log startup
     await dailyLog.append(`=== AGENT STARTED === (${persona.name})`)
     api.emit('started', { agent: persona.name, timestamp: Date.now() })
 
-    // Start the heartbeat loop
+    // start the heartbeat loop
     heartbeat.start()
 
-    // Graceful shutdown (guarded against double-signal)
+    // graceful shutdown (guarded against double-signal)
     let shuttingDown = false
     const shutdown = async (signal) => {
         if (shuttingDown) return
@@ -138,7 +138,7 @@ async function main() {
     process.on('SIGINT', () => shutdown('SIGINT'))
     process.on('SIGTERM', () => shutdown('SIGTERM'))
 
-    logger.info(`Agent runtime running — API on http://localhost:${config.apiPort}`)
+    logger.info(`3aiii running — API on http://localhost:${config.apiPort}`)
 }
 
 main().catch(err => {

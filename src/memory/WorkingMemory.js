@@ -1,6 +1,6 @@
-// RAM ring buffer — keeps last N events for quick LLM context.
-// Supports salience-weighted encoding: high-arousal moments are tagged
-// so sleep consolidation can prioritise them.
+// RAM ring buffer. keeps last N events for quick LLM context.
+// salience-weighted: high-energy moments get tagged so sleep
+// consolidation can prioritise them.
 
 export class WorkingMemory {
     constructor(config) {
@@ -8,10 +8,10 @@ export class WorkingMemory {
         this.events = []
     }
 
-    // Push an event, optionally with a salience score (0..1)
-    // salience defaults to 0.5 (neutral). High arousal moments get higher salience.
+    // push an event, optionally with a salience score (0..1).
+    // default 0.5 (neutral). high-energy moments get higher salience.
     push(event, salience = 0.5) {
-        // Merge action_result into the preceding action event to save slots
+        // merge action_result into the preceding action event to save slots
         if (event.type === 'action_result' && this.events.length > 0) {
             const prev = this.events[this.events.length - 1]
             if (prev.type === 'action') {
@@ -32,7 +32,7 @@ export class WorkingMemory {
         }
     }
 
-    // Get recent events formatted for prompt context
+    // get recent events formatted for prompt context
     recent(n) {
         const slice = n ? this.events.slice(-n) : this.events
         return slice.map(e => {
@@ -53,7 +53,7 @@ export class WorkingMemory {
         })
     }
 
-    // Get salient events (for sleep consolidation — prioritise important memories)
+    // get salient events (for sleep consolidation, prioritises important memories)
     salientEvents(threshold = 0.6) {
         return this.events.filter(e => (e.salience || 0.5) >= threshold)
     }

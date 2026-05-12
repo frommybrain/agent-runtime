@@ -1,6 +1,5 @@
 #!/bin/bash
-# =============================================================================
-# setup-pi.sh — Bootstrap a Raspberry Pi 5 as an agent-runtime host
+# setup-pi.sh — bootstrap a Raspberry Pi 5 as a 3aiii host.
 #
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/frommybrain/agent-runtime/main/setup-pi.sh | bash -s -- <agent_id> <server_url>
@@ -10,7 +9,6 @@
 #
 # Or if already cloned:
 #   bash setup-pi.sh pip ws://192.168.1.100:4001
-# =============================================================================
 
 set -euo pipefail
 
@@ -32,14 +30,12 @@ if [ -z "$AGENT_ID" ] || [ -z "$SERVER_URL" ]; then
     exit 1
 fi
 
-echo "============================================"
-echo "  Agent Runtime — Pi Setup"
+echo "3aiii — Pi Setup"
 echo "  Agent:  $AGENT_ID"
 echo "  Server: $SERVER_URL"
 echo "  Cloud:  ${GROQ_API_KEY:+Groq ($CLOUD_MODEL)}${GROQ_API_KEY:-NONE (Ollama only)}"
 echo "  Local:  $OLLAMA_MODEL (fallback)"
 echo "  API:    port $API_PORT"
-echo "============================================"
 echo ""
 
 # --- Step 1: System update ---

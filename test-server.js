@@ -1,21 +1,21 @@
-// Minimal test environment server for validating agent-runtime v0.2
+// minimal test env server for validating 3aiii v0.2.
 //
-// Speaks the agent WebSocket protocol (WELCOME/IDENTIFY/OBSERVE/ACT/WORLD_EVENT)
-// Lets you inject changes via keyboard to test each cognitive capability.
+// speaks the agent WebSocket protocol (WELCOME/IDENTIFY/OBSERVE/ACT/WORLD_EVENT).
+// inject changes via keyboard to test each cognitive capability.
 //
-// All messages (both directions) are logged to test-logs/YYYY-MM-DD_HH-MM-SS.jsonl
+// all messages (both directions) logged to test-logs/YYYY-MM-DD_HH-MM-SS.jsonl.
 //
-// Usage: node test-server.js
-// Then start the agent pointing at this server: SERVER_URL=ws://<mac-ip>:4001
+// usage: node test-server.js
+// then start the agent pointing at this server: SERVER_URL=ws://<mac-ip>:4001
 //
-// Keyboard controls (press key + Enter):
-//   o  — add a new interactive object ("terminal-01")
-//   r  — remove the object
-//   s  — send a speech event from a stranger
-//   c  — toggle cosmology signals (resonance/vitality)
-//   f  — next action will fail
-//   x  — send a non-spatial observation (synth/sequencer)
-//   q  — quit
+// keyboard controls (press key + Enter):
+//   o  add a new interactive object ("terminal-01")
+//   r  remove the object
+//   s  send a speech event from a stranger
+//   c  toggle cosmology signals (resonance/vitality)
+//   f  next action will fail
+//   x  send a non-spatial observation (synth/sequencer)
+//   q  quit
 
 import { WebSocketServer } from 'ws'
 import { mkdirSync, createWriteStream } from 'node:fs'
@@ -24,7 +24,7 @@ import { request } from 'node:http'
 
 const PORT = 4001
 
-// ── Logging ──────────────────────────────────────────────────────────
+// logging
 mkdirSync('test-logs', { recursive: true })
 const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
 const logFile = `test-logs/${timestamp}.jsonl`
@@ -33,7 +33,7 @@ const logStream = createWriteStream(logFile, { flags: 'a' })
 function log(direction, type, data) {
     const entry = {
         time: new Date().toISOString(),
-        dir: direction,  // 'in' (from agent) or 'out' (to agent) or 'sys' (internal)
+        dir: direction,  // 'in' (from agent), 'out' (to agent), or 'sys' (internal)
         type,
         data,
     }
@@ -43,7 +43,7 @@ function log(direction, type, data) {
     console.log(`[${entry.time.split('T')[1].split('.')[0]}] ${prefix} ${type}: ${summary}`)
 }
 
-// ── World State (mutable via keyboard) ───────────────────────────────
+// world state (mutable via keyboard)
 let tickCount = 0
 let agentId = null
 let agentPos = { x: 0, y: 0, z: 0 }
@@ -80,14 +80,14 @@ function buildObservation() {
         recentSpeech: worldState.pendingSpeech.splice(0),  // drain pending speech into observation
     }
 
-    // Add interact action if there are interactive objects
+    // add interact action if there are interactive objects
     if (worldState.objects.some(o => o.interactive)) {
         obs.available_actions.push(
             { name: 'interact', params: 'target', description: 'Interact with a nearby object' }
         )
     }
 
-    // Add cosmology signals if active
+    // add cosmology signals if active
     if (worldState.signals) {
         obs.signals = { ...worldState.signals }
     }
@@ -112,7 +112,7 @@ function buildSynthObservation() {
     }
 }
 
-// ── WebSocket Server ─────────────────────────────────────────────────
+// WebSocket server
 const wss = new WebSocketServer({ port: PORT })
 let activeSocket = null
 
@@ -134,7 +134,7 @@ wss.on('connection', (ws) => {
     activeSocket = ws
     log('sys', 'AGENT_CONNECTED', {})
 
-    // Send WELCOME
+    // send WELCOME
     send(ws, { type: 'WELCOME', serverName: 'test-environment' })
 
     ws.on('message', (raw) => {
@@ -156,7 +156,7 @@ wss.on('connection', (ws) => {
                 const obs = buildObservation()
                 send(ws, { type: 'OBSERVATION', data: obs })
                 log('sys', 'TICK', { tick: tickCount, objects: worldState.objects.length, signals: !!worldState.signals, mode: useSynthMode ? 'synth' : 'spatial' })
-                // Poll agent /status every 5 ticks to log internal state
+                // poll agent /status every 5 ticks to log internal state
                 if (tickCount % 5 === 0) pollAgentStatus()
                 break
 
@@ -171,7 +171,7 @@ wss.on('connection', (ws) => {
                 }
                 nextActionFails = false
 
-                // Update agent position if they moved
+                // update agent position if they moved
                 if (success && msg.action === 'move_to' && msg.params) {
                     if (msg.params.x !== undefined) agentPos.x = msg.params.x
                     if (msg.params.z !== undefined) agentPos.z = msg.params.z
@@ -208,7 +208,7 @@ function sendWorldEvent(event) {
     log('out', 'WORLD_EVENT', event)
 }
 
-// ── Status Polling ───────────────────────────────────────────────────
+// status polling
 const AGENT_STATUS_URL = process.env.AGENT_STATUS_URL || 'http://victor.local:5000/status'
 
 function pollAgentStatus() {
@@ -220,13 +220,13 @@ function pollAgentStatus() {
             try {
                 const status = JSON.parse(data)
                 const is = status.internalState || {}
-                console.log(`  📊 v=${is.valence?.toFixed(2)} a=${is.arousal?.toFixed(2)} [${is.valenceLabel}/${is.arousalLabel}] hb=${status.heartbeatMs}ms`)
+                console.log(`  📊 v=${is.mood?.toFixed(2)} a=${is.energy?.toFixed(2)} [${is.moodLabel}/${is.energyLabel}] hb=${status.heartbeatMs}ms`)
                 log('sys', 'AGENT_STATUS', {
                     tick: tickCount,
-                    valence: is.valence,
-                    arousal: is.arousal,
-                    valenceLabel: is.valenceLabel,
-                    arousalLabel: is.arousalLabel,
+                    mood: is.mood,
+                    energy: is.energy,
+                    moodLabel: is.moodLabel,
+                    energyLabel: is.energyLabel,
                     heartbeatMs: status.heartbeatMs,
                     tickCount: status.tickCount,
                 })
@@ -237,7 +237,7 @@ function pollAgentStatus() {
     req.end()
 }
 
-// ── Keyboard Controls ────────────────────────────────────────────────
+// keyboard
 const rl = createInterface({ input: process.stdin, output: process.stdout })
 
 rl.on('line', (input) => {
@@ -255,7 +255,7 @@ rl.on('line', (input) => {
                 console.log('  ✓ Added terminal-01 (interactive)')
                 log('sys', 'WORLD_CHANGE', { action: 'add_object', id: 'terminal-01' })
             } else {
-                // Add a second object
+                // add a second object
                 const id = `shiny-${String(Math.floor(Math.random() * 100)).padStart(2, '0')}`
                 worldState.objects.push({
                     id,
@@ -280,9 +280,9 @@ rl.on('line', (input) => {
 
         case 's': {
             const speechMsg = ['hello there', 'what are you doing?', 'have you seen the artifact?', 'something feels different today'][Math.floor(Math.random() * 4)]
-            // Queue into observation so agent can see it
+            // queue into observation so agent can see it
             worldState.pendingSpeech.push({ agentId: 'stranger', message: speechMsg })
-            // Also send as world event for the arousal/social nudge
+            // also send as world event for the energy/social nudge
             sendWorldEvent({
                 event: 'agent_speech',
                 agentId: 'stranger',

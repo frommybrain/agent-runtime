@@ -1,15 +1,15 @@
 # Environment Protocol Standard
 
-Version 1.0 — Agent Runtime ↔ Environment Contract
+Version 1.0 — 3aiii ↔ Environment Contract
 
-Any environment (3D world, synth bridge, data stream, game engine) that wants to host an agent-runtime agent must implement this WebSocket protocol.
+Any environment (3D world, synth bridge, data stream, game engine) that wants to host a 3aiii agent has to implement this WebSocket protocol.
 
 ---
 
 ## Connection Lifecycle
 
 ```
-Environment                          Agent Runtime
+Environment                          3aiii
     │                                      │
     │◄──── WebSocket connect ──────────────│
     │                                      │
@@ -48,7 +48,7 @@ Environment                          Agent Runtime
 
 ## OBSERVATION Format
 
-The `OBSERVATION` message wraps a `data` payload. This is the core contract — the agent perceives whatever is in `data`.
+The `OBSERVATION` message wraps a `data` payload. This is the core contract, the agent perceives whatever is in `data`.
 
 ```json
 {
@@ -66,7 +66,7 @@ The `OBSERVATION` message wraps a `data` payload. This is the core contract — 
 
 ### `self` — Agent's own state
 
-The agent's position, current action, and any internal state the environment tracks.
+The agent's position, current action, any internal state the environment tracks.
 
 ```json
 {
@@ -89,15 +89,15 @@ The agent's position, current action, and any internal state the environment tra
 ```
 
 **Rules:**
-- `pos` — any coordinate system. Agent-runtime narrates whatever keys are present (`x`, `y`, `z`, `lat`, `lng`, etc.)
-- `action` — string describing current activity (e.g. `"idle"`, `"foraging"`, `"moving"`)
+- `pos` — any coordinate system. 3aiii narrates whatever keys are present (`x`, `y`, `z`, `lat`, `lng`, etc.)
+- `action` — string describing current activity (eg `"idle"`, `"foraging"`, `"moving"`)
 - `interacting_with` — ID of entity being interacted with, or `null`
 - Nested objects are supported and narrated automatically:
   - Objects with `level` + `urgency` → narrated as `"My hunger: strong (70%)"`
   - Objects with `status` → narrated as `"My wellbeing: uncomfortable — critical: hunger"`
   - Primitives → narrated as `"My mood: curious but hungry"`
   - Arrays → joined with commas
-- Additional fields are welcome — Perceive.js narrates anything it finds
+- Additional fields are welcome, Perceive.js narrates anything it finds
 
 ### `nearbyAgents` — Other agents in perception range
 
@@ -134,7 +134,7 @@ The agent's position, current action, and any internal state the environment tra
 
 ### `available_actions` — What the agent can do
 
-Array of action descriptors. This is the **authoritative** list — the agent will only choose from these.
+Array of action descriptors. This is the **authoritative** list, the agent will only choose from these.
 
 ```json
 [
@@ -157,14 +157,14 @@ Array of action descriptors. This is the **authoritative** list — the agent wi
 ```
 
 **Rules:**
-- Each action has `name`, `description`, and `params` (human-readable parameter description)
+- Each action has `name`, `description`, `params` (human-readable parameter description)
 - Simple string format also accepted: `["move_to", "wait", "forage"]` (but descriptors are preferred)
-- The agent's PromptBuilder dynamically adjusts rules based on which actions exist (e.g. speech rules only appear if `speak` is available)
-- FallbackBrain also respects this list — never generates actions outside it
+- The agent's PromptBuilder dynamically adjusts rules based on which actions exist (eg speech rules only appear if `speak` is available)
+- FallbackBrain also respects this list, never generates actions outside it
 
 ### `signals` — Environmental conditions
 
-Ambient signals that influence the agent's internal state (valence/arousal). **Always 0-1 range.**
+Ambient signals that influence the agent's internal state (mood/energy). **Always 0-1 range.**
 
 ```json
 {
@@ -183,7 +183,7 @@ Ambient signals that influence the agent's internal state (valence/arousal). **A
 
 **Custom signals** are narrated generically (key: value). Use 0-1 range.
 
-**If your environment uses a different scale** (e.g. 0-100), normalize before sending:
+**If your environment uses a different scale** (eg 0-100), normalize before sending:
 ```js
 signals: {
   vitality: rawVitality / 100,
@@ -257,7 +257,7 @@ Async events pushed to the agent between observe/act cycles.
 **Common event types:**
 - `agent_speech` — another agent spoke (`agentId`, `message`)
 - `agent_joined` / `agent_left` — agents entering/leaving
-- Custom events are supported — Perceive.js narrates them generically
+- Custom events are supported, Perceive.js narrates them generically
 
 ---
 
@@ -275,13 +275,13 @@ The `IDENTIFIED` response can include world metadata:
 }
 ```
 
-These are optional and environment-specific. The agent stores them but doesn't require any particular fields.
+These are optional and environment-specific. The agent stores them but doesnt require any particular fields.
 
 ---
 
 ## Implementation Checklist
 
-For a new environment to work with agent-runtime:
+For a new environment to work with 3aiii:
 
 - [ ] WebSocket server listening on a configurable port
 - [ ] Send `WELCOME` on connection
