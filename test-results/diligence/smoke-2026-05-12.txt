@@ -1,0 +1,42 @@
+--- InternalState ---
+init: mood=0 energy=0
+after positive tick: mood=0.125 (neutral) energy=0.209 (elevated)
+description: A comfortable focus — present and attentive
+salience: 0.605
+after failure:    mood=-0.038 energy=0.188
+after repetitive speech: mood=-0.118
+after novel speech:      mood=-0.088
+history summary: Average mood: 0.04, average energy: 0.20. Peak energy: 0.21. Mood range: -0.04 to 0.12.
+
+--- WorkingMemory ---
+length: 2 (merged action+result expected)
+recent:
+  [16:28:31] I did: move_to explore → ok: arrived
+  [16:28:31] I said: "hello" *
+
+--- RepetitionGuard ---
+after 4x move_to(wander): warnings=3
+  - You have done "move_to" three times in a row. Try something different.
+  - You targeted "wander" 4 out of your last 5 actions. Try something different.
+  - You keep doing exactly the same thing with the same parameters. Break the pattern.
+isFixated(move_to, wander): false
+scoreSpeech("hello there"): 1.00
+scoreSpeech("hello there") after recording: 0.50 (should be 0)
+
+--- DeltaDetector ---
+deltas between ticks: 2
+  - {"type":"appeared","category":"object","id":"b"}
+  - {"type":"changed","category":"signal","id":"vitality","from":0.5,"to":0.8}
+narrate:
+  CHANGES SINCE LAST TICK:
+  - New object: "b" appeared
+  - vitality increased (0.50 → 0.80)
+
+--- Perceive ---
+My position: (x:1.0, z:2.0).
+I am currently idle.
+Nearby agents: luna, 5.0 away.
+Nearby: pillar-01 3.0 away [interactive].
+Environment: There is a healthy energy here, things feel vibrant. A comforting warmth surrounds you.
+Available actions:
+  - move_to(target) — move

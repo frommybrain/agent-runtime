@@ -1,3 +1,11 @@
 node_modules/
 data/
+data-*/
 .env
+
+# runtime / test artifacts
+test-logs/
+*.bak
+
+# OS cruft
+.DS_Store
