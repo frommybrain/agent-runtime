@@ -23,7 +23,7 @@ For orientation see `handover.md`; for the verbatim run path see `quickstart.md`
 
 The runtime exposes a small HTTP API on port 5000 (default). All
 endpoints are unauthenticated today; production hardening adds auth +
-rate limiting (see `security.md`).
+rate limiting.
 
 ### `GET /status`
 

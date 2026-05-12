@@ -15,8 +15,8 @@ contemporaneous version commits.
   unchanged.
 - De-AI'd source comments and docs across the codebase.
 - Added diligence handover materials: `docs/handover.md`, audit memo,
-  SBOM, LICENCE, `docs/security.md`, CONTRIBUTING, this changelog,
-  fresh smoke test report in `test-results/diligence/`.
+  SBOM, LICENCE, this changelog, fresh smoke test report in
+  `test-results/diligence/`.
 
 ## [v0.4] — 2026-03-17
 
