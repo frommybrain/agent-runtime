@@ -43,8 +43,7 @@ the four items listed above. For each item:
 - The first-commit date for each module was pulled from git history
   (`git log --diff-filter=A --follow --format=...`)
 - The implementation was compared against the documented behaviour in
-  `3aiii-overview.md`, `progress-2026-03-14-15.md`, and
-  the STATUS files
+  `3aiii-overview.md`
 - Closest public prior art known to the operator was named, with the
   caveat that no external prior-art search was conducted and no patent
   counsel review has happened

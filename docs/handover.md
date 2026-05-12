@@ -54,15 +54,9 @@ explain *why*, not *what*. See `../CONTRIBUTING.md` for the conventions.
   structural claim shapes, known prior art, confidence levels, and
   caveats for sworn declaration. This is the document a patent attorney
   should start from
-- `progress-2026-03-14-15.md` — a 48-hour development log spanning
-  v0.2 → v0.3.7. Documents the design principles that emerged from
-  repeated soak-test failures. Useful for understanding *why* the
-  codebase looks the way it does
 - `sbom/` — software bill of materials. Four production packages
   total (3 direct + 1 transitive), all permissive licences, no copyleft.
   Generated via `npx license-checker --production`
-- `status-2026-02-28.md`, `status-2026-03-10.md` — earlier development
-  snapshots, kept as historical evidence
 - `../CHANGELOG.md` — version history with the substantive change per release
 
 ### Endpoints

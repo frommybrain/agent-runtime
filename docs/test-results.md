@@ -314,7 +314,5 @@ For deeper evaluation:
   patent-relevant items, with file/line evidence
 - `environment-protocol.md` — the WebSocket contract for any
   environment that wants to host a 3aiii agent
-- `progress-2026-03-14-15.md` — 500-line retrospective covering
-  v0.2 → v0.3.7. Documents the failure modes that drove the design
 
 For questions: Sam Skirrow — sam.skirrow@gmail.com.
