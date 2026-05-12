@@ -13,3 +13,6 @@ docs/*.pdf
 # OS cruft
 .DS_Store
 CLAUDE.md
+
+# Claude Code local config (hooks, settings — not for the public repo)
+.claude/
