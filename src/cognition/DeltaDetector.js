@@ -1,8 +1,8 @@
-// Diffs current observation against previous tick, surfaces what changed.
-// Environment-agnostic — works with any observation shape (spatial, audio, data, etc.)
+// diffs current observation against previous tick, surfaces what changed.
+// env-agnostic. works with any observation shape (spatial, audio, data, whatever).
 //
-// The agent shouldn't just see "here is the world" — it should notice
-// "here is what's different." This is how it detects that someone placed
+// the agent shouldnt just see "here is the world", it should notice
+// "here is whats different". this is how it detects that someone placed
 // a terminal in the world, or added a chord to the pool, or changed the light.
 
 export class DeltaDetector {
@@ -11,29 +11,29 @@ export class DeltaDetector {
         this.previousObservation = null
     }
 
-    // Returns array of structured delta objects
+    // returns array of structured delta objects
     detect(observation) {
         const deltas = []
 
         if (!this.previousObservation) {
             this.previousObservation = this._snapshot(observation)
-            return deltas  // first tick — nothing to diff
+            return deltas  // first tick, nothing to diff
         }
 
         const prev = this.previousObservation
 
-        // --- Agents: appeared / disappeared ---
+        // agents: appeared / disappeared
         const prevAgents = this._idSet(prev.nearbyAgents || prev.nearby_agents)
         const currAgents = this._idSet(observation.nearbyAgents || observation.nearby_agents)
         this._diffSets(prevAgents, currAgents, 'agent', deltas)
 
-        // --- Objects: appeared / disappeared ---
+        // objects: appeared / disappeared
         const prevObjects = this._idSet(prev.nearbyObjects || prev.nearby_objects)
         const currObjects = this._idSet(observation.nearbyObjects || observation.nearby_objects)
         this._diffSets(prevObjects, currObjects, 'object', deltas)
 
-        // --- Objects: property changes on existing objects ---
-        // Skip noise properties that change every tick due to relative position
+        // objects: property changes on existing objects.
+        // skip noise props that change every tick due to relative position
         const noiseProps = new Set([
             'id', 'name', 'pos', 'distance',
             'direction', 'heading', 'facing', 'angle',
@@ -42,7 +42,7 @@ export class DeltaDetector {
         const currObjMap = this._objectMap(observation.nearbyObjects || observation.nearby_objects)
         for (const [id, currObj] of currObjMap) {
             const prevObj = prevObjMap.get(id)
-            if (!prevObj) continue  // new object — already handled by appeared
+            if (!prevObj) continue  // new object, already handled by appeared
             for (const [key, val] of Object.entries(currObj)) {
                 if (noiseProps.has(key)) continue
                 if (JSON.stringify(val) !== JSON.stringify(prevObj[key])) {
@@ -54,7 +54,7 @@ export class DeltaDetector {
             }
         }
 
-        // --- Own action state changed ---
+        // own action state changed
         if (observation.self?.action !== prev.self?.action) {
             deltas.push({
                 type: 'changed', category: 'self_action',
@@ -62,12 +62,12 @@ export class DeltaDetector {
             })
         }
 
-        // --- Available actions changed ---
+        // available actions changed
         const prevActions = this._actionSet(prev.available_actions)
         const currActions = this._actionSet(observation.available_actions)
         this._diffSets(prevActions, currActions, 'available_action', deltas)
 
-        // --- Environment signals changed significantly ---
+        // environment signals changed enough to matter
         if (observation.signals && prev.signals) {
             for (const [key, val] of Object.entries(observation.signals)) {
                 const prevVal = prev.signals[key]
@@ -80,13 +80,13 @@ export class DeltaDetector {
                     }
                 }
             }
-            // Signals that disappeared
+            // signals that disappeared
             for (const key of Object.keys(prev.signals)) {
                 if (observation.signals[key] === undefined) {
                     deltas.push({ type: 'disappeared', category: 'signal', id: key })
                 }
             }
-            // Signals that appeared
+            // signals that appeared
             for (const key of Object.keys(observation.signals)) {
                 if (prev.signals[key] === undefined) {
                     deltas.push({ type: 'appeared', category: 'signal', id: key })
@@ -98,7 +98,7 @@ export class DeltaDetector {
             }
         }
 
-        // --- Arbitrary top-level keys changed ---
+        // arbitrary top-level keys changed
         const skip = new Set([
             'self', 'nearbyAgents', 'nearby_agents', 'nearbyObjects', 'nearby_objects',
             'available_actions', 'recentSpeech', 'signals', 'worldBounds',
@@ -113,7 +113,7 @@ export class DeltaDetector {
             }
         }
 
-        // Store snapshot for next tick
+        // snapshot for next tick
         this.previousObservation = this._snapshot(observation)
 
         if (deltas.length > 0) {
@@ -123,7 +123,7 @@ export class DeltaDetector {
         return deltas
     }
 
-    // Narrate deltas as natural language for the LLM
+    // narrate deltas as natural language for the LLM
     narrate(deltas) {
         if (!deltas || deltas.length === 0) return ''
 
@@ -157,7 +157,7 @@ export class DeltaDetector {
         this.previousObservation = null
     }
 
-    // --- Helpers ---
+    // helpers
 
     _snapshot(observation) {
         return JSON.parse(JSON.stringify(observation))

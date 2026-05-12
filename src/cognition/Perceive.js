@@ -1,17 +1,17 @@
-// Converts raw observation JSON into natural language for the LLM.
-// Environment-agnostic: handles spatial worlds, data streams, audio, or anything.
+// raw observation JSON → natural language for the LLM.
+// env-agnostic. handles spatial worlds, data streams, audio, whatever.
 //
-// The observation format is defined by the environment, not by us.
-// This perceiver narrates whatever it finds without assuming (x, z) coordinates,
+// the observation format is defined by the environment, not by us.
+// this perceiver narrates whatever it finds without assuming (x, z) coords,
 // 3D worlds, or any specific structure.
 
 export function perceive(observation, worldEvents) {
     const lines = []
 
-    // --- Agent's own state (describe whatever is present) ---
+    // agent's own state (describe whatever is there)
     if (observation.self) {
         const s = observation.self
-        // Position — handle any coordinate system or none
+        // position. handle any coord system or none
         if (s.pos) {
             const coords = Object.entries(s.pos)
                 .map(([k, v]) => `${k}:${typeof v === 'number' ? v.toFixed(1) : v}`)
@@ -20,7 +20,7 @@ export function perceive(observation, worldEvents) {
         }
         if (s.action) lines.push(`I am currently ${s.action.toLowerCase()}.`)
         if (s.interacting_with) lines.push(`I am interacting with ${s.interacting_with}.`)
-        // Narrate any other self properties — including nested objects (needs, wellbeing, etc.)
+        // narrate any other self props, incl nested objects (needs, wellbeing, etc)
         for (const [key, val] of Object.entries(s)) {
             if (['pos', 'action', 'interacting_with', 'id', 'name'].includes(key)) continue
             const narrated = _narrateValue(key, val)
@@ -28,7 +28,7 @@ export function perceive(observation, worldEvents) {
         }
     }
 
-    // --- Nearby agents ---
+    // nearby agents
     const nearbyAgents = observation.nearbyAgents || observation.nearby_agents || []
     if (nearbyAgents.length > 0) {
         const agents = nearbyAgents.map(a => {
@@ -44,7 +44,7 @@ export function perceive(observation, worldEvents) {
         lines.push('No other agents nearby.')
     }
 
-    // --- Nearby objects/entities ---
+    // nearby objects/entities
     const nearbyObjects = observation.nearbyObjects || observation.nearby_objects || []
     if (nearbyObjects.length > 0) {
         const objects = nearbyObjects.map(o => {
@@ -59,7 +59,7 @@ export function perceive(observation, worldEvents) {
                 parts.push(`at (${coords})`)
             }
             if (o.interactive) parts.push('[interactive]')
-            // Include extra properties (state, value, level, description, etc.)
+            // include extras (state, value, level, description, etc)
             for (const [k, v] of Object.entries(o)) {
                 if (['id', 'name', 'type', 'pos', 'interactive', 'distance'].includes(k)) continue
                 if (typeof v === 'object' && v !== null) {
@@ -73,15 +73,15 @@ export function perceive(observation, worldEvents) {
         lines.push(`Nearby: ${objects.join('; ')}.`)
     }
 
-    // --- Environment signals → felt descriptions ---
-    // Translate raw metrics into experiential language so the agent
+    // environment signals → felt descriptions.
+    // translate raw metrics into experiential language so the agent
     // describes what it feels, not the metric names themselves.
     if (observation.signals) {
         const desc = _describeSignals(observation.signals)
         if (desc) lines.push(`Environment: ${desc}`)
     }
 
-    // --- Recent speech from observation (server-included) ---
+    // recent speech from observation (server-included)
     const recentSpeech = observation.recentSpeech || []
     for (const speech of recentSpeech) {
         const speaker = speech.from || speech.agentId || 'someone'
@@ -89,7 +89,7 @@ export function perceive(observation, worldEvents) {
         lines.push(`${speaker} said: "${speech.message}"`)
     }
 
-    // --- World events (speech, terminal output, custom events) ---
+    // world events (speech, terminal output, custom)
     if (worldEvents?.length > 0) {
         for (const evt of worldEvents) {
             const data = evt.data || evt
@@ -98,7 +98,7 @@ export function perceive(observation, worldEvents) {
             } else if (data.message || data.text) {
                 lines.push(`Event [${data.event || 'unknown'}]: "${data.message || data.text}"`)
             } else {
-                // Generic event narration — let the LLM make sense of it
+                // generic event narration. let the LLM figure it out
                 const { event, ...rest } = data
                 const detail = Object.keys(rest).length > 0 ? ` — ${JSON.stringify(rest)}` : ''
                 lines.push(`Event: ${event || 'unknown'}${detail}`)
@@ -106,7 +106,7 @@ export function perceive(observation, worldEvents) {
         }
     }
 
-    // --- Available actions ---
+    // available actions
     if (observation.available_actions?.length > 0) {
         const actionDescs = observation.available_actions.map(a => {
             if (typeof a === 'string') return a
@@ -115,10 +115,10 @@ export function perceive(observation, worldEvents) {
         lines.push(`Available actions:\n${actionDescs.map(d => `  - ${d}`).join('\n')}`)
     }
 
-    // --- Anything else at the top level we haven't handled ---
-    // This is key for environment-agnosticism: if a synth environment sends
+    // anything else at the top level we havent handled.
+    // this is the key bit for env-agnosticism: if a synth env sends
     // { currentPatch: "pad", bpm: 120, activeChords: ["Cmaj7", "Dm9"] }
-    // the perceiver will narrate it without needing to know what it means.
+    // the perceiver narrates it without knowing what it means.
     const handled = new Set([
         'self', 'nearbyAgents', 'nearby_agents', 'nearbyObjects', 'nearby_objects',
         'available_actions', 'recentSpeech', 'signals', 'worldBounds',
@@ -135,26 +135,26 @@ export function perceive(observation, worldEvents) {
     return lines.join('\n')
 }
 
-// Narrate a self property — handles primitives, nested objects, and arrays.
-// Returns an array of narration lines, or null if nothing to narrate.
+// narrate a self property. handles primitives, nested objects, arrays.
+// returns array of narration lines, or null if nothing to narrate.
 function _narrateValue(key, val) {
     if (val === undefined || val === null) return null
 
-    // Primitives — simple narration
+    // primitives — simple narration
     if (typeof val !== 'object') return [`My ${key}: ${val}`]
 
-    // Arrays — join with commas
+    // arrays — join with commas
     if (Array.isArray(val)) {
         if (val.length === 0) return null
         return [`My ${key}: ${val.join(', ')}`]
     }
 
-    // Object with level + urgency (needs pattern: {level: 70, urgency: "strong"})
+    // object with level + urgency (needs pattern: {level: 70, urgency: "strong"})
     if (val.level !== undefined && val.urgency !== undefined) {
         return [`My ${key}: ${val.urgency} (${val.level}%)`]
     }
 
-    // Object with status (wellbeing pattern: {status: "suffering", criticalNeeds: [...], ...})
+    // object with status (wellbeing pattern: {status: "suffering", criticalNeeds: [...], ...})
     if (val.status !== undefined) {
         const parts = [val.status]
         if (val.criticalNeeds?.length > 0) parts.push(`critical: ${val.criticalNeeds.join(', ')}`)
@@ -162,12 +162,12 @@ function _narrateValue(key, val) {
         return [`My ${key}: ${parts.join(' — ')}`]
     }
 
-    // Generic object — recurse one level for readable narration
+    // generic object — recurse one level for readable narration
     const lines = []
     for (const [k, v] of Object.entries(val)) {
         if (v === undefined || v === null) continue
         if (typeof v === 'object' && !Array.isArray(v)) {
-            // Nested object (e.g. needs.hunger = {level, urgency}) — use pattern matching
+            // nested object (eg needs.hunger = {level, urgency}) — use pattern matching
             const sub = _narrateValue(k, v)
             if (sub) lines.push(...sub)
         } else if (Array.isArray(v)) {
@@ -179,8 +179,8 @@ function _narrateValue(key, val) {
     return lines.length > 0 ? lines : null
 }
 
-// Translate raw signal values into natural, felt descriptions.
-// The agent should describe experience, not echo metric names.
+// translate raw signal values into natural, felt descriptions.
+// the agent should describe experience, not echo metric names.
 function _describeSignals(signals) {
     const parts = []
 
@@ -217,7 +217,7 @@ function _describeSignals(signals) {
         else parts.push('This place feels barren and empty.')
     }
 
-    // --- Real-world / installation signals ---
+    // real-world / installation signals
 
     if (signals.temperature !== undefined) {
         const t = signals.temperature
@@ -262,7 +262,7 @@ function _describeSignals(signals) {
         else parts.push('The space is nearly deserted — deep solitude.')
     }
 
-    // Fall through for any unknown signals — narrate them generically
+    // fall through for any unknown signals. narrate generically
     const described = new Set([
         'vitality', 'resonance', 'warmth', 'abundance',
         'temperature', 'humidity', 'wind_speed', 'cloud_cover', 'crowd_energy',

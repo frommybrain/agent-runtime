@@ -1,8 +1,8 @@
 import { readFile, writeFile, copyFile, mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
 
-// Manages the three persistent knowledge files: memory.md, skills.md, tools.md
-// v0.3.1: backup + restore for consolidation safety
+// manages the three persistent knowledge files: memory.md, skills.md, tools.md.
+// v0.3.1: backup + restore for consolidation safety (LLMs are liars)
 
 const STOP_WORDS = new Set([
     'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
@@ -20,24 +20,24 @@ export class MemoryFiles {
         this.agentId = config.agentId
         this.logger = logger
         this._lastToolsHash = null  // skip redundant tools.md writes
-        // Read cache — avoids re-reading static files every tick
+        // read cache. avoids re-reading static files every tick
         this._cache = { memory: null, skills: null, tools: null }
     }
 
     async init() {
         await mkdir(this.dataDir, { recursive: true })
 
-        // Ensure all three files exist with defaults
+        // make sure all three files exist with defaults
         await this._ensureFile('memory.md', `# ${this.agentId}'s Memory\n\n## Relationships\n\n## Learned Facts\n\n## Important Memories\n`)
         await this._ensureFile('skills.md', `# ${this.agentId}'s Skills\n`)
         await this._ensureFile('tools.md', `# Available Actions\n\n# Discovered Objects\n`)
 
-        // Fix header if agent identity changed (e.g. pip → victor)
+        // fix header if agent identity changed (eg pip → victor)
         await this._fixHeader('memory.md', `# ${this.agentId}'s Memory`)
         await this._fixHeader('skills.md', `# ${this.agentId}'s Skills`)
     }
 
-    // --- Read ---
+    // read
 
     async readMemory() {
         if (this._cache.memory !== null) return this._cache.memory
@@ -60,7 +60,7 @@ export class MemoryFiles {
         return content
     }
 
-    // --- Write (full replace, used by sleep consolidation) ---
+    // write (full replace, used by sleep consolidation)
 
     async writeMemory(content) {
         await this._write('memory.md', content)
@@ -77,10 +77,10 @@ export class MemoryFiles {
         this._cache.tools = content
     }
 
-    // --- Append (used during waking hours for incremental updates) ---
+    // append (used during waking hours for incremental updates)
 
     async appendToMemory(section, content) {
-        // v0.3.1: Hard length cap — prevent LLM from writing essays into memory
+        // v0.3.1: hard length cap so LLM cant write essays into memory
         if (content.length > 150) {
             content = content.slice(0, 150)
             this.logger.debug(`Memory entry truncated to 150 chars`)
@@ -88,14 +88,14 @@ export class MemoryFiles {
 
         const current = await this.readMemory()
 
-        // Dedup: exact substring match (minus [salient] tag)
+        // dedup: exact substring match (minus [salient] tag)
         const bare = content.replace(/\s*\[salient\]\s*$/, '').trim().toLowerCase()
         if (current.toLowerCase().includes(bare)) {
             this.logger.debug(`Memory dedup — skipping "${content}" (exact match)`)
             return
         }
 
-        // Fuzzy dedup: extract key words and check if a similar entry exists
+        // fuzzy dedup: extract key words and check if a similar entry exists
         const keywords = this._extractKeywords(bare)
         if (keywords.length >= 2) {
             const existingLines = current.split('\n').filter(l => l.startsWith('- '))
@@ -113,11 +113,11 @@ export class MemoryFiles {
         const marker = `## ${section}`
         const idx = current.indexOf(marker)
         if (idx === -1) {
-            // Section doesn't exist, append at end
+            // section doesnt exist, append at end
             const updated = current.trimEnd() + `\n\n## ${section}\n- ${content}\n`
             await this.writeMemory(updated)
         } else {
-            // Insert after section heading
+            // insert after section heading
             const afterMarker = idx + marker.length
             const updated = current.slice(0, afterMarker) + `\n- ${content}` + current.slice(afterMarker)
             await this.writeMemory(updated)
@@ -125,7 +125,7 @@ export class MemoryFiles {
         this.logger.debug(`Memory appended to [${section}]: ${content}`)
     }
 
-    // Extract meaningful keywords (strip stop words) for fuzzy dedup
+    // extract meaningful keywords (strip stop words) for fuzzy dedup
     _extractKeywords(text) {
         return text
             .replace(/[^a-z0-9\s]/g, '')
@@ -133,14 +133,14 @@ export class MemoryFiles {
             .filter(w => w.length > 2 && !STOP_WORDS.has(w))
     }
 
-    // --- Pre-consolidation dedup ---
-    // Strips near-duplicate entries from memory.md before the LLM sees it.
-    // The LLM can't be trusted to merge duplicates — it keeps everything.
+    // pre-consolidation dedup
+    // strips near-duplicate entries from memory.md before the LLM sees it.
+    // the LLM cant be trusted to merge duplicates, it keeps everything.
 
     async deduplicateMemory() {
         const content = await this.readMemory()
         const lines = content.split('\n')
-        const seen = []  // { keywords: string[], line: string }
+        const seen = []  // { keywords, line }
         const output = []
         let removed = 0
 
@@ -153,7 +153,7 @@ export class MemoryFiles {
             const text = line.slice(2).replace(/\s*\[salient\]\s*$/, '').trim().toLowerCase()
             const keywords = this._extractKeywords(text)
 
-            // Check against already-seen entries
+            // check against already-seen entries
             let isDuplicate = false
             if (keywords.length >= 2) {
                 for (const existing of seen) {
@@ -180,14 +180,14 @@ export class MemoryFiles {
         return removed
     }
 
-    // --- Tools auto-update from observations ---
+    // tools auto-update from observations
 
     async updateToolsFromObservation(observation) {
         const tools = await this.readTools()
         let changed = false
         let updated = tools
 
-        // Update available actions
+        // update available actions
         if (observation.available_actions) {
             const actionsSection = this._buildActionsSection(observation.available_actions)
             if (updated.includes('# Available Actions')) {
@@ -201,8 +201,8 @@ export class MemoryFiles {
             changed = true
         }
 
-        // Rebuild discovered objects from current observation — only show what's
-        // actually nearby RIGHT NOW. Stale objects cause hallucination.
+        // rebuild discovered objects from current observation. only show whats
+        // actually nearby RIGHT NOW. stale objects = hallucination.
         const nearbyObjects = observation.nearbyObjects || observation.nearby_objects || []
         const objectsSection = '# Nearby Objects (GROUND TRUTH — if something is not listed here, it is not present)\n' + (
             nearbyObjects.length > 0
@@ -211,7 +211,7 @@ export class MemoryFiles {
                 ).join('\n') + '\n'
                 : '(nothing nearby — the area is empty)\n'
         )
-        // Replace or append the objects section
+        // replace or append the objects section
         const objMarker = updated.match(/# (?:Discovered|Nearby) Objects[^\n]*/)
         if (objMarker) {
             const start = updated.indexOf(objMarker[0])
@@ -221,7 +221,7 @@ export class MemoryFiles {
         }
         changed = true
 
-        // Only write if content actually changed (saves ~10,800 disk writes/day)
+        // only write if content actually changed (saves ~10,800 disk writes/day)
         const hash = this._quickHash(updated)
         if (hash !== this._lastToolsHash) {
             this._lastToolsHash = hash
@@ -229,12 +229,12 @@ export class MemoryFiles {
         }
     }
 
-    // Fast string hash for change detection (djb2)
+    // fast string hash for change detection (djb2)
     _quickHash(str) {
         let hash = 5381
         for (let i = 0; i < str.length; i++) {
             hash = ((hash << 5) + hash) + str.charCodeAt(i)
-            hash = hash & hash  // Convert to 32bit integer
+            hash = hash & hash  // 32bit integer
         }
         return hash
     }
@@ -247,26 +247,26 @@ export class MemoryFiles {
         return `# Available Actions\n${lines.join('\n')}\n`
     }
 
-    // --- Backup / Restore (for consolidation safety) ---
+    // backup / restore (consolidation safety)
 
-    // Create a .bak copy before destructive LLM overwrites
+    // make a .bak copy before destructive LLM overwrites
     async backup(filename) {
         const src = join(this.dataDir, filename)
         const dst = join(this.dataDir, `${filename}.bak`)
         try {
             await copyFile(src, dst)
         } catch {
-            // Source doesn't exist yet — nothing to back up
+            // source doesnt exist yet, nothing to back up
         }
     }
 
-    // Restore from backup if the current file is corrupted
+    // restore from backup if the current file is corrupted
     async restore(filename) {
         const bak = join(this.dataDir, `${filename}.bak`)
         const dst = join(this.dataDir, filename)
         try {
             await copyFile(bak, dst)
-            // Invalidate cache for restored file
+            // invalidate cache for restored file
             const key = filename.replace('.md', '')
             if (this._cache[key] !== undefined) this._cache[key] = null
             this.logger.warn(`Restored ${filename} from backup`)
@@ -277,25 +277,25 @@ export class MemoryFiles {
         }
     }
 
-    // Validate that LLM output looks like valid memory.md
+    // validate that LLM output actually looks like valid memory.md
     validateMemoryContent(content) {
         if (!content || content.trim().length < 20) return false
-        // Must have at least one markdown header
+        // must have at least one markdown header
         if (!content.includes('# ')) return false
-        // Must have at least one list entry (or be a valid empty structure)
+        // must have at least one list entry (or be a valid empty structure)
         const hasEntries = content.includes('- ')
         const hasExpectedSections = content.includes('## ')
         return hasEntries || hasExpectedSections
     }
 
-    // Validate that LLM output looks like valid skills.md
+    // validate that LLM output looks like valid skills.md
     validateSkillsContent(content) {
         if (!content || content.trim().length < 10) return false
         if (!content.includes('# ')) return false
         return true
     }
 
-    // Safe write: backup → validate → write, or restore on failure
+    // safe write: backup → validate → write, or restore on failure
     async safeWriteMemory(content) {
         await this.backup('memory.md')
         if (this.validateMemoryContent(content)) {
@@ -318,7 +318,7 @@ export class MemoryFiles {
         return false
     }
 
-    // --- Helpers ---
+    // helpers
 
     async _read(filename) {
         try {

@@ -1,8 +1,8 @@
-// Tracks recent action patterns and flags repetition.
-// Surfaces fixation as a warning into the next prompt so the agent
-// can't fall back on whatever it just did. Constraints over instructions:
-// telling an LLM "be creative" produces nothing; telling it "you cannot
-// do that again" produces variation.
+// tracks recent action patterns and flags fixation.
+// the warning goes INTO the next prompt as a constraint so the agent
+// cant fall back on whatever it just did. constraints not instructions:
+// telling an LLM "be creative" does nothing. telling it "you cant do that
+// again" actually works.
 
 const STOP_WORDS = new Set([
     'i', 'me', 'my', 'the', 'a', 'an', 'is', 'am', 'are', 'was', 'were',
@@ -23,11 +23,11 @@ export class RepetitionGuard {
         this.maxHistory = config.repetitionHistorySize || 30
         this.logger = logger
         this.history = []
-        this._recentSpeech = []  // track recent speech for repetition detection
+        this._recentSpeech = []  // recent speech for repetition detection
         this._targetInteractions = new Map()  // targetId → { count, lastTime }
     }
 
-    // Record an action after it's chosen
+    // record an action after its chosen
     record(action, params) {
         const target = this._extractTarget(params)
         this.history.push({
@@ -39,7 +39,7 @@ export class RepetitionGuard {
         if (this.history.length > this.maxHistory) {
             this.history.shift()
         }
-        // Track target interactions for exploration context
+        // target interactions for exploration context
         if (target) {
             const entry = this._targetInteractions.get(target)
             if (entry) {
@@ -49,26 +49,26 @@ export class RepetitionGuard {
                 this._targetInteractions.set(target, { count: 1, lastTime: Date.now() })
             }
         }
-        // Track speech content separately
+        // speech tracked seperately
         if (action === 'speak' && params?.message) {
             this._recentSpeech.push(params.message.toLowerCase().trim())
             if (this._recentSpeech.length > 20) this._recentSpeech.shift()
         }
     }
 
-    // Check for repetition patterns — returns array of warnings or null
+    // check for repetition patterns. returns array of warnings or null
     check() {
         if (this.history.length < 3) return null
 
         const warnings = []
 
-        // 1. Same action 3+ times consecutively
+        // 1. same action 3+ times consecutively
         const last3 = this.history.slice(-3)
         if (last3.every(h => h.action === last3[0].action)) {
             warnings.push(`You have done "${last3[0].action}" three times in a row. Try something different.`)
         }
 
-        // 2. One action dominates (>60% of recent history)
+        // 2. one action dominates (>60% of recent history)
         const counts = {}
         for (const h of this.history) {
             counts[h.action] = (counts[h.action] || 0) + 1
@@ -82,9 +82,8 @@ export class RepetitionGuard {
             }
         }
 
-        // 2b. Same action+target combo dominates (>30% of recent history)
-        // Environment-agnostic: detects fixation on any repeated behaviour,
-        // whether it's inspect(shiny_01) or set_step(step_5).
+        // 2b. same action+target combo dominates (>30% of recent history).
+        // environment-agnostic — works for inspect(shiny_01), set_step(step_5), whatever.
         const comboCounts = {}
         for (const h of this.history) {
             if (h.target) {
@@ -102,7 +101,7 @@ export class RepetitionGuard {
             }
         }
 
-        // 2c. Same target in 3+ of last 5 actions (catches spread-out fixation)
+        // 2c. same target in 3+ of last 5 actions (catches spread-out fixation)
         const last5targets = this.history.slice(-5).map(h => h.target).filter(Boolean)
         const target5counts = {}
         for (const t of last5targets) target5counts[t] = (target5counts[t] || 0) + 1
@@ -113,7 +112,7 @@ export class RepetitionGuard {
             }
         }
 
-        // 3. Exact same action+params repeated 3+ times in last 5
+        // 3. exact same action+params repeated 3+ times in last 5
         const last5keys = this.history.slice(-5).map(h => h.key)
         const keyCounts = {}
         for (const k of last5keys) {
@@ -126,15 +125,15 @@ export class RepetitionGuard {
             }
         }
 
-        // 4. Alternating pattern detection (A→B→A→B or A→B→C→A→B→C)
+        // 4. alternating pattern (A→B→A→B or A→B→C→A→B→C)
         const altWarning = this._checkAlternating()
         if (altWarning) warnings.push(altWarning)
 
-        // 4b. Target-level cycling — catches "shiny→food→shiny→food" regardless of action
+        // 4b. target-level cycling. catches "shiny→food→shiny→food" regardless of action
         const targetAltWarning = this._checkTargetCycling()
         if (targetAltWarning) warnings.push(targetAltWarning)
 
-        // 5. Speech frequency — cap at ~30% of recent actions
+        // 5. speech frequency — cap around 30% of recent actions
         if (total >= 5 && counts['speak']) {
             const speechPct = counts['speak'] / total
             if (speechPct > 0.35) {
@@ -142,18 +141,18 @@ export class RepetitionGuard {
             }
         }
 
-        // 6. Speech repetition — fuzzy keyword matching to catch paraphrased repeats
+        // 6. speech repetition. fuzzy keyword matching to catch paraphrased repeats
         if (this._recentSpeech.length >= 2) {
             const last = this._recentSpeech[this._recentSpeech.length - 1]
             const lastKw = this._extractKeywords(last)
 
-            // Exact match
+            // exact match
             const exactRepeats = this._recentSpeech.filter(s => s === last).length
             if (exactRepeats >= 2) {
                 warnings.push(`You already said "${last}" recently. Say something completely different.`)
             }
 
-            // Fuzzy match — 60% keyword overlap = "same idea"
+            // fuzzy — 60% keyword overlap = "same idea"
             if (lastKw.size >= 2) {
                 const fuzzyRepeats = this._recentSpeech.slice(0, -1).filter(s => {
                     const kw = this._extractKeywords(s)
@@ -166,7 +165,7 @@ export class RepetitionGuard {
                 }
             }
 
-            // Flag generic openings (starts with same 3+ words)
+            // flag generic openings (same 3+ starting words)
             const lastWords = last.split(/\s+/).slice(0, 3).join(' ')
             if (lastWords.length > 5) {
                 const similar = this._recentSpeech.filter(s => s.startsWith(lastWords)).length
@@ -179,21 +178,21 @@ export class RepetitionGuard {
         return warnings.length > 0 ? warnings : null
     }
 
-    // Score how creative/unique a speech message is compared to recent speech.
-    // Returns 0.0 (exact repeat) to 1.0 (completely novel).
-    // Call BEFORE record() so the message isn't compared against itself.
+    // score how creative/unique a speech is compared to recent speech.
+    // 0.0 = exact repeat, 1.0 = completely novel.
+    // call BEFORE record() so the message isnt compared against itself.
     scoreSpeech(message) {
         if (this._recentSpeech.length === 0) return 1.0
 
         const msgLower = message.toLowerCase().trim()
         const keywords = this._extractKeywords(msgLower)
 
-        // Too short to judge meaningfully
+        // too short to judge
         if (keywords.size < 2) return 0.5
 
         let maxOverlap = 0
         for (const prev of this._recentSpeech) {
-            // Check exact match first
+            // exact match first
             if (prev === msgLower) return 0.0
 
             const prevKw = this._extractKeywords(prev)
@@ -206,20 +205,20 @@ export class RepetitionGuard {
         return Math.max(0, 1.0 - maxOverlap)
     }
 
-    // Action diversity score (0 = all same, 1 = all different) — for adaptive heartbeat
+    // action diversity score (0 = all same, 1 = all different). used by adaptive heartbeat
     diversityScore() {
         if (this.history.length < 2) return 1
         const unique = new Set(this.history.map(h => h.action))
         return unique.size / this.history.length
     }
 
-    // Extract target from action params (works across any environment)
+    // extract target from action params (works in any env)
     _extractTarget(params) {
         if (!params) return null
         return params.target || params.entityId || params.npcId || params.spotId || params.nestId || null
     }
 
-    // Target diversity score (0 = all same target, 1 = all different)
+    // target diversity score (0 = all same target, 1 = all different)
     targetDiversityScore() {
         const targets = this.history.map(h => h.target).filter(Boolean)
         if (targets.length < 2) return 1
@@ -227,9 +226,9 @@ export class RepetitionGuard {
         return unique.size / targets.length
     }
 
-    // Build exploration context string for PromptBuilder.
-    // Environment-agnostic: shows what's been interacted with a lot vs barely touched.
-    // Uses advisory language — the agent decides based on its needs.
+    // build exploration context for PromptBuilder.
+    // env-agnostic: shows whats been hammered vs barely touched.
+    // advisory language only — the agent decides based on its needs.
     explorationContext(currentNearbyIds) {
         if (this._targetInteractions.size === 0) return null
 
@@ -237,7 +236,7 @@ export class RepetitionGuard {
         const wellExplored = []
         const barelyExplored = []
 
-        // Check nearby entities against interaction counts
+        // check nearby entities against interaction counts
         const nearbySet = new Set(currentNearbyIds || [])
 
         for (const [target, data] of this._targetInteractions) {
@@ -245,7 +244,7 @@ export class RepetitionGuard {
             else if (data.count >= 5) wellExplored.push(`${target} (${data.count}x)`)
         }
 
-        // Find nearby things that haven't been explored much
+        // find nearby stuff that hasnt been explored much
         for (const id of nearbySet) {
             const data = this._targetInteractions.get(id)
             if (!data || data.count <= 2) barelyExplored.push(id)
@@ -266,24 +265,24 @@ export class RepetitionGuard {
         return parts.join('\n')
     }
 
-    // Check if a specific action+target combo is fixated in the recent history window.
-    // Environment-agnostic: works for inspect(shiny_01), set_step(step_5), etc.
+    // is a specific action+target combo fixated in the recent window?
+    // env-agnostic: works for inspect(shiny_01), set_step(step_5), etc.
     isFixated(action, target) {
         if (this.history.length < 10) return false
         const combo = `${action}:${target}`
         const recent = this.history.slice(-this.maxHistory)
         const count = recent.filter(h => `${h.action}:${h.target}` === combo).length
-        // Fixated if same action+target is 40%+ of recent history
+        // fixated if same combo is 40%+ of recent history
         return count / recent.length >= 0.4
     }
 
-    // Get the count of a specific action+target combo in the recent window
+    // count of a specific action+target combo in the recent window
     comboCount(action, target) {
         const combo = `${action}:${target}`
         return this.history.filter(h => `${h.action}:${h.target}` === combo).length
     }
 
-    // Reset exploration counts (called on sleep cycle)
+    // reset exploration counts (called on sleep cycle)
     resetExploration() {
         this._targetInteractions.clear()
     }
@@ -298,15 +297,15 @@ export class RepetitionGuard {
         return `${action}:${JSON.stringify(normalized)}`
     }
 
-    // Detect alternating/cycling patterns like A→B→A→B or A→B→C→A→B→C
+    // detect alternating/cycling patterns like A→B→A→B or A→B→C→A→B→C
     _checkAlternating() {
         if (this.history.length < 6) return null
         const recent = this.history.slice(-8).map(h => h.action)
 
-        // Check cycle lengths 2 and 3
+        // check cycle lengths 2 and 3
         for (const len of [2, 3]) {
             if (recent.length < len * 2) continue
-            const tail = recent.slice(-len * 3)  // look at last 3 cycles worth
+            const tail = recent.slice(-len * 3)  // last 3 cycles worth
             let matches = 0
             for (let i = len; i < tail.length; i++) {
                 if (tail[i] === tail[i - len]) matches++
@@ -320,26 +319,26 @@ export class RepetitionGuard {
         return null
     }
 
-    // Detect target-level cycling: agent keeps returning to the same target
-    // between other actions. E.g. shiny_02 → food_01 → shiny_02 → wander → shiny_02
+    // target-level cycling: agent keeps returning to the same target between other actions.
+    // eg shiny_02 → food_01 → shiny_02 → wander → shiny_02
     _checkTargetCycling() {
         if (this.history.length < 6) return null
         const recentTargets = this.history.slice(-10).map(h => h.target).filter(Boolean)
         if (recentTargets.length < 5) return null
 
-        // Count how many times the most common target appears
+        // count how many times the most common target appears
         const counts = {}
         for (const t of recentTargets) counts[t] = (counts[t] || 0) + 1
         const [topTarget, topCount] = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]
 
-        // If one target appears in 40%+ of the last 10 targeted actions, it's a cycle
+        // if one target is 40%+ of last 10 targeted actions, its a cycle
         if (topCount >= Math.ceil(recentTargets.length * 0.4)) {
             return `You keep returning to "${topTarget}" between other actions. This is a fixation loop. STOP targeting it entirely and do something unrelated.`
         }
         return null
     }
 
-    // Extract meaningful keywords from speech (stop-word removal)
+    // extract meaningful keywords from speech (stop-word removal)
     _extractKeywords(text) {
         const words = text.toLowerCase().replace(/[^a-z\s]/g, '').split(/\s+/).filter(w => w.length > 2)
         return new Set(words.filter(w => !STOP_WORDS.has(w)))

@@ -1,6 +1,6 @@
-// Orchestrates: perceive → build prompt → call LLM → parse response
-// Now accepts cognitive context (internal state, deltas, action results, repetition)
-// and passes it through to the prompt builder.
+// orchestrates: perceive → build prompt → call LLM → parse response.
+// takes cognitive context (state, deltas, action results, repetition warnings)
+// and threads it through to the prompt builder.
 
 import { perceive } from './Perceive.js'
 import { fallbackDecision } from './FallbackBrain.js'
@@ -15,8 +15,8 @@ export class Think {
         this.workingMemory = workingMemory
         this.logger = logger
 
-        // Token budget: ~4 chars per token, 8k context with 200 reserved for output
-        this._maxInputChars = 7800 * 4  // ~7800 tokens for input
+        // token budget: ~4 chars per token, 8k context with 200 reserved for output
+        this._maxInputChars = 7800 * 4  // ~7800 tokens of input
         this._lastPromptChars = 0       // tracked for metrics
     }
 
@@ -24,17 +24,17 @@ export class Think {
     async decide(observation, worldEvents, extras = {}) {
         const tier = extras.tier || 'quality'
 
-        // Tier 'skip': no LLM call — use fallback brain directly
+        // skip tier: no LLM, fallback brain directly
         if (tier === 'skip') {
             this.logger.debug('Tick classified as skip — using fallback brain')
             return this._wrapFallback(observation)
         }
 
-        // 1. Perceive — turn raw observation into natural language
+        // 1. perceive. raw observation → natural language
         const situation = perceive(observation, worldEvents)
         this.logger.debug(`Perceived: ${situation.split('\n')[0]}...`)
 
-        // 2. Build prompts
+        // 2. build prompts
         const [memory, skills, tools] = await Promise.all([
             this.memoryFiles.readMemory(),
             this.memoryFiles.readSkills(),
@@ -47,9 +47,9 @@ export class Think {
         const systemPrompt = this.promptBuilder.buildSystemPrompt(memory, skills, tools, observation.available_actions)
         const userPrompt = this.promptBuilder.buildUserPrompt(situation, recentLog, recentMemory, extras)
 
-        // 2b. Token budget check — truncate memory if over budget.
-        // v0.3.1: Truncate "Learned Facts" (middle section, largest) rather than
-        // slicing from the end, which would cut "Important Memories" first.
+        // 2b. token budget check. truncate memory if over.
+        // v0.3.1: truncate "Learned Facts" (middle section, largest) rather than
+        // slicing from the end which would cut "Important Memories" first
         let finalSystemPrompt = systemPrompt
         const totalChars = systemPrompt.length + userPrompt.length
         this._lastPromptChars = totalChars
@@ -60,7 +60,7 @@ export class Think {
             finalSystemPrompt = this.promptBuilder.buildSystemPrompt(truncatedMemory, skills, tools, observation.available_actions)
         }
 
-        // 3. Call LLM with tier routing
+        // 3. call LLM with tier routing
         const { text, source } = await this.llm.generate(finalSystemPrompt, userPrompt, 30000, tier)
 
         if (!text) {
@@ -70,18 +70,18 @@ export class Think {
 
         this.logger.debug(`LLM response (${source}): ${text.slice(0, 120)}`)
 
-        // 4. Parse response
+        // 4. parse response
         const parsed = this._parseResponse(text)
         if (!parsed) {
             this.logger.warn('Failed to parse LLM response, using fallback')
             return this._wrapFallback(observation)
         }
 
-        // 5. Handle memory write if present — use salience for encoding strength
-        // v0.3.1: Cap entry length to prevent LLM from writing novels into memory
+        // 5. memory write if present — use salience for encoding strength.
+        // v0.3.1: cap entry length so LLM cant write novels into memory
         if (parsed.remember && typeof parsed.remember.content === 'string' && parsed.remember.content.trim()) {
             const salience = extras.salience || 0.5
-            let content = parsed.remember.content.trim().slice(0, 120)  // hard cap: 120 chars
+            let content = parsed.remember.content.trim().slice(0, 120)  // hard cap 120 chars
             if (salience > 0.7) content += ' [salient]'
             await this.memoryFiles.appendToMemory(
                 parsed.remember.section || 'Learned Facts',
@@ -98,22 +98,22 @@ export class Think {
         }
     }
 
-    // For sleep consolidation — direct LLM call with custom prompts
+    // sleep consolidation. direct LLM call with custom prompts
     async consolidate(systemPrompt, userPrompt, timeoutMs = 60000) {
         const { text, source } = await this.llm.generate(systemPrompt, userPrompt, timeoutMs)
         return text
     }
 
     _parseResponse(text) {
-        // Try to extract JSON from the response
-        // LLMs sometimes wrap JSON in markdown code blocks
+        // try to pull JSON out of the response.
+        // LLMs sometimes wrap it in markdown code blocks
         let jsonStr = text.trim()
 
-        // Strip markdown code fences
+        // strip markdown code fences
         const fenceMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/)
         if (fenceMatch) jsonStr = fenceMatch[1].trim()
 
-        // Try to find JSON object
+        // find JSON object
         const braceStart = jsonStr.indexOf('{')
         const braceEnd = jsonStr.lastIndexOf('}')
         if (braceStart !== -1 && braceEnd > braceStart) {
@@ -130,28 +130,28 @@ export class Think {
         }
     }
 
-    // Truncate memory by removing entries from "Learned Facts" (the largest,
-    // least critical section) rather than slicing from the end which would
-    // destroy "Important Memories" first.
+    // truncate memory by removing entries from "Learned Facts" (the largest,
+    // least critical section) instead of end-slicing which would destroy
+    // Important Memories first
     _truncateLearnedFacts(memory, overBy) {
         const marker = '## Learned Facts'
         const idx = memory.indexOf(marker)
         if (idx === -1) {
-            // No Learned Facts section — fall back to end truncation
+            // no Learned Facts section — fall back to end truncation
             return memory.slice(0, Math.max(200, memory.length - overBy))
         }
 
-        // Find the next section after Learned Facts
+        // find next section after Learned Facts
         const afterMarker = idx + marker.length
         const nextSection = memory.indexOf('\n## ', afterMarker)
         const sectionEnd = nextSection === -1 ? memory.length : nextSection
 
-        // Extract the section's entries
+        // extract section entries
         const before = memory.slice(0, afterMarker)
         const section = memory.slice(afterMarker, sectionEnd)
         const after = memory.slice(sectionEnd)
 
-        // Remove entries from the START of Learned Facts (oldest first)
+        // remove entries from the START of Learned Facts (oldest first)
         const lines = section.split('\n')
         let removed = 0
         const kept = []

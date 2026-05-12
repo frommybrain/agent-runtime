@@ -1,13 +1,13 @@
 import { Ollama } from 'ollama'
 
-// LLM client — Tiered model routing for cost optimization
+// LLM client. tiered model routing for cost.
 //
-// Three tiers:
+// three tiers:
 //   'quality' — 70B cloud first, Ollama fallback (complex decisions)
 //   'fast'    — Ollama first (free), 8B cloud fallback (routine ticks)
 //   'skip'    — no LLM call (caller should use FallbackBrain)
 //
-// v0.3.8: Tiered routing. v0.3.7: 429 backoff, periodic Ollama re-check
+// v0.3.8: tiered routing. v0.3.7: 429 backoff, periodic Ollama re-check.
 
 export class LLMClient {
     constructor(config, logger) {
@@ -15,11 +15,11 @@ export class LLMClient {
         this.temperature = config.temperature
         this.maxTokens = config.maxTokens
 
-        // Local Ollama
+        // local Ollama
         this.ollama = new Ollama({ host: config.ollamaHost })
         this.ollamaModel = config.ollamaModel
 
-        // Cloud API (Groq, Together, etc.)
+        // cloud API (Groq, Together, etc)
         this.cloudApiKey = config.cloudApiKey
         this.cloudApiUrl = config.cloudApiUrl
         this.cloudModel = config.cloudModel              // 70B quality
@@ -30,7 +30,7 @@ export class LLMClient {
         this._lastOllamaCheck = 0
         this._ollamaRecheckMs = 5 * 60 * 1000
 
-        // Observability counters
+        // observability counters
         this.tierCounts = { skip: 0, fast: 0, quality: 0 }
     }
 
@@ -51,16 +51,16 @@ export class LLMClient {
         }
     }
 
-    // Generate a response with tier-aware routing
+    // generate a response with tier-aware routing.
     // tier: 'quality' (default) | 'fast'
-    // Returns: { text: string, source: 'cloud'|'cloud-fast'|'ollama'|null }
+    // returns: { text: string, source: 'cloud'|'cloud-fast'|'ollama'|null }
     async generate(systemPrompt, userPrompt, timeoutMs = 30000, tier = 'quality') {
-        // Periodically re-check Ollama if it was unavailable
+        // periodically re-check Ollama if it was unavailable
         if (!this.ollamaAvailable && Date.now() - this._lastOllamaCheck > this._ollamaRecheckMs) {
             await this._recheckOllama()
         }
 
-        // Track tier usage
+        // track tier usage
         this.tierCounts[tier] = (this.tierCounts[tier] || 0) + 1
 
         if (tier === 'fast') {
@@ -70,12 +70,12 @@ export class LLMClient {
         return this._generateQuality(systemPrompt, userPrompt, timeoutMs)
     }
 
-    // Fast tier: 8B cloud first (fast + cheap), Ollama fallback (free but slow)
-    // v0.3.8.1: Swapped priority — Ollama on Pi causes tick skipping due to
-    // generation time exceeding heartbeat interval. 8B cloud is fast enough
+    // fast tier: 8B cloud first (fast + cheap), Ollama fallback (free but slow).
+    // v0.3.8.1: swapped priority. Ollama on the Pi causes tick skipping —
+    // generation time exceeds heartbeat interval. 8B cloud is fast enough
     // to avoid missed ticks and cheap enough for routine use.
     async _generateFast(systemPrompt, userPrompt, timeoutMs) {
-        // Try cheap cloud model first (fast, avoids tick skipping)
+        // try cheap cloud model first (fast, no tick skipping)
         if (this.cloudApiKey && this.cloudApiUrl && Date.now() >= this._cloudCooldownUntil) {
             try {
                 const result = await this._cloudGenerate(systemPrompt, userPrompt, timeoutMs, this.cloudModelFast)
@@ -85,7 +85,7 @@ export class LLMClient {
             }
         }
 
-        // Fall back to free local model (slow but free — only when cloud is down)
+        // fall back to free local model (slow but free, only when cloud is down)
         if (this.ollamaAvailable) {
             try {
                 const result = await this._ollamaGenerate(systemPrompt, userPrompt, timeoutMs)
@@ -98,9 +98,9 @@ export class LLMClient {
         return { text: null, source: null }
     }
 
-    // Quality tier: 70B cloud first, Ollama fallback
+    // quality tier: 70B cloud first, Ollama fallback
     async _generateQuality(systemPrompt, userPrompt, timeoutMs) {
-        // Try 70B cloud first (faster on Pi than local)
+        // try 70B cloud first (faster on Pi than local)
         if (this.cloudApiKey && this.cloudApiUrl && Date.now() >= this._cloudCooldownUntil) {
             try {
                 const result = await this._cloudGenerate(systemPrompt, userPrompt, timeoutMs, this.cloudModel)
@@ -113,7 +113,7 @@ export class LLMClient {
             this.logger.debug(`Cloud API cooling down (${remaining}s remaining)`)
         }
 
-        // Fall back to local Ollama
+        // fall back to local Ollama
         if (this.ollamaAvailable) {
             try {
                 const result = await this._ollamaGenerate(systemPrompt, userPrompt, timeoutMs)
@@ -151,12 +151,12 @@ export class LLMClient {
         const timeout = setTimeout(() => controller.abort(), timeoutMs)
 
         // response_format: json_object constrains the model to emit a single
-        // valid JSON object — no markdown fences, no preamble, no GPT-OSS
-        // channel markers. Without it, gpt-oss-120b returns code-fenced
-        // output ~half the time and Think.js's parser falls back to null.
+        // valid JSON object. no markdown fences, no preamble, no GPT-OSS
+        // channel markers. without it gpt-oss-120b returns code-fenced
+        // output about half the time and Think.js's parser falls back to null.
         // Groq's OpenAI-compatible endpoint requires the prompt to mention
-        // "JSON" — agent-runtime's PromptBuilder already does (the system
-        // prompt instructs JSON output for the action decision).
+        // "JSON" — 3aiii's PromptBuilder already does (the system prompt
+        // instructs JSON output for the action decision).
         try {
             const response = await fetch(this.cloudApiUrl, {
                 method: 'POST',
@@ -199,7 +199,7 @@ export class LLMClient {
             this.ollamaAvailable = true
             this.logger.info('Ollama re-check: available again')
         } catch {
-            // Still unavailable
+            // still unavailable
         }
     }
 

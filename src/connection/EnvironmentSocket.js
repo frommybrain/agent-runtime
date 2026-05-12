@@ -21,7 +21,7 @@ export class EnvironmentSocket {
     }
 
     connect() {
-        // Clean up previous WebSocket before creating a new one (prevents listener leak on reconnect)
+        // clean up previous WebSocket before making a new one (stops listener leak on reconnect)
         if (this.ws) {
             this.ws.removeAllListeners()
             try { this.ws.close() } catch {}
@@ -53,7 +53,7 @@ export class EnvironmentSocket {
                 this.connected = false
                 this.identified = false
                 this.logger.warn('Disconnected')
-                // Reject pending requests immediately (prevents 5s timeout hang)
+                // reject pending requests immediately (prevents 5s timeout hang)
                 if (this._pendingObserve) {
                     clearTimeout(this._pendingObserve.timer)
                     this._pendingObserve.reject(new Error('Disconnected'))
@@ -78,10 +78,10 @@ export class EnvironmentSocket {
     _handleMessage(msg) {
         switch (msg.type) {
             case 'WELCOME': {
-                // Send IDENTIFY. Always include `token` — environments that
-                // don't require auth (ADMIN_TOKEN unset) accept any value;
-                // environments that do (3eyes sim-server in production)
-                // constant-time-compare against the configured token.
+                // send IDENTIFY. always include `token` — envs that
+                // dont require auth (ADMIN_TOKEN unset) accept any value.
+                // envs that do (3eyes sim-server in prod) constant-time-compare
+                // against the configured token.
                 const identifyMsg = { type: 'IDENTIFY', agentId: this.agentId }
                 if (this.adminToken) identifyMsg.token = this.adminToken
                 else if (msg.requiresToken) {
@@ -127,7 +127,7 @@ export class EnvironmentSocket {
 
             case 'ERROR':
                 this.logger.error(`Server error: ${msg.message}`)
-                // Reject pending requests
+                // reject pending requests
                 if (this._pendingObserve) {
                     this._pendingObserve.reject(new Error(msg.message))
                     this._pendingObserve = null
@@ -170,7 +170,7 @@ export class EnvironmentSocket {
         })
     }
 
-    // Get and clear buffered world events (speech, agent_joined, etc.)
+    // get and clear buffered world events (speech, agent_joined, etc)
     drainWorldEvents() {
         const events = this._worldEvents.slice()
         this._worldEvents.length = 0
@@ -189,7 +189,7 @@ export class EnvironmentSocket {
 
     _scheduleReconnect() {
         if (this._reconnectTimer) return
-        // Exponential backoff: 5s → 10s → 20s → 40s → 60s → ... cap at 5 min
+        // exponential backoff: 5s → 10s → 20s → 40s → 60s → ... cap at 5 min
         const backoff = Math.min(
             this.reconnectMs * Math.pow(2, this._reconnectAttempts),
             5 * 60 * 1000

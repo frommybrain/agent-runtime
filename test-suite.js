@@ -1,14 +1,14 @@
-// Automated test suite for agent-runtime v0.2
+// automated test suite for 3aiii v0.2.
 //
-// Runs a WebSocket environment server and drives scenarios automatically.
-// Polls agent /status to track internal state. Logs everything.
-// Produces a summary report at the end.
+// runs a WebSocket env server and drives scenarios automatically.
+// polls agent /status to track internal state. logs everything.
+// dumps a summary report at the end.
 //
-// Usage:
-//   1. Start the agent on the Pi: SERVER_URL=ws://<mac-ip>:4001 node src/index.js
-//   2. Run this on the Mac: node test-suite.js
+// usage:
+//   1. start agent on Pi: SERVER_URL=ws://<mac-ip>:4001 node src/index.js
+//   2. run this on the Mac: node test-suite.js
 //
-// The suite waits for the agent to connect, then runs through scenarios.
+// the suite waits for the agent to connect, then runs through scenarios.
 
 import { WebSocketServer } from 'ws'
 import { mkdirSync, writeFileSync } from 'node:fs'
@@ -17,7 +17,7 @@ import { request } from 'node:http'
 const PORT = 4001
 const AGENT_STATUS_URL = process.env.AGENT_STATUS_URL || 'http://victor.local:5000/status'
 
-// ── Test Scenarios ──────────────────────────────────────────────────
+// scenarios
 const scenarios = [
     {
         name: 'Baseline (empty world)',
@@ -29,7 +29,7 @@ const scenarios = [
             world.synthMode = false
             world.nextFail = false
         },
-        expect: 'Arousal and valence near 0. Heartbeat should be slow (12-15s).',
+        expect: 'Energy and mood near 0. Heartbeat should be slow (12-15s).',
     },
     {
         name: 'Object appears',
@@ -37,7 +37,7 @@ const scenarios = [
         setup: (world) => {
             world.objects = [{ id: 'terminal-01', type: 'terminal', interactive: true, pos: { x: 10, y: 0, z: -5 } }]
         },
-        expect: 'Arousal spike from novelty. Agent should investigate the object.',
+        expect: 'Energy spike from novelty. Agent should investigate the object.',
     },
     {
         name: 'Action failure',
@@ -45,7 +45,7 @@ const scenarios = [
         setup: (world) => {
             world.nextFail = true
         },
-        expect: 'Valence dip on failure. Agent tries something different next tick.',
+        expect: 'Mood dip on failure. Agent tries something different next tick.',
     },
     {
         name: 'Stranger speaks',
@@ -54,7 +54,7 @@ const scenarios = [
             world.pendingSpeech = [{ agentId: 'stranger', message: 'have you seen the artifact?' }]
             world.speechEvent = { event: 'agent_speech', agentId: 'stranger', message: 'have you seen the artifact?' }
         },
-        expect: 'Agent sees speech in observation. Arousal nudge. Should respond or acknowledge.',
+        expect: 'Agent sees speech in observation. Energy nudge. Should respond or acknowledge.',
     },
     {
         name: 'Cosmology signals ON (low vitality)',
@@ -63,7 +63,7 @@ const scenarios = [
             world.signals = { vitality: 0.3, resonance: 0.8, abundance: 0.6, warmth: 0.4 }
             world.pendingSpeech = []
         },
-        expect: 'Arousal should climb toward 0.8 (resonance). Valence should go NEGATIVE (low vitality). Heartbeat speeds up.',
+        expect: 'Energy should climb toward 0.8 (resonance). Mood should go NEGATIVE (low vitality). Heartbeat speeds up.',
     },
     {
         name: 'Cosmology signals OFF (decay)',
@@ -71,7 +71,7 @@ const scenarios = [
         setup: (world) => {
             world.signals = null
         },
-        expect: 'Arousal and valence should decay back toward 0. Heartbeat slows.',
+        expect: 'Energy and mood should decay back toward 0. Heartbeat slows.',
     },
     {
         name: 'High vitality + warmth',
@@ -79,7 +79,7 @@ const scenarios = [
         setup: (world) => {
             world.signals = { vitality: 0.9, resonance: 0.5, abundance: 0.8, warmth: 0.9 }
         },
-        expect: 'Valence should go POSITIVE (high vitality + warmth). Moderate arousal.',
+        expect: 'Mood should go POSITIVE (high vitality + warmth). Moderate energy.',
     },
     {
         name: 'Second stranger speech',
@@ -111,7 +111,7 @@ const scenarios = [
     },
 ]
 
-// ── World State ─────────────────────────────────────────────────────
+// world state
 let tickCount = 0
 let agentId = null
 let agentPos = { x: 0, y: 0, z: 0 }
@@ -167,7 +167,7 @@ function buildObservation() {
     return obs
 }
 
-// ── Results Collection ──────────────────────────────────────────────
+// results
 const results = {
     startTime: null,
     endTime: null,
@@ -192,16 +192,16 @@ function pollStatus() {
                         tick: tickCount,
                         scenario: currentScenario?.name,
                         time: new Date().toISOString(),
-                        valence: status.internalState?.valence,
-                        arousal: status.internalState?.arousal,
-                        valenceLabel: status.internalState?.valenceLabel,
-                        arousalLabel: status.internalState?.arousalLabel,
+                        mood: status.internalState?.mood,
+                        energy: status.internalState?.energy,
+                        moodLabel: status.internalState?.moodLabel,
+                        energyLabel: status.internalState?.energyLabel,
                         description: status.internalState?.description,
                         heartbeatMs: status.heartbeatMs,
                     }
                     results.statusPolls.push(poll)
                     const is = status.internalState || {}
-                    console.log(`    📊 tick=${tickCount} v=${is.valence?.toFixed(3)} a=${is.arousal?.toFixed(3)} [${is.valenceLabel}/${is.arousalLabel}] hb=${status.heartbeatMs}ms`)
+                    console.log(`    📊 tick=${tickCount} v=${is.mood?.toFixed(3)} a=${is.energy?.toFixed(3)} [${is.moodLabel}/${is.energyLabel}] hb=${status.heartbeatMs}ms`)
                     if (is.description) console.log(`       "${is.description}"`)
                     resolve(poll)
                 } catch { resolve(null) }
@@ -212,10 +212,10 @@ function pollStatus() {
     })
 }
 
-// ── WebSocket Server ────────────────────────────────────────────────
+// WebSocket server
 const wss = new WebSocketServer({ port: PORT })
 let activeSocket = null
-let tickResolve = null  // resolve function for waiting on a tick
+let tickResolve = null  // resolve fn for waiting on a tick
 
 wss.on('listening', () => {
     console.log(`\n🧪 Test suite server running on ws://0.0.0.0:${PORT}`)
@@ -240,14 +240,14 @@ wss.on('connection', (ws) => {
                     worldBounds: { halfSize: 100 },
                 }))
                 console.log(`   Agent identified: ${msg.agentId}`)
-                // Start the test scenarios
+                // start scenarios
                 runScenarios(ws)
                 break
 
             case 'OBSERVE': {
                 const obs = buildObservation()
 
-                // Inject speech world event if queued
+                // inject speech world event if queued
                 if (world.speechEvent) {
                     ws.send(JSON.stringify({ type: 'WORLD_EVENT', data: world.speechEvent }))
                     world.speechEvent = null
@@ -255,7 +255,7 @@ wss.on('connection', (ws) => {
 
                 ws.send(JSON.stringify({ type: 'OBSERVATION', data: obs }))
 
-                // Poll status every 2 ticks
+                // poll status every 2 ticks
                 if (tickCount % 2 === 0) pollStatus()
 
                 if (tickResolve) {
@@ -299,7 +299,7 @@ wss.on('connection', (ws) => {
     })
 })
 
-// ── Scenario Runner ─────────────────────────────────────────────────
+// scenario runner
 function waitForTick() {
     return new Promise(resolve => { tickResolve = resolve })
 }
@@ -314,7 +314,7 @@ async function runScenarios(ws) {
     console.log(`  STARTING TEST SUITE — ${scenarios.length} scenarios`)
     console.log(`${'='.repeat(60)}\n`)
 
-    // Give agent a moment to boot up
+    // let the agent boot
     await sleep(2000)
 
     for (const scenario of scenarios) {
@@ -333,23 +333,23 @@ async function runScenarios(ws) {
         console.log(`\n--- ${scenario.name} (${scenario.ticks} ticks) ---`)
         console.log(`    Expected: ${scenario.expect}`)
 
-        // Apply scenario setup
+        // apply scenario setup
         scenario.setup(world)
 
-        // Capture status at start
+        // capture status at start
         scenarioResult.statusBefore = await pollStatus()
 
-        // Wait for the required number of ticks
+        // wait for the ticks
         for (let i = 0; i < scenario.ticks; i++) {
             await waitForTick()
         }
 
-        // Capture status at end
+        // capture status at end
         scenarioResult.statusAfter = await pollStatus()
         scenarioResult.endTick = tickCount
         scenarioResult.endTime = new Date().toISOString()
 
-        // Collect actions from this scenario
+        // collect actions from this scenario
         scenarioResult.actions = results.actions.filter(
             a => a.tick >= scenarioResult.startTick && a.tick <= scenarioResult.endTick
         )
@@ -358,11 +358,11 @@ async function runScenarios(ws) {
 
         const after = scenarioResult.statusAfter
         if (after) {
-            console.log(`    Result: v=${after.valence?.toFixed(3)} a=${after.arousal?.toFixed(3)} hb=${after.heartbeatMs}ms`)
+            console.log(`    Result: v=${after.mood?.toFixed(3)} a=${after.energy?.toFixed(3)} hb=${after.heartbeatMs}ms`)
         }
     }
 
-    // Done — generate report
+    // done, generate report
     results.endTime = new Date().toISOString()
     currentScenario = null
 
@@ -372,20 +372,20 @@ async function runScenarios(ws) {
 
     generateReport()
 
-    // Keep server alive briefly for final polls, then exit
+    // keep server alive briefly for final polls, then exit
     await sleep(3000)
     process.exit(0)
 }
 
-// ── Report Generator ────────────────────────────────────────────────
+// report generator
 function generateReport() {
     mkdirSync('test-results', { recursive: true })
     const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
 
-    // Save raw data
+    // save raw data
     writeFileSync(`test-results/${ts}-raw.json`, JSON.stringify(results, null, 2))
 
-    // Generate human-readable report
+    // generate human-readable report
     const lines = []
     lines.push(`# Test Suite Report — ${ts}`)
     lines.push(``)
@@ -394,7 +394,7 @@ function generateReport() {
     lines.push(`Total actions: ${results.actions.length}`)
     lines.push(``)
 
-    // Scenario summaries
+    // scenario summaries
     lines.push(`## Scenario Results`)
     lines.push(``)
 
@@ -403,24 +403,24 @@ function generateReport() {
         lines.push(`Ticks: ${s.startTick}–${s.endTick} | Expected: ${s.expect}`)
 
         if (s.statusBefore && s.statusAfter) {
-            const bv = s.statusBefore.valence?.toFixed(3) ?? '?'
-            const ba = s.statusBefore.arousal?.toFixed(3) ?? '?'
-            const av = s.statusAfter.valence?.toFixed(3) ?? '?'
-            const aa = s.statusAfter.arousal?.toFixed(3) ?? '?'
+            const bv = s.statusBefore.mood?.toFixed(3) ?? '?'
+            const ba = s.statusBefore.energy?.toFixed(3) ?? '?'
+            const av = s.statusAfter.mood?.toFixed(3) ?? '?'
+            const aa = s.statusAfter.energy?.toFixed(3) ?? '?'
             const bh = s.statusBefore.heartbeatMs ?? '?'
             const ah = s.statusAfter.heartbeatMs ?? '?'
-            lines.push(`Valence: ${bv} → ${av} | Arousal: ${ba} → ${aa} | Heartbeat: ${bh}ms → ${ah}ms`)
+            lines.push(`Mood: ${bv} → ${av} | Energy: ${ba} → ${aa} | Heartbeat: ${bh}ms → ${ah}ms`)
             lines.push(`State: "${s.statusAfter.description}"`)
         }
 
-        // Action breakdown
+        // action breakdown
         const actionCounts = {}
         for (const a of s.actions) {
             actionCounts[a.action] = (actionCounts[a.action] || 0) + 1
         }
         lines.push(`Actions: ${Object.entries(actionCounts).map(([k, v]) => `${k}(${v})`).join(', ') || 'none'}`)
 
-        // Check for spatial actions in synth mode
+        // check for spatial actions in synth mode
         if (s.name.includes('Synth')) {
             const spatialLeaks = s.actions.filter(a => ['move_to', 'speak', 'interact'].includes(a.action))
             if (spatialLeaks.length > 0) {
@@ -430,7 +430,7 @@ function generateReport() {
             }
         }
 
-        // Check for synth actions in spatial mode
+        // check for synth actions in spatial mode
         if (s.name.includes('Return to spatial')) {
             const synthLeaks = s.actions.filter(a => ['set_step', 'change_bpm', 'add_chord', 'remove_chord'].includes(a.action))
             if (synthLeaks.length > 0) {
@@ -440,7 +440,7 @@ function generateReport() {
             }
         }
 
-        // Check for speech response
+        // check for speech response
         if (s.name.includes('speaks') || s.name.includes('speech')) {
             const speechActions = s.actions.filter(a => a.action === 'speak')
             if (speechActions.length > 0) {
@@ -453,19 +453,19 @@ function generateReport() {
         lines.push(``)
     }
 
-    // Valence/Arousal trajectory
+    // mood/energy trajectory
     lines.push(`## Internal State Trajectory`)
     lines.push(``)
-    lines.push(`| Tick | Scenario | Valence | Arousal | Heartbeat | Description |`)
+    lines.push(`| Tick | Scenario | Mood | Energy | Heartbeat | Description |`)
     lines.push(`|------|----------|---------|---------|-----------|-------------|`)
     for (const p of results.statusPolls) {
         if (p) {
-            lines.push(`| ${p.tick} | ${p.scenario || '-'} | ${p.valence?.toFixed(3) ?? '?'} | ${p.arousal?.toFixed(3) ?? '?'} | ${p.heartbeatMs ?? '?'}ms | ${p.description || ''} |`)
+            lines.push(`| ${p.tick} | ${p.scenario || '-'} | ${p.mood?.toFixed(3) ?? '?'} | ${p.energy?.toFixed(3) ?? '?'} | ${p.heartbeatMs ?? '?'}ms | ${p.description || ''} |`)
         }
     }
     lines.push(``)
 
-    // Action diversity
+    // action diversity
     lines.push(`## Action Distribution`)
     lines.push(``)
     const totalActions = {}
@@ -478,7 +478,7 @@ function generateReport() {
     }
     lines.push(``)
 
-    // Speech content analysis
+    // speech content analysis
     lines.push(`## Speech Content`)
     lines.push(``)
     const speeches = results.actions.filter(a => a.action === 'speak')
@@ -488,7 +488,7 @@ function generateReport() {
     if (speeches.length === 0) lines.push(`(no speech actions recorded)`)
     lines.push(``)
 
-    // Failures
+    // failures
     const failures = results.actions.filter(a => !a.success)
     if (failures.length > 0) {
         lines.push(`## Action Failures`)

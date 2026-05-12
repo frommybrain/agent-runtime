@@ -1,10 +1,10 @@
-// Persistent speech history — survives sleep cycles.
+// persistent speech history. survives sleep cycles.
 //
-// The working memory and repetition guard both get cleared during sleep,
-// so the agent forgets what it said. This buffer persists across sleep
-// boundaries, giving the LLM context to avoid repeating phrases.
+// working memory and the repetition guard both get cleared during sleep
+// so the agent forgets what it said. this buffer persists across sleep
+// boundaries, gives the LLM context to avoid repeating phrases.
 //
-// Persisted to disk for crash recovery. Trimmed (not cleared) during sleep.
+// persisted to disk for crash recovery. trimmed (not cleared) during sleep.
 
 import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -19,7 +19,7 @@ export class SpeechLog {
         this._dirty = false
     }
 
-    // Load from disk (crash recovery)
+    // load from disk (crash recovery)
     async init() {
         try {
             const raw = await readFile(this._filePath, 'utf-8')
@@ -29,11 +29,11 @@ export class SpeechLog {
             }
             this.logger.info(`SpeechLog loaded: ${this._speeches.length} entries`)
         } catch {
-            // No file yet — fresh start
+            // no file yet, fresh start
         }
     }
 
-    // Record a speech after it's sent
+    // record a speech after its sent
     record(message, tick) {
         this._speeches.push({
             message: message.trim(),
@@ -46,14 +46,14 @@ export class SpeechLog {
         this._dirty = true
     }
 
-    // Get recent speeches formatted for prompt injection
+    // get recent speeches formatted for prompt injection
     recentForPrompt() {
         if (this._speeches.length === 0) return null
         const recent = this._speeches.slice(-this.promptSize)
         return recent.map(s => `- "${s.message}"`).join('\n')
     }
 
-    // Persist to disk (called during state checkpoint)
+    // persist to disk (called during state checkpoint)
     async save() {
         if (!this._dirty) return
         try {
@@ -64,7 +64,7 @@ export class SpeechLog {
         }
     }
 
-    // Trim during sleep — keep last N, don't clear entirely
+    // trim during sleep. keep last N, dont clear entirely
     trim(keepCount) {
         const keep = keepCount || Math.floor(this.maxSize / 2)
         if (this._speeches.length > keep) {

@@ -1,156 +1,155 @@
-// Internal state: valence (-1..1) and arousal (-1..1)
-// These are NOT instructions — they are sensations the agent feels.
-// The environment shifts them. The agent's persona + LLM decide what to do about it.
+// internal state. mood and energy, both -1..1.
+// these arent instructions, theyre sensations. environment shifts them,
+// the persona + LLM decide what to do with it.
 //
-// valence: negative ←→ positive (bad ←→ good)
-// arousal: calm/low-energy ←→ excited/high-energy
+// mood:   neg ↔ pos  (bad ↔ good)
+// energy: low ↔ high (calm ↔ activated)
 //
-// Environmental signals, action outcomes, social events, and novelty all nudge these values.
-// High arousal moments are encoded more strongly in memory (salience).
-// The LLM receives these as context, not directives.
+// nudged by signals, action outcomes, social events, novelty.
+// high energy moments get encoded harder in memory (salience).
+// LLM sees these as vibes, not commands.
 //
-// v0.3: checkpoint/restore for crash recovery — state persists across restarts.
+// v0.3: checkpoints to disk so state survives a crash.
 
 import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
 
 export class InternalState {
     constructor(config, logger) {
-        this.valence = 0
-        this.arousal = 0
+        this.mood = 0
+        this.energy = 0
         this.logger = logger
 
         this.decayRate = config.stateDecayRate || 0.1
         this.signalPullRate = config.signalPullRate || 0.15
-        this._history = []  // track recent state for sleep reflection
+        this._history = []  // recent state for sleep reflection
         this._maxHistory = 50
         this._checkpointPath = join(config.dataDir, 'state-checkpoint.json')
-        this._prevEntityIds = null    // for stability tracking
-        this._stabilityStreak = 0     // how many ticks the same entities have been present
+        this._prevEntityIds = null    // stability tracking
+        this._stabilityStreak = 0     // how many ticks the same entities have been around
     }
 
-    // Called each tick with context from the current cycle
+    // called each tick with context from the cycle
     // context: { actionResult, deltas, environmentSignals, worldEvents }
     update(context) {
-        const before = { valence: this.valence, arousal: this.arousal }
+        const before = { mood: this.mood, energy: this.energy }
 
-        // 1. Decay toward neutral — state doesn't persist forever
-        this.valence *= (1 - this.decayRate)
-        this.arousal *= (1 - this.decayRate)
+        // 1. decay toward neutral. nothing lasts forever
+        this.mood *= (1 - this.decayRate)
+        this.energy *= (1 - this.decayRate)
 
-        // 2. Action results — asymmetric: failure is sharp, success is gentle.
-        //    Without this, valence decays to 0 and flatlines in signal-free environments.
+        // 2. action results. asymmetric on purpose: failure stings, success is mild.
+        //    without this, mood decays to 0 and flatlines when theres no signals.
         if (context.actionResult) {
             if (!context.actionResult.success) {
-                this._nudgeValence(-0.15)
+                this._nudgeMood(-0.15)
             } else {
-                // Mild positive: keeps valence slightly above zero when acting successfully
-                this._nudgeValence(0.02)
-                // Exploration reward: interact is discovery, it should feel good
+                // mild positive nudge keeps mood slightly above zero when youre acting
+                this._nudgeMood(0.02)
+                // exploration reward — interact = discovery, should feel good
                 if (context.actionResult.action === 'interact') {
-                    this._nudgeValence(0.04)
+                    this._nudgeMood(0.04)
                 }
             }
         }
 
-        // 3. Environmental changes — novelty = arousal spike (one-time per tick)
-        //    Familiarity discount: if the same entities have been present for 5+ ticks,
-        //    property deltas are likely noise (positional changes), not genuine novelty.
-        //    Only entity appearances/disappearances break the stability streak.
+        // 3. environmental changes. novelty = energy spike, once per tick.
+        //    familiarity discount: if the same entities have been around for 5+ ticks
+        //    delta noise is mostly positional. only appearances/disappearances reset streak.
         if (context.deltas?.length > 0) {
             const hasStructuralChange = context.deltas.some(
                 d => d.type === 'appeared' || d.type === 'disappeared'
             )
             const familiarityDiscount = (!hasStructuralChange && this._stabilityStreak >= 5) ? 0.5 : 1.0
             const intensity = Math.min(context.deltas.length / 5, 1)
-            this._nudgeArousal(intensity * 0.2 * familiarityDiscount)
+            this._nudgeEnergy(intensity * 0.2 * familiarityDiscount)
         }
 
-        // 4. Continuous signals — ATTRACTORS, not additive nudges.
-        //    Signals pull state toward an equilibrium. Resonance 0.8 pulls arousal
-        //    toward 0.8. When resonance drops, arousal decays naturally via decay rate.
-        //    This prevents pinning to ±1.0 from sustained signals.
+        // 4. continuous signals. ATTRACTORS not additive nudges.
+        //    signals pull state toward a target. resonance 0.8 pulls energy to 0.8.
+        //    when resonance drops, energy decays naturally via decay rate.
+        //    stops pinning to ±1.0 from sustained signals.
         if (context.environmentSignals) {
             const s = context.environmentSignals
             const pull = this.signalPullRate
 
             if (s.vitality !== undefined) {
-                // Vitality is the primary valence driver: 0→-0.8, 0.5→0, 1→+0.8
+                // vitality drives mood: 0→-0.8, 0.5→0, 1→+0.8
                 const target = (s.vitality - 0.5) * 1.6
-                this.valence += (target - this.valence) * pull
+                this.mood += (target - this.mood) * pull
             }
             if (s.resonance !== undefined) {
-                // Resonance pulls arousal toward its value
+                // resonance pulls energy toward its value
                 const target = s.resonance
-                this.arousal += (target - this.arousal) * pull
+                this.energy += (target - this.energy) * pull
             }
             if (s.warmth !== undefined) {
-                // Warmth: centered like vitality. 0→-0.3, 0.5→0, 1→+0.3
+                // warmth: centered like vitality. 0→-0.3, 0.5→0, 1→+0.3
                 const target = (s.warmth - 0.5) * 0.6
-                this.valence += (target - this.valence) * pull * 0.7
+                this.mood += (target - this.mood) * pull * 0.7
             }
             if (s.abundance !== undefined) {
-                // Abundance: gentle. 0→-0.2, 0.5→0, 1→+0.2
+                // abundance: gentle. 0→-0.2, 0.5→0, 1→+0.2
                 const target = (s.abundance - 0.5) * 0.4
-                this.valence += (target - this.valence) * pull * 0.4
+                this.mood += (target - this.mood) * pull * 0.4
             }
-            // Arbitrary numeric signals in 0..1 range — gently pull arousal
-            // Skip large values (e.g. bpm: 120) — those are data, not affect signals
-            // Gentle multiplier (0.1) to prevent arousal saturation in signal-rich environments
+            // arbitrary numeric signals in 0..1 — gently pull energy.
+            // skip large values (eg bpm: 120) since those are data not vibes.
+            // gentle multiplier (0.1) so energy doesnt saturate in signal-rich envs.
             for (const [key, val] of Object.entries(s)) {
                 if (['vitality', 'resonance', 'warmth', 'abundance'].includes(key)) continue
                 if (typeof val === 'number' && val >= 0 && val <= 1) {
-                    this.arousal += (val * 0.3 - this.arousal) * pull * 0.1
+                    this.energy += (val * 0.3 - this.energy) * pull * 0.1
                 }
             }
         }
 
-        // 5. Social events — one-time nudges (events, not continuous)
+        // 5. social events. one-time nudges (events, not continuous)
         if (context.worldEvents?.length > 0) {
             for (const evt of context.worldEvents) {
                 const data = evt.data || evt
                 if (data.event === 'agent_speech') {
-                    this._nudgeArousal(0.1)
-                    this._nudgeValence(0.03)
+                    this._nudgeEnergy(0.1)
+                    this._nudgeMood(0.03)
                 } else if (data.event === 'agent_joined') {
-                    this._nudgeArousal(0.08)
+                    this._nudgeEnergy(0.08)
                 } else if (data.event === 'agent_left') {
-                    this._nudgeValence(-0.03)
+                    this._nudgeMood(-0.03)
                 }
             }
         }
 
-        // Clamp
-        this.valence = this._clamp(this.valence)
-        this.arousal = this._clamp(this.arousal)
+        // clamp
+        this.mood = this._clamp(this.mood)
+        this.energy = this._clamp(this.energy)
 
-        // Record history for reflection
+        // record history for reflection
         this._history.push({
             time: Date.now(),
-            valence: this.valence,
-            arousal: this.arousal,
+            mood: this.mood,
+            energy: this.energy,
         })
         if (this._history.length > this._maxHistory) this._history.shift()
 
-        // Log significant shifts
-        const vDelta = Math.abs(this.valence - before.valence)
-        const aDelta = Math.abs(this.arousal - before.arousal)
+        // log significant shifts
+        const vDelta = Math.abs(this.mood - before.mood)
+        const aDelta = Math.abs(this.energy - before.energy)
         if (vDelta > 0.1 || aDelta > 0.1) {
-            this.logger.debug(`State shift: v=${this.valence.toFixed(2)} a=${this.arousal.toFixed(2)}`)
+            this.logger.debug(`State shift: v=${this.mood.toFixed(2)} a=${this.energy.toFixed(2)}`)
         }
     }
 
-    // Describe internal state for the LLM — sensation, not instruction
+    // describe state for the LLM — sensation, not instruction
     describe() {
-        const v = this.valence
-        const a = this.arousal
+        const v = this.mood
+        const a = this.energy
         const vLabel = v > 0.4 ? 'very positive' : v > 0.15 ? 'positive'
             : v > -0.1 ? 'neutral' : v > -0.35 ? 'negative' : 'very negative'
         const aLabel = a > 0.5 ? 'very high' : a > 0.2 ? 'elevated'
             : a > -0.2 ? 'moderate' : a > -0.5 ? 'low' : 'very low'
 
-        // Evocative descriptions — give the LLM something to act on
-        // Granular grid to minimise the "neutral catch-all" bucket
+        // evocative descriptions so the LLM has something to act on.
+        // granular grid to avoid the neutral-catchall bucket
         let description
         if (v > 0.3 && a > 0.5) description = 'A rush of excitement — everything is clicking'
         else if (v > 0.3 && a > 0.2) description = 'A surge of energy and satisfaction — things are going well'
@@ -170,16 +169,16 @@ export class InternalState {
         else description = 'Feeling drained and discouraged — nothing is working'
 
         return {
-            valence: this.valence,
-            arousal: this.arousal,
-            valenceLabel: vLabel,
-            arousalLabel: aLabel,
+            mood: this.mood,
+            energy: this.energy,
+            moodLabel: vLabel,
+            energyLabel: aLabel,
             description,
         }
     }
 
-    // Track entity stability — how many consecutive ticks the same entities are present.
-    // Called each tick with the set of nearby entity IDs.
+    // track entity stability. how many consecutive ticks the same entities are present.
+    // called each tick with the nearby entity IDs.
     updateStability(entityIds) {
         const currentSet = new Set(entityIds || [])
         if (this._prevEntityIds && this._setsEqual(currentSet, this._prevEntityIds)) {
@@ -198,49 +197,49 @@ export class InternalState {
         return true
     }
 
-    // Apply creativity feedback from speech scoring.
-    // Repetition makes the world feel duller (valence drops).
-    // Novelty is mildly rewarding (valence nudges up).
-    // The agent never knows why — it just feels the shift.
+    // creativity feedback from speech scoring.
+    // repetition makes the world feel duller (mood drops).
+    // novelty is mildly rewarding (mood nudges up).
+    // the agent never knows why, it just feels the shift.
     applySpeechCreativity(score) {
         if (score < 0.4) {
-            // Repetitive speech — sharp penalty (asymmetric, like failure)
-            this._nudgeValence(-0.08)
+            // repetitive — sharp penalty (asymmetric, like failure)
+            this._nudgeMood(-0.08)
         } else if (score > 0.8) {
-            // Creative speech — mild reward
-            this._nudgeValence(0.03)
+            // creative — mild reward
+            this._nudgeMood(0.03)
         }
-        // 0.4-0.8: neutral — no effect
+        // 0.4-0.8: neutral, no effect
     }
 
-    // Salience multiplier — high arousal moments are remembered more strongly
-    // Returns 0.5 (calm, low salience) to 1.0 (peak arousal, full salience)
+    // salience multiplier. high-energy moments are remembered more strongly.
+    // returns 0.5 (calm, low salience) to 1.0 (peak energy, full salience)
     salience() {
-        return 0.5 + Math.abs(this.arousal) * 0.5
+        return 0.5 + Math.abs(this.energy) * 0.5
     }
 
-    // Summary for sleep reflection
+    // summary for sleep reflection
     historySummary() {
         if (this._history.length === 0) return 'No state history recorded.'
-        const avgV = this._history.reduce((s, h) => s + h.valence, 0) / this._history.length
-        const avgA = this._history.reduce((s, h) => s + h.arousal, 0) / this._history.length
-        const peakA = Math.max(...this._history.map(h => Math.abs(h.arousal)))
-        const lowestV = Math.min(...this._history.map(h => h.valence))
-        const highestV = Math.max(...this._history.map(h => h.valence))
-        return `Average valence: ${avgV.toFixed(2)}, average arousal: ${avgA.toFixed(2)}. Peak arousal: ${peakA.toFixed(2)}. Valence range: ${lowestV.toFixed(2)} to ${highestV.toFixed(2)}.`
+        const avgV = this._history.reduce((s, h) => s + h.mood, 0) / this._history.length
+        const avgA = this._history.reduce((s, h) => s + h.energy, 0) / this._history.length
+        const peakA = Math.max(...this._history.map(h => Math.abs(h.energy)))
+        const lowestV = Math.min(...this._history.map(h => h.mood))
+        const highestV = Math.max(...this._history.map(h => h.mood))
+        return `Average mood: ${avgV.toFixed(2)}, average energy: ${avgA.toFixed(2)}. Peak energy: ${peakA.toFixed(2)}. Mood range: ${lowestV.toFixed(2)} to ${highestV.toFixed(2)}.`
     }
 
     clearHistory() {
         this._history = []
     }
 
-    // Save current state to disk (crash recovery)
-    // extra: optional fields to persist alongside valence/arousal (e.g. tickCount)
+    // save state to disk (crash recovery)
+    // extra: other fields to persist alongside mood/energy (eg tickCount)
     async checkpoint(extra = {}) {
         try {
             const data = {
-                valence: this.valence,
-                arousal: this.arousal,
+                mood: this.mood,
+                energy: this.energy,
                 timestamp: Date.now(),
                 ...extra,
             }
@@ -250,33 +249,33 @@ export class InternalState {
         }
     }
 
-    // Restore state from last checkpoint (called on startup)
-    // Returns the full checkpoint data (including extra fields like tickCount) or null
+    // restore from last checkpoint (called on startup).
+    // returns full checkpoint data (incl extras like tickCount) or null
     async restore() {
         try {
             const raw = await readFile(this._checkpointPath, 'utf-8')
             const data = JSON.parse(raw)
-            // Only restore if checkpoint is less than 1 hour old
+            // only restore if checkpoint is less than 1hr old
             const ageMs = Date.now() - (data.timestamp || 0)
             if (ageMs < 60 * 60 * 1000) {
-                this.valence = this._clamp(data.valence || 0)
-                this.arousal = this._clamp(data.arousal || 0)
-                this.logger.info(`State restored from checkpoint (age: ${Math.round(ageMs / 1000)}s) — v=${this.valence.toFixed(2)} a=${this.arousal.toFixed(2)}`)
+                this.mood = this._clamp(data.mood || 0)
+                this.energy = this._clamp(data.energy || 0)
+                this.logger.info(`State restored from checkpoint (age: ${Math.round(ageMs / 1000)}s) — v=${this.mood.toFixed(2)} a=${this.energy.toFixed(2)}`)
                 return data
             }
             this.logger.info(`State checkpoint too old (${Math.round(ageMs / 60000)}min), starting fresh`)
         } catch {
-            // No checkpoint file — first run
+            // no checkpoint file, first run
         }
         return null
     }
 
-    _nudgeValence(delta) {
-        this.valence = this._clamp(this.valence + delta)
+    _nudgeMood(delta) {
+        this.mood = this._clamp(this.mood + delta)
     }
 
-    _nudgeArousal(delta) {
-        this.arousal = this._clamp(this.arousal + delta)
+    _nudgeEnergy(delta) {
+        this.energy = this._clamp(this.energy + delta)
     }
 
     _clamp(v) {

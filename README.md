@@ -1,34 +1,34 @@
-# agent-runtime
+# 3aiii
 
-Portable autonomous agent cognition runtime. Runs on Raspberry Pi 5 (or any Node.js host). Environment-agnostic — plug it into any project by implementing the WebSocket protocol.
+Portable autonomous agent cognition runtime. Runs on a Raspberry Pi 5 (or any node host). Env-agnostic, plug it into anything that speaks the WebSocket protocol.
 
 ## What it does
 
-Each instance is one agent with a persistent identity, memory, and LLM-driven cognition loop:
+Each instance is one agent with a persistent identity, memory, and an LLM-driven cognition loop:
 
 ```
 OBSERVE (get world state) → THINK (LLM decides) → ACT (send action) → repeat
 ```
 
-Every 4 hours, the agent sleeps for 1 hour. During sleep, the LLM consolidates memory, extracts skills, and cleans up logs automatically.
+Every 4 hours the agent sleeps for 1 hour. During sleep the LLM consolidates memory, extracts skills, and cleans up logs.
 
 ## Setup
 
 ```bash
 npm install
 cp .env.example .env
-# edit .env — set AGENT_ID, SERVER_URL, OLLAMA_MODEL
+# edit .env, set AGENT_ID, SERVER_URL, OLLAMA_MODEL
 npm start
 ```
 
-Requires [Ollama](https://ollama.com) running locally with a model pulled:
+Needs [Ollama](https://ollama.com) running locally with a model pulled:
 ```bash
 ollama pull llama3.2:3b
 ```
 
 ## HTTP API
 
-The agent exposes a local REST API (default port 5000):
+Local REST API (default port 5000):
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -36,7 +36,7 @@ The agent exposes a local REST API (default port 5000):
 | `GET` | `/memory` | All three memory files (memory.md, skills.md, tools.md) |
 | `POST` | `/memory/remember` | Inject a memory: `{ section, content }` |
 | `GET` | `/logs/today` | Today's daily log (plain text) |
-| `POST` | `/sleep` | Trigger sleep cycle immediately |
+| `POST` | `/sleep` | Trigger sleep cycle now |
 | `POST` | `/wake` | Wake agent early |
 | `PUT` | `/persona` | Hot-swap persona JSON |
 | `GET` | `/events` | SSE stream of all runtime events |
@@ -46,18 +46,18 @@ The agent exposes a local REST API (default port 5000):
 Connect to `GET /events` for a live event stream:
 
 ```
-event: tick       — every cognition cycle (action, reason, result)
-event: sleep      — sleep started
-event: wake       — agent woke up
-event: memory     — memory written (injected or LLM-remembered)
-event: persona    — persona swapped
-event: error      — tick failed
-event: connected  — initial state on SSE connect
+event: tick       every cognition cycle (action, reason, result)
+event: sleep      sleep started
+event: wake       agent woke up
+event: memory     memory written (injected or LLM-remembered)
+event: persona    persona swapped
+event: error      tick failed
+event: connected  initial state on SSE connect
 ```
 
 ## Environment protocol
 
-The environment server must implement this WebSocket protocol on its agent port:
+The env server has to implement this WebSocket protocol on its agent port:
 
 | Direction | Message | Description |
 |-----------|---------|-------------|
@@ -68,7 +68,7 @@ The environment server must implement this WebSocket protocol on its agent port:
 | → server | `{ type: "ACT", action, params }` | Perform an action |
 | ← server | `{ type: "ACTION_RESULT", success, message }` | Action outcome |
 
-The `available_actions` field tells the agent what it can do right now:
+`available_actions` tells the agent what it can do right now:
 ```json
 [
   { "name": "move_to", "params": "x, z", "description": "Move to world coordinates" },
@@ -85,7 +85,7 @@ Three persistent markdown files in `./data/`:
 - **skills.md** — procedural knowledge (how to do things)
 - **tools.md** — auto-populated with available actions and discovered objects
 
-Daily logs in `./data/logs/YYYY-MM-DD.md`. Files older than 7 days are garbage collected during sleep.
+Daily logs in `./data/logs/YYYY-MM-DD.md`. Files older than 7 days get garbage collected during sleep.
 
 ## Multi-agent setup
 

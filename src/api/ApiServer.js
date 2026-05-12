@@ -1,18 +1,18 @@
 import { createServer } from 'node:http'
 
-// HTTP API + SSE event stream
-// No dependencies — pure Node built-ins
+// HTTP API + SSE event stream.
+// no dependencies, pure node built-ins.
 //
-// Endpoints:
-//   GET  /status           — agent state snapshot (now includes internal state)
-//   GET  /memory           — all three memory files
-//   POST /memory/remember  — inject a memory entry
-//   GET  /logs/today       — today's daily log
-//   POST /sleep            — trigger sleep cycle now
-//   POST /wake             — wake from sleep early
-//   PUT  /persona          — hot-swap persona (JSON body)
-//   GET  /metrics          — runtime metrics for long-term observability
-//   GET  /events           — SSE stream of all runtime events
+// endpoints:
+//   GET  /status           agent state snapshot (incl internal state)
+//   GET  /memory           all three memory files
+//   POST /memory/remember  inject a memory entry
+//   GET  /logs/today       today's daily log
+//   POST /sleep            trigger sleep cycle now
+//   POST /wake             wake from sleep early
+//   PUT  /persona          hot-swap persona (JSON body)
+//   GET  /metrics          runtime metrics for observability
+//   GET  /events           SSE stream of all runtime events
 
 export class ApiServer {
     constructor(port, state, logger) {
@@ -44,7 +44,7 @@ export class ApiServer {
         this._server?.close()
     }
 
-    // Broadcast an event to all SSE clients
+    // broadcast an event to all SSE clients
     emit(eventName, data) {
         const payload = `event: ${eventName}\ndata: ${JSON.stringify(data)}\n\n`
         for (const [res, meta] of this._sseClients) {
@@ -58,7 +58,7 @@ export class ApiServer {
         }
     }
 
-    // ---- Router ----
+    // router
 
     async _route(req, res) {
         // CORS for local dashboard access
@@ -92,7 +92,7 @@ export class ApiServer {
         }
     }
 
-    // ---- Handlers ----
+    // handlers
 
     async _getStatus(req, res) {
         const { persona, heartbeat, sleepCycle, workingMemory, socket, internalState } = this.state
@@ -171,7 +171,7 @@ export class ApiServer {
             return this._json(res, 400, { error: 'Persona requires at least { id, name }' })
         }
         this.state.persona = body
-        // Rebuild prompt builder with new persona
+        // rebuild prompt builder with new persona
         this.state.promptBuilder?.setPersona(body)
         this.emit('persona', { name: body.name, id: body.id })
         this.logger.info(`Persona hot-swapped to: ${body.name}`)
@@ -182,7 +182,7 @@ export class ApiServer {
         const { heartbeat, sleepCycle, workingMemory, internalState, repetitionGuard, memoryFiles, dailyLog } = this.state
         const mem = process.memoryUsage()
 
-        // File sizes
+        // file sizes
         const [memoryContent, skillsContent, toolsContent] = await Promise.all([
             memoryFiles.readMemory(),
             memoryFiles.readSkills(),
@@ -195,31 +195,31 @@ export class ApiServer {
             tickCount: heartbeat?.tickCount || 0,
             heartbeatMs: heartbeat?.currentIntervalMs || null,
             sleeping: sleepCycle?.isSleeping() || false,
-            // Emotional state
-            valence: internalState?.valence || 0,
-            arousal: internalState?.arousal || 0,
-            // Memory sizes (bytes)
+            // emotional state
+            mood: internalState?.mood || 0,
+            energy: internalState?.energy || 0,
+            // memory sizes (bytes)
             fileSizes: {
                 memory: memoryContent.length,
                 skills: skillsContent.length,
                 tools: toolsContent.length,
             },
-            // Buffer utilization
+            // buffer utilization
             buffers: {
                 workingMemory: workingMemory?.events?.length || 0,
                 workingMemoryMax: workingMemory?.maxSize || 0,
                 repetitionHistory: repetitionGuard?.history?.length || 0,
                 logBuffer: dailyLog?._buffer?.length || 0,
             },
-            // Action diversity
+            // action diversity
             actionDiversity: repetitionGuard?.diversityScore() || 0,
-            // Tier distribution (cost observability)
+            // tier distribution (cost observability)
             tierCounts: this.state.think?.llm?.tierCounts || { skip: 0, fast: 0, quality: 0 },
-            // Prompt size (last tick)
+            // prompt size (last tick)
             lastPromptChars: this.state.think?._lastPromptChars || 0,
             // SSE clients
             sseClients: this._sseClients.size,
-            // Node.js heap
+            // node heap
             heapUsedMB: Math.round(mem.heapUsed / 1024 / 1024 * 10) / 10,
             heapTotalMB: Math.round(mem.heapTotal / 1024 / 1024 * 10) / 10,
             rssMB: Math.round(mem.rss / 1024 / 1024 * 10) / 10,
@@ -234,7 +234,7 @@ export class ApiServer {
             'X-Accel-Buffering': 'no',
         })
 
-        // Send current status on connect
+        // send current status on connect
         const { persona, sleepCycle, internalState } = this.state
         res.write(`event: connected\ndata: ${JSON.stringify({
             agent: persona?.name,
@@ -248,9 +248,9 @@ export class ApiServer {
             ping: null,
         }
 
-        // Heartbeat ping every 15s — also checks for stale connections
+        // heartbeat ping every 15s. also checks for stale connections
         meta.ping = setInterval(() => {
-            // Remove stale clients (no successful write in 5 min)
+            // remove stale clients (no successful write in 5 min)
             if (Date.now() - meta.lastWrite > 5 * 60 * 1000) {
                 this.logger.info('SSE client stale — removing')
                 clearInterval(meta.ping)
@@ -276,7 +276,7 @@ export class ApiServer {
         })
     }
 
-    // ---- Helpers ----
+    // helpers
 
     _json(res, status, body) {
         res.writeHead(status, { 'Content-Type': 'application/json' })

@@ -1,17 +1,17 @@
-// Long-running soak test for agent-runtime
+// long-running soak test for 3aiii.
 //
-// Cycles through varied environmental phases for hours, monitors internal state,
-// tracks sleep cycles, memory evolution, and generates a comprehensive report.
+// cycles through env phases for hours, watches internal state, tracks sleep
+// cycles, memory evolution, dumps a report at the end.
 //
-// Usage:
-//   1. Start the agent with short sleep cycle:
+// usage:
+//   1. start the agent with a short sleep cycle:
 //      ACTIVE_HOURS_BEFORE_SLEEP=0.5 SLEEP_DURATION_MINUTES=5 SERVER_URL=ws://<mac-ip>:4001 node src/index.js
-//   2. Run this on the Mac:
+//   2. run this on the Mac:
 //      node soak-test.js                    # default 2 hours
 //      SOAK_HOURS=4 node soak-test.js       # custom duration
 //
-// The test cycles through environmental phases and logs everything.
-// Reports are saved to test-results/soak-*.md
+// the test cycles through env phases and logs everything.
+// reports saved to test-results/soak-*.md
 
 import { WebSocketServer } from 'ws'
 import { mkdirSync, writeFileSync } from 'node:fs'
@@ -332,10 +332,10 @@ async function pollStatus() {
         tick: tickCount,
         time: new Date().toISOString(),
         phase: currentPhase?.name,
-        valence: is.valence,
-        arousal: is.arousal,
-        valenceLabel: is.valenceLabel,
-        arousalLabel: is.arousalLabel,
+        mood: is.mood,
+        energy: is.energy,
+        moodLabel: is.moodLabel,
+        energyLabel: is.energyLabel,
         description: is.description,
         heartbeatMs: status.heartbeatMs,
         sleeping: status.sleeping,
@@ -359,7 +359,7 @@ async function pollStatus() {
 
     // Compact log line
     const sleepTag = status.sleeping ? ' [SLEEPING]' : ''
-    console.log(`  [${new Date().toLocaleTimeString()}] v=${is.valence?.toFixed(2)} a=${is.arousal?.toFixed(2)} hb=${status.heartbeatMs}ms "${is.description || ''}"${sleepTag}`)
+    console.log(`  [${new Date().toLocaleTimeString()}] v=${is.mood?.toFixed(2)} a=${is.energy?.toFixed(2)} hb=${status.heartbeatMs}ms "${is.description || ''}"${sleepTag}`)
 
     return poll
 }
@@ -599,7 +599,7 @@ function generateReport() {
     // ── Internal state over time (sampled) ──
     lines.push(`## Internal State Trajectory (sampled)`)
     lines.push(``)
-    lines.push(`| Time | Phase | Valence | Arousal | Heartbeat | Description |`)
+    lines.push(`| Time | Phase | Mood | Energy | Heartbeat | Description |`)
     lines.push(`|------|-------|---------|---------|-----------|-------------|`)
     // Sample every 5th poll to keep report manageable
     const sampleInterval = Math.max(1, Math.floor(data.statusPolls.length / 60))
@@ -608,7 +608,7 @@ function generateReport() {
         if (!p) continue
         const time = new Date(p.time).toLocaleTimeString()
         const sleep = p.sleeping ? ' [SLEEP]' : ''
-        lines.push(`| ${time} | ${p.phase || '-'} | ${p.valence?.toFixed(3) ?? '?'} | ${p.arousal?.toFixed(3) ?? '?'} | ${p.heartbeatMs ?? '?'}ms | ${(p.description || '') + sleep} |`)
+        lines.push(`| ${time} | ${p.phase || '-'} | ${p.mood?.toFixed(3) ?? '?'} | ${p.energy?.toFixed(3) ?? '?'} | ${p.heartbeatMs ?? '?'}ms | ${(p.description || '') + sleep} |`)
     }
     lines.push(``)
 
