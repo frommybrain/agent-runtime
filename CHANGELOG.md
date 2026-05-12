@@ -14,13 +14,13 @@ contemporaneous version commits.
   Technical identifiers (repo name, package name, systemd unit, file paths)
   unchanged.
 - De-AI'd source comments and docs across the codebase.
-- Added diligence handover materials: HANDOVER.md, audit memo, SBOM,
-  LICENCE, SECURITY.md, CONTRIBUTING.md, this changelog, fresh smoke test
-  report in `test-results/diligence/`.
+- Added diligence handover materials: `docs/handover.md`, audit memo,
+  SBOM, LICENCE, `docs/security.md`, CONTRIBUTING, this changelog,
+  fresh smoke test report in `test-results/diligence/`.
 
 ## [v0.4] — 2026-03-17
 
-- Environment Protocol Standard documented in `docs/ENVIRONMENT_PROTOCOL.md`.
+- Environment Protocol Standard documented in `docs/environment-protocol.md`.
   First formal spec of the WebSocket contract between 3aiii and any
   environment server.
 - Anti-fixation guard generalised: removed hardcoded entity-type checks,

@@ -66,6 +66,6 @@ Reports get dumped to `test-results/`.
 
 ## What's open
 
-See `docs/agent-runtime-overview.md` section 8.2 for the production
+See `docs/3aiii-overview.md` section 8.2 for the production
 hardening backlog. Highest-priority items: API auth, health endpoint,
 process supervisor (systemd unit), structured logging, CI pipeline.

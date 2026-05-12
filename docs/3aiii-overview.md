@@ -174,7 +174,7 @@ A 429 (rate limit) response from the cloud triggers a 60-second cooldown and a f
 
 ### 3.6 Environment protocol
 
-The agent connects to its world via a single WebSocket. The protocol is documented in `docs/ENVIRONMENT_PROTOCOL.md` and consists of:
+The agent connects to its world via a single WebSocket. The protocol is documented in `environment-protocol.md` and consists of:
 
 - **Handshake**: `WELCOME` → `IDENTIFY` (with optional `ADMIN_TOKEN`) → `IDENTIFIED`
 - **Tick loop**: server sends `OBSERVE` with the current world state, agent processes and replies with `ACT`
@@ -357,11 +357,13 @@ This section is the honest read on what the codebase needs to be enterprise-pres
 | Structured logging | console.log levels | JSON stdout, ready for log aggregation | small (3-4 hrs) |
 | Metrics / observability | basic `/metrics` route | Prometheus format, OpenTelemetry traces, cost dashboard | medium (10-12 hrs) |
 | Operations runbook | none | docs/runbook.md (debug, recover, monitor, rotate) | small (3-4 hrs) |
-| LICENCE / SECURITY.md / CONTRIBUTING.md | none | drafted at repo root | trivial (1-2 hrs) |
-| CHANGELOG | none — only git history | proper keep-a-changelog | trivial (1 hr) |
 | Audit log middleware | none | append-only log of all memory/persona mutations | small (3-4 hrs) |
 
-Total engineering effort to close out: **40-50 hours, two to three weeks of focused work**.
+(LICENCE, security, contributing and a keep-a-changelog file are now
+drafted at the repo root and in `docs/`. Earlier versions of this
+table listed them as gaps.)
+
+Total engineering effort to close out: **35-45 hours, two to three weeks of focused work**.
 
 ---
 
@@ -380,9 +382,10 @@ In priority order. Each item has a single sentence on why it matters.
 9. **Input validation (Zod) on persona / memory / action surfaces.**
 10. **Rate limiting on API.** Defence in depth.
 11. **Audit logging middleware.** Compliance baseline for any operational deployment.
-12. **LICENCE, SECURITY.md, CONTRIBUTING.md, CHANGELOG.** Standard repository hygiene.
 
-Items 1-5 are the minimum. 1-12 is the polished release.
+Items 1-5 are the minimum. 1-11 is the polished release. (Standard
+repo-hygiene files — LICENCE, security, contributing, changelog — are
+already in place; see the repo root and `docs/`.)
 
 ---
 
@@ -404,7 +407,7 @@ The six shipped personas ("Victor", "Pip", "Bean", "Mochi", "Taro", "Sharay") ar
 
 ### 10.3 Environment protocol
 
-The protocol specification (`docs/ENVIRONMENT_PROTOCOL.md`) is authored by the operator. 3aiii implements the client side, the server side is the responsibility of whatever environment the agent connects to. Reference integrations (kiwiexe.com, the Ibiza Botanical Gardens installation) are separate codebases and aren't part of this asset.
+The protocol specification (`environment-protocol.md`) is authored by the operator. 3aiii implements the client side, the server side is the responsibility of whatever environment the agent connects to. Reference integrations (kiwiexe.com, the Ibiza Botanical Gardens installation) are separate codebases and aren't part of this asset.
 
 ### 10.4 What transfers cleanly
 
