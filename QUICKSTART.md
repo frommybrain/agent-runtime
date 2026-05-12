@@ -11,8 +11,12 @@ production deployment on a Raspberry Pi, see `setup-pi.sh` and the README.
 ## What you need
 
 - **Node 20+** (`node --version` to check)
-- **A Groq API key** (free tier, sign up at groq.com → API keys). Optional
-  if you want to use a local model only — see "Without a cloud key" below
+- **A Groq API key.** For diligence evaluation, email Sam
+  (sam.skirrow@gmail.com) and he'll send the production key when he grants
+  repo access — pastes straight into `.env`, no signup needed. Or sign up
+  yourself at groq.com (free tier, ~2 minutes, same rate limits) if you'd
+  rather use your own. Optional if you want to use a local model only —
+  see "Without a cloud key" below
 - **5-10 minutes**
 
 ---
