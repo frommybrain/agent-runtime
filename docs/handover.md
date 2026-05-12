@@ -6,10 +6,10 @@ by a technical reviewer, a patent attorney, and a transactional lawyer
 working in parallel.
 
 If you're a developer with thirty minutes, read this file, then
-`QUICKSTART.md`, then run the agent.
-If you're a patent attorney, read `docs/CODEBASE_AUDIT_MEMO.md` and
-`docs/agent-runtime-overview.md`.
-If you're a lawyer, read `LICENCE`, `docs/SBOM.md`, and `SECURITY.md`.
+`quickstart.md`, then run the agent.
+If you're a patent attorney, read `codebase-audit-memo.md` and
+`3aiii-overview.md`.
+If you're a lawyer, read `../LICENCE`, `sbom/`, and `security.md`.
 
 ---
 
@@ -34,36 +34,36 @@ src/
 ```
 
 Each module is single-responsibility and intentionally short. Comments
-explain *why*, not *what*. See `CONTRIBUTING.md` for the conventions.
+explain *why*, not *what*. See `../CONTRIBUTING.md` for the conventions.
 
 ### Documentation
 
 - `README.md` — five-minute orientation, setup, API surface
-- `QUICKSTART.md` — verbatim ten-minute path: clone, install, run, see a
+- `quickstart.md` — verbatim ten-minute path: clone, install, run, see a
   thinking cycle
-- `docs/agent-runtime-overview.md` — full technical overview. Architecture,
+- `3aiii-overview.md` — full technical overview. Architecture,
   module layout, cognitive pipeline detail, memory model, persona system,
   LLM routing, deployment notes, what's been proven, what's planned for
   production hardening, ownership and rights. Approximately 680 lines.
   This is the primary technical reference document
-- `docs/ENVIRONMENT_PROTOCOL.md` — the WebSocket contract any host
+- `environment-protocol.md` — the WebSocket contract any host
   environment has to implement. Approximately 350 lines with worked
   examples for a 3D world and a synth bridge
-- `docs/CODEBASE_AUDIT_MEMO.md` — operator-authored audit of the codebase
+- `codebase-audit-memo.md` — operator-authored audit of the codebase
   against the four patent-relevant items, with file/line evidence,
   structural claim shapes, known prior art, confidence levels, and
   caveats for sworn declaration. This is the document a patent attorney
   should start from
-- `docs/PROGRESS-2026-03-14-15.md` — a 48-hour development log spanning
+- `progress-2026-03-14-15.md` — a 48-hour development log spanning
   v0.2 → v0.3.7. Documents the design principles that emerged from
   repeated soak-test failures. Useful for understanding *why* the
   codebase looks the way it does
-- `docs/SBOM.md` — software bill of materials. Four production packages
+- `sbom/` — software bill of materials. Four production packages
   total (3 direct + 1 transitive), all permissive licences, no copyleft.
   Generated via `npx license-checker --production`
-- `STATUS-2026-02-28.md`, `STATUS-2026-03-10.md` — earlier development
+- `status-2026-02-28.md`, `status-2026-03-10.md` — earlier development
   snapshots, kept as historical evidence
-- `CHANGELOG.md` — version history with the substantive change per release
+- `../CHANGELOG.md` — version history with the substantive change per release
 
 ### Endpoints
 
@@ -79,7 +79,7 @@ When the agent is running, it exposes an HTTP API on port 5000 (default):
 - `GET /metrics` — runtime metrics for observability
 - `GET /events` — Server-Sent Events stream of all runtime events
 
-Full reference in `docs/agent-runtime-overview.md` section 3.7.
+Full reference in `3aiii-overview.md` section 3.7.
 
 ### Tests the buyer's developers can run
 
@@ -96,7 +96,7 @@ Three entry points at the repo root:
   want
 
 Run pattern: start one of the test servers in one terminal, start the
-agent (`npm start`) in another. See `QUICKSTART.md` for verbatim
+agent (`npm start`) in another. See `quickstart.md` for verbatim
 commands.
 
 ### Test results we have run
@@ -131,7 +131,7 @@ covers the full ten-scenario behavioural envelope.
 Forty-six commits, 2026-02-20 → 2026-05-04. Clear version progression
 from v0.1 (initial OBSERVE/THINK/ACT loop on a fixed timer) through
 v0.4 (Environment Protocol Standard) and the v0.3.x stability series.
-`git log` for the full record; `CHANGELOG.md` for the summarised view.
+`git log` for the full record; `../CHANGELOG.md` for the summarised view.
 
 ### Personas
 
@@ -142,11 +142,11 @@ new persona doesn't require touching runtime code.
 
 ### Standard repo hygiene
 
-- `LICENCE` — All Rights Reserved (pre-acquisition; rights transfer at
+- `../LICENCE` — All Rights Reserved (pre-acquisition; rights transfer at
   closing per the deal terms)
-- `SECURITY.md` — vulnerability reporting + honest read on current
+- `security.md` — vulnerability reporting + honest read on current
   security posture and the production-hardening backlog
-- `CONTRIBUTING.md` — local setup, conventions, testing pattern
+- `../CONTRIBUTING.md` — local setup, conventions, testing pattern
 - `.env.example` — annotated environment-variable template
 - `.gitignore` — covers `.env`, `data/`, `node_modules/`, `test-logs/`
 
@@ -155,15 +155,15 @@ new persona doesn't require touching runtime code.
 ## How to evaluate this in 30 minutes
 
 1. **First 5 minutes.** Read this file (you're nearly done) and the
-   executive summary of `docs/CODEBASE_AUDIT_MEMO.md`
-2. **Next 10 minutes.** Skim `docs/agent-runtime-overview.md` sections 1
+   executive summary of `codebase-audit-memo.md`
+2. **Next 10 minutes.** Skim `3aiii-overview.md` sections 1
    (pitch), 2 (why this exists), 3.2 (the cognitive pipeline in detail),
    8.2 (engineering audit / production-hardening backlog), 10
    (ownership and rights)
-3. **Next 10 minutes.** Run the agent following `QUICKSTART.md`. Open
+3. **Next 10 minutes.** Run the agent following `quickstart.md`. Open
    `/status` in your browser, watch a few ticks, trigger a sleep cycle,
    hot-swap a persona
-4. **Last 5 minutes.** Skim `docs/CODEBASE_AUDIT_MEMO.md` for the item-
+4. **Last 5 minutes.** Skim `codebase-audit-memo.md` for the item-
    by-item findings on the four patent-relevant components and the
    honest "what I will and will not sworn-state to" closing
 
@@ -181,7 +181,7 @@ Three things to be clear about before further evaluation:
 **The runtime is a reference implementation, not a productionised
 service.** The architecture is solid and proven over multi-hour soak
 runs. The operational surface (auth, rate limiting, structured logging,
-CI, container packaging) is not yet built. `docs/agent-runtime-overview.md`
+CI, container packaging) is not yet built. `3aiii-overview.md`
 section 8.2 lists thirteen production-hardening items totalling about
 40-50 hours of engineering work. The buyer should plan for that work
 or accept that the asset is suitable for further development rather

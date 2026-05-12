@@ -1,7 +1,7 @@
 # 3aiii — Endpoints & test results
 
 Captured 2026-05-12 against the diligence-ready `main` branch.
-For orientation see `HANDOVER.md`; for the verbatim run path see `QUICKSTART.md`.
+For orientation see `handover.md`; for the verbatim run path see `quickstart.md`.
 
 ## Environment
 
@@ -14,7 +14,7 @@ For orientation see `HANDOVER.md`; for the verbatim run path see `QUICKSTART.md`
 | Smoke host (this session) | macOS, Node 24.1.0, local Ollama 0.5.18 |
 | Cloud model (production default) | `openai/gpt-oss-120b` (quality), `openai/gpt-oss-20b` (fast) — via Groq |
 | Local model (fallback default) | `qwen3:4b` (Ollama) |
-| Direct dependencies | `ws@8.19.0`, `ollama@0.5.18`, `dotenv@16.6.1` — see `docs/SBOM.md` |
+| Direct dependencies | `ws@8.19.0`, `ollama@0.5.18`, `dotenv@16.6.1` — see `sbom/` |
 | Persona under test | Victor (`personas/victor.json`) |
 
 ---
@@ -23,7 +23,7 @@ For orientation see `HANDOVER.md`; for the verbatim run path see `QUICKSTART.md`
 
 The runtime exposes a small HTTP API on port 5000 (default). All
 endpoints are unauthenticated today; production hardening adds auth +
-rate limiting (see `SECURITY.md`).
+rate limiting (see `security.md`).
 
 ### `GET /status`
 
@@ -270,7 +270,7 @@ memory consolidated from 15 to 10 entries across the 31 sleep cycles
 
 ## How to reproduce
 
-Setup is detailed in `QUICKSTART.md`. Minimum path:
+Setup is detailed in `quickstart.md`. Minimum path:
 
 ```bash
 git clone https://github.com/frommybrain/agent-runtime
@@ -309,12 +309,12 @@ consolidation, dumps a soak report.
 
 For deeper evaluation:
 
-- `docs/agent-runtime-overview.md` — primary architecture reference
-- `docs/CODEBASE_AUDIT_MEMO.md` — self-audit against the four
+- `3aiii-overview.md` — primary architecture reference
+- `codebase-audit-memo.md` — self-audit against the four
   patent-relevant items, with file/line evidence
-- `docs/ENVIRONMENT_PROTOCOL.md` — the WebSocket contract for any
+- `environment-protocol.md` — the WebSocket contract for any
   environment that wants to host a 3aiii agent
-- `docs/PROGRESS-2026-03-14-15.md` — 500-line retrospective covering
+- `progress-2026-03-14-15.md` — 500-line retrospective covering
   v0.2 → v0.3.7. Documents the failure modes that drove the design
 
 For questions: Sam Skirrow — sam.skirrow@gmail.com.

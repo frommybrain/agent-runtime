@@ -48,7 +48,7 @@ distribution; requires copyright notice + disclaimer be retained.
 `license-checker` reports the project itself (`agent-runtime@0.1.0`) as
 `Custom: https://ollama.com`. This is a false positive — the tool parsed the
 README's link to ollama.com and mistook it for a licence URL. The project's
-own licence is `All Rights Reserved` (see `LICENCE` at the repo root).
+own licence is `All Rights Reserved` (see `../LICENCE` at the repo root).
 `package.json` doesn't declare a `license` field; recommend adding
 `"license": "UNLICENSED"` before any future public publication.
 

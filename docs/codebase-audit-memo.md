@@ -43,7 +43,7 @@ the four items listed above. For each item:
 - The first-commit date for each module was pulled from git history
   (`git log --diff-filter=A --follow --format=...`)
 - The implementation was compared against the documented behaviour in
-  `docs/agent-runtime-overview.md`, `docs/PROGRESS-2026-03-14-15.md`, and
+  `3aiii-overview.md`, `progress-2026-03-14-15.md`, and
   the STATUS files
 - Closest public prior art known to the operator was named, with the
   caveat that no external prior-art search was conducted and no patent
@@ -336,7 +336,7 @@ minimal framing tightness needed.
     [Perceive.js:122-133](../src/cognition/Perceive.js) — any
     observation key not in the handled set is JSON-stringified into the
     prompt
-- **Protocol spec:** `docs/ENVIRONMENT_PROTOCOL.md`, 350 lines. First
+- **Protocol spec:** `environment-protocol.md`, 350 lines. First
   commit `6f06963` on 2026-03-17 (v0.4). Formal contract; examples for
   3D world and synth bridge
 - **Worked example claims:** kiwiexe.com (3D virtual world integration),

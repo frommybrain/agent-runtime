@@ -61,7 +61,7 @@ proxy with auth in front. Don't expose port 5000 to the internet.
 
 ## What's planned
 
-See `docs/agent-runtime-overview.md` section 8.2 for the full production
+See `3aiii-overview.md` section 8.2 for the full production
 hardening backlog. Items most relevant to security:
 
 - API authentication (token + signed-message gating on mutating routes)

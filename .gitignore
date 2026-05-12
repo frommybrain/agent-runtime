@@ -12,3 +12,4 @@ docs/*.pdf
 
 # OS cruft
 .DS_Store
+CLAUDE.md

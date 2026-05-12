@@ -239,8 +239,8 @@ continues unchanged — only the persona-driven response to it shifts.
 - **Run a soak test:** `SOAK_HOURS=1 node soak-test.js`. Cycles through
   environmental phases for an hour, exercises the sleep cycle, dumps
   metrics. The standard buyer-facing soak runs are at 2-12 hours
-- **Read the architecture overview:** `docs/agent-runtime-overview.md`
-- **Read the protocol spec:** `docs/ENVIRONMENT_PROTOCOL.md` if you want
+- **Read the architecture overview:** `3aiii-overview.md`
+- **Read the protocol spec:** `environment-protocol.md` if you want
   to wire this to your own environment
 
 ---
