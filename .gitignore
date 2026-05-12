@@ -7,5 +7,8 @@ data-*/
 test-logs/
 *.bak
 
+# generated docs (handed over separately, not via git)
+docs/*.pdf
+
 # OS cruft
 .DS_Store
