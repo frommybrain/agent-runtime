@@ -13,7 +13,8 @@ contemporaneous version commits.
 - Branding pass: user-facing references rebranded `agent-runtime` → `3aiii`.
   Technical identifiers (repo name, package name, systemd unit, file paths)
   unchanged.
-- De-AI'd source comments and docs across the codebase.
+- Editorial pass on source comments and docs: thinned em-dash density,
+  dropped polished-essay structures, shifted to a more direct voice.
 - Added diligence handover materials: `docs/handover.md`, audit memo,
   SBOM, LICENCE, this changelog, fresh smoke test report in
   `test-results/diligence/`.
