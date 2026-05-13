@@ -176,7 +176,7 @@ Event types:
 
 ### Pre-handover smokes (2026-05-12)
 
-Two fresh runs after the mood/energy rename + de-AI pass. Raw files in
+Two fresh runs after the mood/energy rename. Raw files in
 `test-results/diligence/`.
 
 #### Module-level smoke

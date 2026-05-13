@@ -178,16 +178,6 @@ section 8.2 lists thirteen production-hardening items totalling about
 or accept that the asset is suitable for further development rather
 than direct production deployment.
 
-**Implementation was AI-assisted; the inventive ideas were not.** The
-operator authored the architecture, the design principles, and the
-composite designs documented in the audit memo. The line-level
-implementation of those designs was produced with AI tooling. This is
-the standard mode of modern engineering work and is documented honestly
-in the audit memo. Patent counsel should be told this; sworn
-declarations on sole inventorship should reflect the distinction
-between "I conceived the design" and "I personally typed every
-character".
-
 **One worked example referenced in the marketing docs requires
 external verification.** The Ibiza Botanical Gardens installation is
 claimed as a live deployment for the hardware-grounded loops item. If

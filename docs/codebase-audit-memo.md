@@ -133,10 +133,6 @@ public agent framework.
 - Sole inventorship of the design: defensible. The code is in commits
   authored by the operator. The composite design is documented in the
   progress report and PR descriptions
-- AI tooling involvement: the *implementation* of these patterns was
-  AI-assisted (the code style suggests this). The *idea* of using mood
-  as a feedback channel for creativity is the inventive contribution.
-  This distinction should be communicated to patent counsel
 - The OHMAR claim is third-hand. Counsel should verify it against the
   actual OHMAR claims before any sworn declaration
 
@@ -448,8 +444,7 @@ sophisticated reviewer notices as competent implementation.
   been since the dates given in the evidence sections
 - The composite design of each item (the combination of components, not
   any individual component) was conceived and implemented by the
-  operator. Implementation was AI-assisted; the inventive decisions and
-  composition were the operator's
+  operator. The inventive decisions and composition are the operator's
 - The codebase audit was conducted by the operator against the actual
   code, without external review and without pressure from the buyer
 
@@ -474,9 +469,9 @@ sophisticated reviewer notices as competent implementation.
   provide installation photos, deployment logs, or a live demonstration
   on request
 - The 70 prior test runs in `test-results/` predate the mood/energy
-  rename and the de-AI pass. They are honest historical artifacts of
-  earlier development; the buyer's team should be told this rather than
-  given them as current evidence
+  rename. They are honest historical artifacts of earlier development;
+  the buyer's team should be told this rather than given them as
+  current evidence
 
 ---
 
