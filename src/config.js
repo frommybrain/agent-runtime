@@ -34,6 +34,11 @@ export function loadConfig() {
         //             llama produces under sustained use
         cloudModel: process.env.CLOUD_MODEL || 'openai/gpt-oss-120b',
         cloudModelFast: process.env.CLOUD_MODEL_FAST || 'openai/gpt-oss-20b',
+        // reasoning_effort for gpt-oss models. 'low' keeps per-tick action
+        // decisions fast + cheap and stops unbounded reasoning from
+        // starving the JSON output (the 400 json_validate_failed cause).
+        // Set REASONING_EFFORT="" to disable for non-gpt-oss providers.
+        reasoningEffort: process.env.REASONING_EFFORT ?? 'low',
         temperature: 0.7,
         // max_tokens caps TOTAL completion tokens — and gpt-oss is a
         // reasoning model that spends a large, variable budget on internal

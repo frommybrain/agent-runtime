@@ -24,6 +24,13 @@ export class LLMClient {
         this.cloudApiUrl = config.cloudApiUrl
         this.cloudModel = config.cloudModel              // 70B quality
         this.cloudModelFast = config.cloudModelFast      // 8B fast
+        // reasoning_effort for gpt-oss reasoning models. 'low' caps the
+        // internal chain-of-thought so it cannot consume the whole
+        // max_tokens budget before emitting the JSON action (the
+        // json_validate_failed 400 root cause). Also faster + cheaper
+        // per tick. Empty string omits the param for providers/models
+        // that don't support it.
+        this.reasoningEffort = config.reasoningEffort || ''
 
         this.ollamaAvailable = false
         this._cloudCooldownUntil = 0
@@ -173,6 +180,9 @@ export class LLMClient {
                     temperature: this.temperature,
                     max_tokens: this.maxTokens,
                     response_format: { type: 'json_object' },
+                    // Only included when configured (Groq gpt-oss). Caps
+                    // reasoning so it can't starve the JSON output.
+                    ...(this.reasoningEffort ? { reasoning_effort: this.reasoningEffort } : {}),
                 }),
                 signal: controller.signal,
             })
@@ -182,7 +192,12 @@ export class LLMClient {
                     this._cloudCooldownUntil = Date.now() + 60000
                     this.logger.warn('Cloud API rate limited (429) — cooling down for 60s')
                 }
-                throw new Error(`Cloud API ${response.status}: ${response.statusText}`)
+                // Surface the provider's error BODY, not just statusText.
+                // A bare "400: Bad Request" masked a json_validate_failed
+                // root cause for a long time. The body is the diagnosis.
+                let body = ''
+                try { body = await response.text() } catch { /* ignore */ }
+                throw new Error(`Cloud API ${response.status}: ${response.statusText}${body ? ` — ${body.slice(0, 300)}` : ''}`)
             }
 
             const data = await response.json()
