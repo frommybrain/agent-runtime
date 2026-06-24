@@ -42,7 +42,26 @@ export class EnvironmentSocket {
                 this.connected = true
                 this._reconnectAttempts = 0  // reset backoff on successful connection
                 this.logger.info('Connected')
+                // Liveness heartbeat. Flaky museum wifi can half-open a TCP
+                // connection: the socket stays "connected" while every
+                // observe silently times out, leaving Victor brain-dead but
+                // alive. Ping every 20s; if a pong didn't come back since the
+                // last ping, the link is dead — terminate it to force a clean
+                // reconnect. (ws auto-responds to our ping with a pong.)
+                this._pongAlive = true
+                clearInterval(this._pingInterval)
+                this._pingInterval = setInterval(() => {
+                    if (!this._pongAlive) {
+                        this.logger.warn('No pong since last ping — connection is half-open, terminating')
+                        try { this.ws.terminate() } catch {}
+                        return
+                    }
+                    this._pongAlive = false
+                    try { this.ws.ping() } catch {}
+                }, 20000)
             })
+
+            this.ws.on('pong', () => { this._pongAlive = true })
 
             this.ws.on('message', (raw, isBinary) => {
                 // Guard the parse + dispatch. A single malformed or binary
@@ -68,6 +87,7 @@ export class EnvironmentSocket {
             this.ws.on('close', () => {
                 this.connected = false
                 this.identified = false
+                clearInterval(this._pingInterval)
                 this.logger.warn('Disconnected')
                 // reject pending requests immediately (prevents 5s timeout hang)
                 if (this._pendingObserve) {
