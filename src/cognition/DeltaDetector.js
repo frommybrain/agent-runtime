@@ -54,8 +54,14 @@ export class DeltaDetector {
             }
         }
 
-        // own action state changed
-        if (observation.self?.action !== prev.self?.action) {
+        // own action state changed — compare only the leading verb token.
+        // The world now sends rich MOVE descriptions ("move toward X (~30u
+        // away, ETA ~20s…)") whose distance/ETA churn every tick; diffing
+        // the raw string fired a self_action delta constantly and denied
+        // the skip tier. The verb ("move"/"inspect"/"forage") is the part
+        // that actually represents a state change.
+        const verb = (s) => String(s || '').trim().split(/[\s(]/)[0].toLowerCase()
+        if (verb(observation.self?.action) !== verb(prev.self?.action)) {
             deltas.push({
                 type: 'changed', category: 'self_action',
                 from: prev.self?.action, to: observation.self?.action,
@@ -102,6 +108,12 @@ export class DeltaDetector {
         const skip = new Set([
             'self', 'nearbyAgents', 'nearby_agents', 'nearbyObjects', 'nearby_objects',
             'available_actions', 'recentSpeech', 'signals', 'worldBounds',
+            // Volatile bookkeeping the world recomputes every observation
+            // (seconds_ago / minutes_ago tick up constantly). Without these
+            // in the skip set, every quiet tick registered a 'changed' delta,
+            // so the loop NEVER reached the `skip` tier and burned an LLM
+            // call even when nothing actually happened.
+            'recent_actions', 'recentActions', 'recent_tweets', 'pending_sacrifices',
         ])
         for (const key of Object.keys(observation)) {
             if (skip.has(key)) continue

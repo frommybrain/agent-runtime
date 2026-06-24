@@ -29,7 +29,13 @@ export class RepetitionGuard {
 
     // record an action after its chosen
     record(action, params) {
-        const target = this._extractTarget(params)
+        let target = this._extractTarget(params)
+        // Synthetic targets ('wander', null) are escape hatches, not places.
+        // Recording them let 'wander' become a "dominant target" under
+        // sustained fixation, so the guard started warning the agent to
+        // "stop targeting wander" — fighting its own escape. Treat them as
+        // no-target so they never pollute the cycling/dominance detectors.
+        if (target === 'wander') target = null
         this.history.push({
             action,
             target,
@@ -274,6 +280,24 @@ export class RepetitionGuard {
         const count = recent.filter(h => `${h.action}:${h.target}` === combo).length
         // fixated if same combo is 40%+ of recent history
         return count / recent.length >= 0.4
+    }
+
+    // Target-only fixation: the SAME target across ANY actions. Catches the
+    // case the exact-combo isFixated misses — e.g. a camera spot hit
+    // relentlessly via inspect(spot) + move_to(spot) + wait, where the
+    // target dominates but no single action:target combo crosses 40%. This
+    // was the operator's visible "only stares at cameras" fixation.
+    isTargetFixated(target) {
+        if (!target || target === 'wander') return false
+        if (this.history.length < 10) return false
+        const recent = this.history.slice(-this.maxHistory)
+        const count = recent.filter(h => h.target === target).length
+        return count / recent.length >= 0.4
+    }
+
+    targetCount(target) {
+        const recent = this.history.slice(-this.maxHistory)
+        return recent.filter(h => h.target === target).length
     }
 
     // count of a specific action+target combo in the recent window

@@ -44,9 +44,25 @@ export class EnvironmentSocket {
                 this.logger.info('Connected')
             })
 
-            this.ws.on('message', (raw) => {
-                const msg = JSON.parse(raw.toString())
-                this._handleMessage(msg)
+            this.ws.on('message', (raw, isBinary) => {
+                // Guard the parse + dispatch. A single malformed or binary
+                // frame used to throw synchronously inside the 'message'
+                // emit → uncaught exception → process exit (losing in-RAM
+                // working memory). The server guards the identical parse;
+                // the client must reciprocate.
+                if (isBinary) return
+                let msg
+                try {
+                    msg = JSON.parse(raw.toString())
+                } catch (err) {
+                    this.logger.warn(`Ignoring unparseable frame: ${err.message}`)
+                    return
+                }
+                try {
+                    this._handleMessage(msg)
+                } catch (err) {
+                    this.logger.error(`Message handler threw: ${err.message}`)
+                }
             })
 
             this.ws.on('close', () => {

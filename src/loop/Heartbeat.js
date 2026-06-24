@@ -200,6 +200,19 @@ export class Heartbeat {
                 decision.params = { target: 'wander', reason: `(blocked: ${decision.action} ${fixationTarget} fixated after ${count}x)` }
                 decision.reason = `(blocked: fixation on ${fixationTarget})`
             }
+            // 4b3. TARGET-ONLY ANTI-FIXATION BLOCK
+            // The combo block above misses fixation that's spread across
+            // multiple actions on ONE target (camera stare = inspect + move_to
+            // + wait on the same spot — the target dominates but no single
+            // combo crosses 40%). Catch that here. Runs on the FINAL decision
+            // including fallback decisions, so it survives the heuristic path.
+            else if (fixationTarget && this.repetitionGuard.isTargetFixated(fixationTarget)) {
+                const count = this.repetitionGuard.targetCount(fixationTarget)
+                this.logger.warn(`Hard block: target "${fixationTarget}" fixated (${count}x across actions) — forcing redirect`)
+                decision.action = 'move_to'
+                decision.params = { target: 'wander', reason: `(blocked: target ${fixationTarget} fixated ${count}x across actions)` }
+                decision.reason = `(blocked: target fixation on ${fixationTarget})`
+            }
 
             // 4c. VALIDATE SPEECH PARAMS
             // LLMs sometimes return speak with no valid message string
@@ -330,17 +343,26 @@ export class Heartbeat {
     // 'fast'    = Ollama/8B cloud (routine)
     // 'skip'    = FallbackBrain (nothing happening, no LLM)
     _classifyTick(deltas, worldEvents, context) {
-        // quality tier: complex situations that need the big model
-        if (worldEvents.length > 0) return 'quality'                    // someone spoke
-        if (deltas.some(d => d.type === 'appeared' || d.type === 'disappeared')) return 'quality'  // world changed
-        if (context.recentlyDisappeared?.length > 0) return 'quality'   // hallucination risk window
-        if (Math.abs(context.internalState?.energy || 0) > 0.5) return 'quality'  // heightened state
-        if (context.repetitionWarnings?.length > 0) return 'quality'    // needs creative escape
+        // quality tier: genuinely high-stakes ticks that need the big model.
+        // Kept DELIBERATELY narrow — the quality (120B) path is the slowest
+        // and most failure-prone, so over-routing to it (a) maximises
+        // exposure to transient cloud failures and (b) wastes latency/cost.
+        if (worldEvents.length > 0) return 'quality'                  // someone spoke to us
+        if (context.repetitionWarnings?.length > 0) return 'quality'  // needs a creative escape
 
-        // skip tier: nothing happening at all
+        // fast tier: routine activity — appeared/disappeared deltas, the
+        // post-disappearance hallucination window, heightened arousal, and
+        // any minor delta or action feedback. The 20B fast model handles
+        // these fine and is far more reliable per call. (Previously these
+        // all forced quality; a single object disappearance pinned ~6min of
+        // ticks to the failing model via the recentlyDisappeared window.)
+        if (deltas.some(d => d.type === 'appeared' || d.type === 'disappeared')) return 'fast'
+        if (context.recentlyDisappeared?.length > 0) return 'fast'
+        if (Math.abs(context.internalState?.energy || 0) > 0.5) return 'fast'
+
+        // skip tier: nothing happening at all → no LLM call, heuristic only.
         if (deltas.length === 0 && !context.lastActionResult?.message) return 'skip'
 
-        // fast tier: routine activity (minor deltas, action feedback)
         return 'fast'
     }
 

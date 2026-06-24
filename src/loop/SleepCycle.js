@@ -183,7 +183,7 @@ Return ONLY the updated memory.md content, nothing else.`
 
         const userPrompt = `CURRENT MEMORY:\n${memory}\n\nRECENT ACTIVITY:\n${todayLog}${salientNote}`
 
-        const result = await this.think.consolidate(prompt, userPrompt)
+        const result = await this.think.consolidate(prompt, userPrompt, 60000, false) // markdown output
         if (result && result.trim().length > 10) {
             const written = await this.memoryFiles.safeWriteMemory(result.trim())
             if (written) {
@@ -219,7 +219,7 @@ Return ONLY the updated skills.md content, nothing else.`
 
         const userPrompt = `CURRENT SKILLS:\n${skills}\n\nRECENT ACTIVITY LOG (this is the ONLY source of truth):\n${todayLog}`
 
-        const result = await this.think.consolidate(prompt, userPrompt)
+        const result = await this.think.consolidate(prompt, userPrompt, 60000, false) // markdown output
         if (result && result.trim().length > 10) {
             const written = await this.memoryFiles.safeWriteSkills(result.trim())
             if (written) {
