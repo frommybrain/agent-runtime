@@ -22,6 +22,19 @@ async function main() {
     const config = loadConfig()
     const logger = new Logger(config)
 
+    // Last-resort safety net for an unattended installation: a stray throw
+    // or rejected promise in any fire-and-forget path (sleep consolidation,
+    // a socket callback, an API handler) must NOT take the whole agent
+    // down. Log loudly and keep running — systemd is the backstop, but an
+    // in-process survivor preserves working memory and avoids reconnect
+    // churn. (Paired with the guarded socket parse in EnvironmentSocket.)
+    process.on('uncaughtException', (err) => {
+        logger.error(`uncaughtException: ${err?.stack || err}`)
+    })
+    process.on('unhandledRejection', (reason) => {
+        logger.error(`unhandledRejection: ${reason?.stack || reason}`)
+    })
+
     logger.info(`=== 3aiii v0.3.10 ===`)
     logger.info(`Agent: ${config.agentId}`)
     logger.info(`Server: ${config.serverUrl}`)
@@ -85,7 +98,10 @@ async function main() {
         workingMemory, socket, promptBuilder, internalState,
         deltaDetector, repetitionGuard, think,
     }
-    const api = new ApiServer(config.apiPort, apiState, logger)
+    const api = new ApiServer(config.apiPort, apiState, logger, {
+        host: config.apiHost,
+        adminToken: config.adminToken,
+    })
     api.start()
 
     // wire API emitter into heartbeat so tick/sleep events flow to SSE clients

@@ -76,6 +76,11 @@ export function loadConfig() {
 
         // API server
         apiPort: parseInt(process.env.API_PORT || '5000'),
+        // The local control API can hot-swap the persona, inject memories,
+        // and force sleep — so it binds to loopback by default (reach it via
+        // an SSH tunnel). Set API_HOST=0.0.0.0 to expose it on the LAN, but
+        // ONLY together with ADMIN_TOKEN — mutating routes require it.
+        apiHost: process.env.API_HOST || '127.0.0.1',
 
         // logging
         logLevel: process.env.LOG_LEVEL || 'info',

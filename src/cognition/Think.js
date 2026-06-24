@@ -99,8 +99,12 @@ export class Think {
     }
 
     // sleep consolidation. direct LLM call with custom prompts
-    async consolidate(systemPrompt, userPrompt, timeoutMs = 60000) {
-        const { text, source } = await this.llm.generate(systemPrompt, userPrompt, timeoutMs)
+    // jsonMode MUST be false for prompts that ask for markdown output
+    // (memory.md / skills.md consolidation) — otherwise Groq 400s the
+    // request (json_object mode requires the word "json" in the messages),
+    // which silently killed every consolidation pass ("memory=false").
+    async consolidate(systemPrompt, userPrompt, timeoutMs = 60000, jsonMode = true) {
+        const { text, source } = await this.llm.generate(systemPrompt, userPrompt, timeoutMs, 'quality', jsonMode)
         return text
     }
 

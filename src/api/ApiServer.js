@@ -15,10 +15,12 @@ import { createServer } from 'node:http'
 //   GET  /events           SSE stream of all runtime events
 
 export class ApiServer {
-    constructor(port, state, logger) {
+    constructor(port, state, logger, options = {}) {
         this.port = port
         this.state = state
         this.logger = logger
+        this.host = options.host || '127.0.0.1'
+        this.adminToken = options.adminToken || ''
         this._sseClients = new Map()  // res → { ping, connectedAt }
         this._server = null
     }
@@ -27,12 +29,29 @@ export class ApiServer {
         this._server = createServer((req, res) => this._route(req, res))
         this._server.timeout = 30000
         this._server.keepAliveTimeout = 5000
-        this._server.listen(this.port, () => {
-            this.logger.info(`API listening on http://localhost:${this.port}`)
+        this._server.listen(this.port, this.host, () => {
+            this.logger.info(`API listening on http://${this.host}:${this.port}`)
+            if (this.host === '0.0.0.0' && !this.adminToken) {
+                this.logger.warn('API bound to 0.0.0.0 with no ADMIN_TOKEN — anyone on the network can control the agent. Set ADMIN_TOKEN.')
+            }
         })
         this._server.on('error', err => {
             this.logger.error(`API server error: ${err.message}`)
         })
+    }
+
+    // Constant-time-ish bearer-token check for mutating routes. When
+    // adminToken is unset (loopback dev), everything is allowed. When set,
+    // POST/PUT routes require `Authorization: Bearer <token>`.
+    _authorised(req) {
+        if (!this.adminToken) return true
+        const h = req.headers['authorization'] || ''
+        const m = /^Bearer\s+(.+)$/i.exec(h)
+        const given = m ? m[1] : ''
+        if (given.length !== this.adminToken.length) return false
+        let diff = 0
+        for (let i = 0; i < given.length; i++) diff |= given.charCodeAt(i) ^ this.adminToken.charCodeAt(i)
+        return diff === 0
     }
 
     stop() {
@@ -73,6 +92,13 @@ export class ApiServer {
 
         const url = new URL(req.url, `http://localhost:${this.port}`)
         const path = url.pathname
+
+        // Mutating routes require auth when ADMIN_TOKEN is set. GET reads
+        // (status/memory/metrics/events) stay open for the dashboard.
+        if (req.method !== 'GET' && req.method !== 'OPTIONS' && !this._authorised(req)) {
+            this.logger.warn(`API ${req.method} ${path} rejected — bad/missing admin token`)
+            return this._json(res, 401, { error: 'Unauthorised — Bearer ADMIN_TOKEN required' })
+        }
 
         try {
             if (req.method === 'GET' && path === '/status') return await this._getStatus(req, res)
@@ -215,6 +241,11 @@ export class ApiServer {
             actionDiversity: repetitionGuard?.diversityScore() || 0,
             // tier distribution (cost observability)
             tierCounts: this.state.think?.llm?.tierCounts || { skip: 0, fast: 0, quality: 0 },
+            // THE health number that matters: rolling fraction of recent
+            // generate() calls an LLM actually answered (vs heuristic
+            // fallback). 1.0 = healthy; low = the brain is running dark.
+            llmSuccessRate: this.state.think?.llm?.recentSuccessRate?.() ?? null,
+            ollamaBreakerOpen: (this.state.think?.llm?._ollamaBreakerUntil || 0) > Date.now(),
             // prompt size (last tick)
             lastPromptChars: this.state.think?._lastPromptChars || 0,
             // SSE clients

@@ -37,8 +37,47 @@ export class LLMClient {
         this._lastOllamaCheck = 0
         this._ollamaRecheckMs = 5 * 60 * 1000
 
+        // Ollama circuit breaker. On a saturated host qwen3 times out every
+        // call; without a breaker the loop pays the full timeout per tick
+        // forever. After N consecutive timeouts we trip the breaker and stop
+        // attempting Ollama for a cooldown, so cognition degrades straight to
+        // the heuristic instead of stalling 8-30s every tick.
+        this.ollamaTimeoutMs = config.ollamaTimeoutMs || 8000  // hard cap, well under the heartbeat
+        this._ollamaTimeoutStreak = 0
+        this._ollamaBreakerUntil = 0
+        this._ollamaBreakerThreshold = 3
+        this._ollamaBreakerCooldownMs = 5 * 60 * 1000
+
+        // Short cooldown after a cloud failure that is NOT a 429 (e.g. a 400
+        // or network error) so we don't re-hammer a momentarily-unhappy model
+        // every tick. 429 keeps its longer 60s cooldown set in _cloudGenerate.
+        this._cloudSoftCooldownMs = 8000
+
         // observability counters
         this.tierCounts = { skip: 0, fast: 0, quality: 0 }
+        // rolling outcome window for a live LLM-success / fallback-rate metric
+        // (the single number that tells you the brain is alive). Each entry is
+        // true (an LLM produced text) or false (fell through to null/heuristic).
+        this._outcomeWindow = []
+        this._outcomeWindowMax = 50
+    }
+
+    _recordOutcome(ok) {
+        this._outcomeWindow.push(ok)
+        if (this._outcomeWindow.length > this._outcomeWindowMax) this._outcomeWindow.shift()
+    }
+
+    // Rolling fraction of recent generate() calls that an LLM actually
+    // answered (vs fell through to the heuristic). 1.0 = healthy, low =
+    // the bird is mostly running on the fallback brain.
+    recentSuccessRate() {
+        if (this._outcomeWindow.length === 0) return 1
+        const ok = this._outcomeWindow.filter(Boolean).length
+        return ok / this._outcomeWindow.length
+    }
+
+    _ollamaUsable() {
+        return this.ollamaAvailable && Date.now() >= this._ollamaBreakerUntil
     }
 
     async init() {
@@ -61,7 +100,10 @@ export class LLMClient {
     // generate a response with tier-aware routing.
     // tier: 'quality' (default) | 'fast'
     // returns: { text: string, source: 'cloud'|'cloud-fast'|'ollama'|null }
-    async generate(systemPrompt, userPrompt, timeoutMs = 30000, tier = 'quality') {
+    // tier: 'quality' (default) | 'fast'. jsonMode (default true) controls
+    // whether response_format:json_object is sent — markdown-output prompts
+    // (sleep consolidation) MUST pass false or Groq 400s the request.
+    async generate(systemPrompt, userPrompt, timeoutMs = 30000, tier = 'quality', jsonMode = true) {
         // periodically re-check Ollama if it was unavailable
         if (!this.ollamaAvailable && Date.now() - this._lastOllamaCheck > this._ollamaRecheckMs) {
             await this._recheckOllama()
@@ -70,70 +112,92 @@ export class LLMClient {
         // track tier usage
         this.tierCounts[tier] = (this.tierCounts[tier] || 0) + 1
 
-        if (tier === 'fast') {
-            return this._generateFast(systemPrompt, userPrompt, timeoutMs)
-        }
+        const result = tier === 'fast'
+            ? await this._generateFast(systemPrompt, userPrompt, timeoutMs, jsonMode)
+            : await this._generateQuality(systemPrompt, userPrompt, timeoutMs, jsonMode)
 
-        return this._generateQuality(systemPrompt, userPrompt, timeoutMs)
+        this._recordOutcome(!!result.text)
+        return result
     }
 
-    // fast tier: 8B cloud first (fast + cheap), Ollama fallback (free but slow).
-    // v0.3.8.1: swapped priority. Ollama on the Pi causes tick skipping —
-    // generation time exceeds heartbeat interval. 8B cloud is fast enough
-    // to avoid missed ticks and cheap enough for routine use.
-    async _generateFast(systemPrompt, userPrompt, timeoutMs) {
-        // try cheap cloud model first (fast, no tick skipping)
+    // fast tier: 20B cloud first (fast + cheap), Ollama fallback.
+    async _generateFast(systemPrompt, userPrompt, timeoutMs, jsonMode) {
         if (this.cloudApiKey && this.cloudApiUrl && Date.now() >= this._cloudCooldownUntil) {
             try {
-                const result = await this._cloudGenerate(systemPrompt, userPrompt, timeoutMs, this.cloudModelFast)
+                const result = await this._cloudGenerate(systemPrompt, userPrompt, timeoutMs, this.cloudModelFast, jsonMode)
                 return { text: result, source: 'cloud-fast' }
             } catch (err) {
                 this.logger.warn(`Cloud fast failed: ${err.message}`)
+                this._noteCloudFailure(err)
             }
         }
-
-        // fall back to free local model (slow but free, only when cloud is down)
-        if (this.ollamaAvailable) {
-            try {
-                const result = await this._ollamaGenerate(systemPrompt, userPrompt, timeoutMs)
-                return { text: result, source: 'ollama' }
-            } catch (err) {
-                this.logger.warn(`Ollama failed (fast tier): ${err.message}`)
-            }
-        }
-
-        return { text: null, source: null }
+        return this._tryOllama(systemPrompt, userPrompt, 'fast tier')
     }
 
-    // quality tier: 70B cloud first, Ollama fallback
-    async _generateQuality(systemPrompt, userPrompt, timeoutMs) {
-        // try 70B cloud first (faster on Pi than local)
+    // quality tier: 120B cloud → (on cloud failure) 20B cloud → Ollama.
+    // The 20B demotion is the crucial new rung: when the 120B reasoning
+    // model chokes (e.g. a transient json_validate_failed), the faster 20B
+    // usually answers cleanly, keeping cognition on the cloud instead of
+    // collapsing to the heuristic via a doomed Ollama attempt.
+    async _generateQuality(systemPrompt, userPrompt, timeoutMs, jsonMode) {
         if (this.cloudApiKey && this.cloudApiUrl && Date.now() >= this._cloudCooldownUntil) {
             try {
-                const result = await this._cloudGenerate(systemPrompt, userPrompt, timeoutMs, this.cloudModel)
+                const result = await this._cloudGenerate(systemPrompt, userPrompt, timeoutMs, this.cloudModel, jsonMode)
                 return { text: result, source: 'cloud' }
             } catch (err) {
                 this.logger.warn(`Cloud LLM failed: ${err.message}`)
+                this._noteCloudFailure(err)
+                // Demote to the fast model before giving up on the cloud.
+                try {
+                    const result = await this._cloudGenerate(systemPrompt, userPrompt, timeoutMs, this.cloudModelFast, jsonMode)
+                    this.logger.info(`Quality demoted to ${this.cloudModelFast} after 120B failure`)
+                    return { text: result, source: 'cloud-fast' }
+                } catch (err2) {
+                    this.logger.warn(`Cloud demote also failed: ${err2.message}`)
+                }
             }
         } else if (this.cloudApiKey && Date.now() < this._cloudCooldownUntil) {
             const remaining = Math.round((this._cloudCooldownUntil - Date.now()) / 1000)
             this.logger.debug(`Cloud API cooling down (${remaining}s remaining)`)
         }
-
-        // fall back to local Ollama
-        if (this.ollamaAvailable) {
-            try {
-                const result = await this._ollamaGenerate(systemPrompt, userPrompt, timeoutMs)
-                return { text: result, source: 'ollama' }
-            } catch (err) {
-                this.logger.warn(`Ollama failed: ${err.message}`)
-            }
-        }
-
-        return { text: null, source: null }
+        return this._tryOllama(systemPrompt, userPrompt, 'quality tier')
     }
 
-    async _ollamaGenerate(systemPrompt, userPrompt, timeoutMs) {
+    // Shared Ollama path with circuit breaker. Returns {text, source}.
+    async _tryOllama(systemPrompt, userPrompt, label) {
+        if (!this._ollamaUsable()) {
+            return { text: null, source: null }
+        }
+        try {
+            const result = await this._ollamaGenerate(systemPrompt, userPrompt)
+            this._ollamaTimeoutStreak = 0   // recovered
+            return { text: result, source: 'ollama' }
+        } catch (err) {
+            this.logger.warn(`Ollama failed (${label}): ${err.message}`)
+            if (/timeout/i.test(err.message)) {
+                this._ollamaTimeoutStreak++
+                if (this._ollamaTimeoutStreak >= this._ollamaBreakerThreshold) {
+                    this._ollamaBreakerUntil = Date.now() + this._ollamaBreakerCooldownMs
+                    this.logger.warn(`Ollama circuit breaker tripped (${this._ollamaTimeoutStreak} consecutive timeouts) — skipping local model for ${Math.round(this._ollamaBreakerCooldownMs / 60000)}min`)
+                    this._ollamaTimeoutStreak = 0
+                }
+            }
+            return { text: null, source: null }
+        }
+    }
+
+    // Soft-cooldown the cloud after a non-429 failure so we don't re-hammer
+    // a momentarily-unhappy model every tick. (429 sets its own 60s cooldown.)
+    _noteCloudFailure(err) {
+        if (!/\b429\b/.test(err.message)) {
+            this._cloudCooldownUntil = Math.max(this._cloudCooldownUntil, Date.now() + this._cloudSoftCooldownMs)
+        }
+    }
+
+    async _ollamaGenerate(systemPrompt, userPrompt) {
+        // Hard-cap the Ollama timeout well under the heartbeat so a slow
+        // local generation can't freeze the body for 30s.
+        const timeoutMs = this.ollamaTimeoutMs
         const chatPromise = this.ollama.chat({
             model: this.ollamaModel,
             messages: [
@@ -153,17 +217,16 @@ export class LLMClient {
         return response.message.content
     }
 
-    async _cloudGenerate(systemPrompt, userPrompt, timeoutMs, model) {
+    async _cloudGenerate(systemPrompt, userPrompt, timeoutMs, model, jsonMode = true) {
         const controller = new AbortController()
         const timeout = setTimeout(() => controller.abort(), timeoutMs)
 
-        // response_format: json_object constrains the model to emit a single
-        // valid JSON object. no markdown fences, no preamble, no GPT-OSS
-        // channel markers. without it gpt-oss-120b returns code-fenced
-        // output about half the time and Think.js's parser falls back to null.
-        // Groq's OpenAI-compatible endpoint requires the prompt to mention
-        // "JSON" — 3aiii's PromptBuilder already does (the system prompt
-        // instructs JSON output for the action decision).
+        // response_format:json_object constrains the model to a single valid
+        // JSON object (no fences/preamble) for the action loop. But Groq
+        // 400s any json_object request whose messages lack the word "json"
+        // — so MARKDOWN-output prompts (sleep consolidation) MUST pass
+        // jsonMode=false or every consolidation fails. That was the silent
+        // "memory=false" bug. We only attach response_format when jsonMode.
         try {
             const response = await fetch(this.cloudApiUrl, {
                 method: 'POST',
@@ -179,7 +242,7 @@ export class LLMClient {
                     ],
                     temperature: this.temperature,
                     max_tokens: this.maxTokens,
-                    response_format: { type: 'json_object' },
+                    ...(jsonMode ? { response_format: { type: 'json_object' } } : {}),
                     // Only included when configured (Groq gpt-oss). Caps
                     // reasoning so it can't starve the JSON output.
                     ...(this.reasoningEffort ? { reasoning_effort: this.reasoningEffort } : {}),
