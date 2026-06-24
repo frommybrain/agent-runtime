@@ -35,10 +35,17 @@ export function loadConfig() {
         cloudModel: process.env.CLOUD_MODEL || 'openai/gpt-oss-120b',
         cloudModelFast: process.env.CLOUD_MODEL_FAST || 'openai/gpt-oss-20b',
         temperature: 0.7,
-        // 200 was tight for reasoning models. gpt-oss-120b often produces a
-        // brief "reasoning" preamble inside the JSON before the action and
-        // 200 was occasionally truncating mid-string.
-        maxTokens: 500,
+        // max_tokens caps TOTAL completion tokens — and gpt-oss is a
+        // reasoning model that spends a large, variable budget on internal
+        // chain-of-thought BEFORE it emits the JSON action. At 500 the
+        // reasoning routinely consumed the whole budget, the model emitted
+        // an empty completion, and Groq's json_object validator returned
+        // 400 json_validate_failed (failed_generation: ""). In production
+        // this fired on ~half of all quality-tier ticks, collapsing the
+        // bird onto the heuristic FallbackBrain. 1500 gives reasoning +
+        // the (small) JSON output room to coexist. Env-overridable so a
+        // deployment can tune without a code change.
+        maxTokens: parseInt(process.env.MAX_TOKENS || '1500'),
 
         // memory
         dataDir: process.env.DATA_DIR || './data',
