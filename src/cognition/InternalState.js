@@ -11,7 +11,7 @@
 //
 // v0.3: checkpoints to disk so state survives a crash.
 
-import { readFile, writeFile, mkdir } from 'node:fs/promises'
+import { readFile, writeFile, mkdir, rename } from 'node:fs/promises'
 import { join } from 'node:path'
 
 export class InternalState {
@@ -243,7 +243,12 @@ export class InternalState {
                 timestamp: Date.now(),
                 ...extra,
             }
-            await writeFile(this._checkpointPath, JSON.stringify(data), 'utf-8')
+            // Atomic write: a crash or power loss mid-write would otherwise
+            // truncate the checkpoint and lose the bird's state on restart.
+            // Write to a temp file then rename (atomic on the same fs).
+            const tmp = `${this._checkpointPath}.tmp`
+            await writeFile(tmp, JSON.stringify(data), 'utf-8')
+            await rename(tmp, this._checkpointPath)
         } catch (err) {
             this.logger.error(`State checkpoint failed: ${err.message}`)
         }

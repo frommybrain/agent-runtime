@@ -239,20 +239,31 @@ export class Heartbeat {
             }
 
             // 6. REFLECT (log with salience)
+            //
+            // Plumbing reasons — "(corrected: …)" / "(blocked: fixation …)"
+            // — are firewall artefacts, not lived experience. Logged with
+            // full salience the consolidator promoted them into permanent
+            // MEMORY.md (Victor "remembering" being anti-fixation-blocked).
+            // Neutralise them: minimal salience so they're not encoded, and
+            // a clean daily-log line with no plumbing annotation.
+            const isPlumbing = /^\((corrected|blocked)/.test(decision.reason || '')
+            const reflectSalience = isPlumbing ? Math.min(salience, 0.05) : salience
+            const cleanReason = isPlumbing ? 'moving on' : decision.reason
+
             this.workingMemory.push({
                 type: 'action',
                 action: `${decision.action}(${JSON.stringify(decision.params)})`,
-                reason: decision.reason,
-            }, salience)
+                reason: cleanReason,
+            }, reflectSalience)
 
             // log the action result too
             this.workingMemory.push({
                 type: 'action_result',
                 success: this._lastActionResult.success,
                 message: this._lastActionResult.message,
-            }, salience)
+            }, reflectSalience)
 
-            const logLine = `${decision.action}(${JSON.stringify(decision.params)}) — ${decision.reason} [${decision.source}] → ${this._lastActionResult.success ? 'ok' : 'failed'}`
+            const logLine = `${decision.action}(${JSON.stringify(decision.params)}) — ${cleanReason} [${decision.source}] → ${this._lastActionResult.success ? 'ok' : 'failed'}`
             await this.dailyLog.append(logLine)
 
             // log speech separately for clarity
