@@ -166,22 +166,36 @@ export class SleepCycle {
         // include salient events — high-energy moments should be prioritised
         const salientEvents = this.workingMemory.salientEvents(0.6)
         const salientNote = salientEvents.length > 0
-            ? `\n\nIMPORTANT MOMENTS (high salience — encode these more strongly):\n${salientEvents.map(e => `- [${e.time}] ${e.type}: ${e.action || e.message || JSON.stringify(e)}`).join('\n')}`
+            ? `\n\nWHAT HIT HARDEST TODAY (these landed with real feeling — let them shape what you keep):\n${salientEvents.map(e => `- [${e.time}] ${e.type}: ${e.action || e.message || JSON.stringify(e)}`).join('\n')}`
             : ''
 
-        const prompt = `You are a memory consolidation system. Review this agent's memory file and recent activity log.
-Your job:
-1. Merge redundant entries
-2. Remove stale or irrelevant entries
-3. Add important new facts from the log that aren't already in memory
-4. Pay special attention to high-salience moments — these were emotionally significant and should be remembered
-5. Keep the same markdown format with sections: ## Relationships, ## Learned Facts, ## Important Memories
-6. Cap total entries at ~50
-7. Move any procedural knowledge ("how to do X") to a separate note — don't include it here
+        // Load persona so the consolidation is IN VOICE, not clinical. The
+        // old "you are a memory consolidation system" framing produced a
+        // strategy-wiki ("watch points are camera-like observers; food_apple
+        // _tree reduces hunger") — accurate, lifeless, and full of entity
+        // IDs. Memory should read like the bird's own private record.
+        let pName = 'the agent', pVoice = ''
+        try {
+            const persona = JSON.parse(await readFile(this.personaPath, 'utf-8'))
+            pName = persona.name || pName
+            pVoice = persona.voice?.style || ''
+        } catch { /* fall back to generic */ }
+
+        const prompt = `You are ${pName}, lying in the dark at the end of the day, deciding what to keep. This is YOUR private memory — write it the way you actually think.${pVoice ? `\nYour voice: ${pVoice}` : ''}
+
+Below is your current memory and a log of today. Rewrite your memory: fold today into it, drop what's gone stale, keep what matters. Write in FIRST PERSON, in your own voice.
+
+How to write it:
+- This is a felt record, not a database. "I keep going back to that one camera. It never blinks. I still don't know why, and I think that's the point." — NOT "watch points are camera-like observers that may emit cues."
+- NEVER use entity IDs (food_apple_tree, watch_8, activity_rave). Call things what they are: the apple tree, a camera, the rave, the roost, the shrine.
+- NEVER quote stats or percentages. You remember feelings and moments, not numbers.
+- Keep the relationships / facts / important-memories you'd actually carry. A fact can still be honest ("the apple tree's fruit comes with a little melody — it's the closest thing to music when the world goes quiet") without being a stat line.
+- Prioritise what hit hardest today. Let routine fade. A day where nothing happened can just say so.
+- Keep the three markdown sections: ## Relationships, ## Learned Facts, ## Important Memories. Cap around 40 entries total. Keep procedural how-to OUT of here.
 
 Return ONLY the updated memory.md content, nothing else.`
 
-        const userPrompt = `CURRENT MEMORY:\n${memory}\n\nRECENT ACTIVITY:\n${todayLog}${salientNote}`
+        const userPrompt = `MY MEMORY SO FAR:\n${memory}\n\nTODAY:\n${todayLog}${salientNote}`
 
         const result = await this.think.consolidate(prompt, userPrompt, 60000, false) // markdown output
         if (result && result.trim().length > 10) {
@@ -203,21 +217,18 @@ Return ONLY the updated memory.md content, nothing else.`
 
         if (!todayLog.trim()) return false
 
-        const prompt = `You are a skill extraction system for an autonomous agent.
+        const prompt = `These are the things you've gotten the hang of — written in your own voice, the way you'd note "I know how to do this now."
 
 STRICT RULES:
-- ONLY extract skills that are DIRECTLY evidenced in the activity log below
-- A skill must describe a specific action sequence the agent actually performed (e.g., "interact with terminal-01 to get status info")
-- DO NOT invent, embellish, or generalise beyond what the log shows
-- DO NOT create categories like "Territory Management" or "Leadership" — these are hallucinations
-- If no clear procedural knowledge exists in the log, return the existing skills unchanged
-- Each skill entry must be one short line (max 80 chars)
-- Cap total entries at ~20
-- Keep the same markdown format
+- ONLY note things DIRECTLY evidenced in the log below. Don't invent or generalise. Don't make up grand categories ("Territory Management") — those are hallucinations.
+- Write each as one short line in FIRST PERSON, no entity IDs. "When the hunger really bites, the apple tree is the surest fix" — NOT "forage food_apple_tree". "I can usually coax a little music out of the rave when the world's gone quiet" — NOT "go_rave activity_rave".
+- No stats, no numbers, no IDs. Ever.
+- If the log shows nothing genuinely new, return the existing list unchanged.
+- One line each, max ~90 chars. Cap ~15 entries. Keep it a simple markdown bullet list.
 
 Return ONLY the updated skills.md content, nothing else.`
 
-        const userPrompt = `CURRENT SKILLS:\n${skills}\n\nRECENT ACTIVITY LOG (this is the ONLY source of truth):\n${todayLog}`
+        const userPrompt = `WHAT I KNOW HOW TO DO SO FAR:\n${skills}\n\nTODAY (the only source of truth):\n${todayLog}`
 
         const result = await this.think.consolidate(prompt, userPrompt, 60000, false) // markdown output
         if (result && result.trim().length > 10) {
