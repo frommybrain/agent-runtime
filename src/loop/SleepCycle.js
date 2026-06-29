@@ -13,6 +13,41 @@ import { sanitizeJson } from '../util/sanitizeJson.js'
 
 import { readFile, writeFile, copyFile } from 'node:fs/promises'
 
+/**
+ * Re-seed pruned baseline entries for any evolvable array field that fell
+ * below 60% of its original richness. The self-reflection merge replaces an
+ * array field wholesale, so a small model returning a too-short list (e.g.
+ * the one trait it meant to "modify") would hollow the personality out —
+ * exactly how Victor collapsed from nine traits to one. Pure + exported so
+ * it can be unit-tested in isolation.
+ *
+ * @param {object} persona          - persona being evolved (mutated in place)
+ * @param {object} originalPersona  - immutable baseline (comparable fields)
+ * @param {object} [logger]         - optional logger with .info()
+ * @returns {object} the same persona, for chaining
+ */
+export function enforceRichnessFloor(persona, originalPersona, logger = null) {
+    if (!originalPersona) return persona
+    for (const field of ['traits', 'values', 'fears', 'quirks']) {
+        const baseline = originalPersona[field] || []
+        if (baseline.length === 0) continue
+        const floor = Math.ceil(baseline.length * 0.6)
+        const current = Array.isArray(persona[field]) ? persona[field] : []
+        if (current.length >= floor) continue
+        const have = new Set(current.map((s) => String(s).toLowerCase()))
+        const reseeded = [...current]
+        for (const item of baseline) {
+            if (reseeded.length >= floor) break
+            if (!have.has(String(item).toLowerCase())) {
+                reseeded.push(item)
+                logger?.info?.(`Drift guard: re-seeded ${field} "${item}" (richness floor ${reseeded.length}/${floor})`)
+            }
+        }
+        persona[field] = reseeded
+    }
+    return persona
+}
+
 export class SleepCycle {
     constructor(think, memoryFiles, dailyLog, workingMemory, internalState, repetitionGuard, speechLog, config, logger) {
         this.think = think
@@ -190,14 +225,27 @@ How to write it:
 - NEVER use entity IDs (food_apple_tree, watch_8, activity_rave). Call things what they are: the apple tree, a camera, the rave, the roost, the shrine.
 - NEVER quote stats or percentages. You remember feelings and moments, not numbers.
 - Keep the relationships / facts / important-memories you'd actually carry. A fact can still be honest ("the apple tree's fruit comes with a little melody — it's the closest thing to music when the world goes quiet") without being a stat line.
-- Prioritise what hit hardest today. Let routine fade. A day where nothing happened can just say so.
+- Prioritise what hit hardest today. Let routine fade.
+- If today added nothing genuinely new — the same routine you already remember, nothing that actually moved you — then don't churn this file rewriting what's already here. Reply with the single token NO_CHANGE (nothing else) and I'll keep my memory exactly as it is. Only do this when today truly held nothing worth keeping.
 - Keep the three markdown sections: ## Relationships, ## Learned Facts, ## Important Memories. Cap around 40 entries total. Keep procedural how-to OUT of here.
 
-Return ONLY the updated memory.md content, nothing else.`
+Return ONLY the updated memory.md content (or the single token NO_CHANGE), nothing else.`
 
         const userPrompt = `MY MEMORY SO FAR:\n${memory}\n\nTODAY:\n${todayLog}${salientNote}`
 
         const result = await this.think.consolidate(prompt, userPrompt, 60000, false) // markdown output
+
+        // Quiet-day escape: if nothing new happened, the model can decline to
+        // rewrite rather than churn the file into paraphrased slop. Precise
+        // match on a short standalone token so a real memory that mentions
+        // "no change" in passing can't trip it.
+        const trimmedResult = (result || '').trim()
+        if (trimmedResult.length <= 12 && /^no[_\s-]?change$/i.test(trimmedResult)) {
+            this.logger.info('Memory consolidation: quiet day — left memory unchanged')
+            await this.dailyLog.append('Memory consolidation: quiet day, left memory unchanged')
+            return false
+        }
+
         if (result && result.trim().length > 10) {
             const written = await this.memoryFiles.safeWriteMemory(result.trim())
             if (written) {
@@ -291,16 +339,16 @@ Return ONLY the updated skills.md content, nothing else.`
 Review the agent's recent behaviour, emotional patterns, and memories. Then decide: should the agent's personality evolve?
 
 Rules:
-- Evolution should be subtle — small shifts, not dramatic rewrites
-- Changes must be grounded in actual experiences (from the log)
-- Core identity (name, backstory) should NOT change
-- Traits, quirks, values, fears, and voice CAN shift slightly based on experience
-- You may ADD one new trait/quirk or MODIFY one existing one, but never remove more than one per cycle
-- If nothing warrants change, respond with {"evolve": false}
-- If change is warranted, respond with {"evolve": true, "changes": {...}, "reason": "why"}
+- Evolution should be subtle, and should reflect the BREADTH of recent experience — not a single fixation. A rich, varied stretch (many kinds of activity, different places, real encounters) can warrant a small shift. A narrow, repetitive stretch should NOT: respond with {"evolve": false}.
+- Changes must be grounded in actual experiences (from the log).
+- Core identity (name, backstory) must NOT change.
+- GROW, don't narrow. You may ADD a trait/quirk, or MODIFY the wording of an existing one. Do NOT prune the personality down to only what showed up today — a trait left unused is dormant, not gone. Only remove a trait if recent experience actively CONTRADICTS it, and never more than one per cycle.
+- When you change an array field (traits, quirks, values, fears), you MUST return the COMPLETE updated list, including every existing entry you are keeping. The list replaces the old one wholesale, so returning only the new item would ERASE everything else.
+- If nothing warrants change, respond with {"evolve": false}.
+- If change is warranted, respond with {"evolve": true, "changes": {...}, "reason": "why"}.
 
-The "changes" object should contain only the fields to update, using the same structure as the persona.
-For example: {"changes": {"quirks": ["speaks slowly when uncertain", "hums when exploring"]}, "reason": "developed a habit of humming during exploration"}
+The "changes" object contains the FULL fields to update, using the same structure as the persona.
+For example, to add one quirk you still return ALL quirks: {"changes": {"quirks": ["speaks slowly when uncertain", "goes quiet near water", "hums when exploring"]}, "reason": "started humming while exploring — kept the rest"}
 
 Respond with JSON only.`
 
@@ -370,6 +418,12 @@ Should ${persona.name} evolve? Respond with JSON.`
                 for (const [key, val] of Object.entries(reflection.changes)) {
                     persona[key] = val
                 }
+
+                // RICHNESS FLOOR: the merge above replaces an array field
+                // wholesale, so a too-short list from the model would hollow
+                // the personality out (nine traits → one). Re-seed pruned
+                // baseline entries for anything that fell below 60% richness.
+                enforceRichnessFloor(persona, this._originalPersona, this.logger)
 
                 // add evolution log entry
                 if (!persona.evolution) persona.evolution = []
