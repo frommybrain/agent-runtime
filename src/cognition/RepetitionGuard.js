@@ -181,6 +181,32 @@ export class RepetitionGuard {
             }
         }
 
+        // 7. vocabulary rut. Distinct from the phrase repetition above: a
+        // single content word recurring across MANY recent speeches (gnaws,
+        // pulse, dare, hum…) is what makes the voice feel stuck even when each
+        // line is otherwise "new". _extractKeywords already drops stop-words
+        // and sub-3-char tokens, so a word landing in a quarter of recent
+        // speeches is a genuine lexical rut, not grammar. Checked generally
+        // (not against the persona's vocab list) because the worst ruts are
+        // EMERGENT words the persona never declared.
+        if (this._recentSpeech.length >= 6) {
+            const rutThreshold = Math.max(3, Math.ceil(this._recentSpeech.length * 0.25))
+            const speechFreq = new Map()
+            for (const s of this._recentSpeech) {
+                for (const w of this._extractKeywords(s)) {  // a Set → counts once per speech
+                    speechFreq.set(w, (speechFreq.get(w) || 0) + 1)
+                }
+            }
+            const overused = [...speechFreq.entries()]
+                .filter(([, c]) => c >= rutThreshold)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 4)
+                .map(([w, c]) => `"${w}" (${c}×)`)
+            if (overused.length > 0) {
+                warnings.push(`Your wording is narrowing — you keep reaching for ${overused.join(', ')}. Drop those words and find fresh ones.`)
+            }
+        }
+
         return warnings.length > 0 ? warnings : null
     }
 

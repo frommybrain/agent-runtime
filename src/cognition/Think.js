@@ -155,19 +155,32 @@ export class Think {
         const section = memory.slice(afterMarker, sectionEnd)
         const after = memory.slice(sectionEnd)
 
-        // remove entries from the START of Learned Facts (oldest first)
+        // Drop oldest NON-salient facts first; only sacrifice [salient] ones
+        // if the budget still isn't met. Salient entries are the moments the
+        // bird marked as hitting hardest — exactly the deep learning that a
+        // blind "oldest-first" cut used to throw away while keeping recent
+        // routine. Within each tier we still remove oldest-first.
         const lines = section.split('\n')
+        const isFact = (l) => l.startsWith('- ')
+        const isSalient = (l) => /\[salient\]\s*$/.test(l)
+        const removeSet = new Set()
         let removed = 0
-        const kept = []
-        for (const line of lines) {
-            if (removed < overBy && line.startsWith('- ')) {
+        for (const salientPass of [false, true]) {
+            if (removed >= overBy) break
+            for (let i = 0; i < lines.length; i++) {
+                if (removed >= overBy) break
+                const line = lines[i]
+                if (!isFact(line) || removeSet.has(i)) continue
+                if (isSalient(line) !== salientPass) continue
+                removeSet.add(i)
                 removed += line.length + 1
-            } else {
-                kept.push(line)
             }
         }
 
-        const truncNote = removed > 0 ? `\n(${lines.filter(l => l.startsWith('- ')).length - kept.filter(l => l.startsWith('- ')).length} older facts omitted for context budget)\n` : ''
+        const totalFacts = lines.filter(isFact).length
+        const kept = lines.filter((line, i) => !removeSet.has(i))
+        const omitted = totalFacts - kept.filter(isFact).length
+        const truncNote = omitted > 0 ? `\n(${omitted} older facts omitted for context budget)\n` : ''
         return before + truncNote + kept.join('\n') + after
     }
 

@@ -101,9 +101,7 @@ export class MemoryFiles {
             const existingLines = current.split('\n').filter(l => l.startsWith('- '))
             for (const line of existingLines) {
                 const lineKeywords = this._extractKeywords(line.slice(2).toLowerCase())
-                const overlap = keywords.filter(k => lineKeywords.includes(k)).length
-                const similarity = overlap / Math.max(keywords.length, lineKeywords.length)
-                if (similarity >= 0.7) {
+                if (this._keywordsSimilar(keywords, lineKeywords)) {
                     this.logger.debug(`Memory dedup — skipping "${content}" (similar to "${line.slice(2).trim()}")`)
                     return
                 }
@@ -133,6 +131,27 @@ export class MemoryFiles {
             .filter(w => w.length > 2 && !STOP_WORDS.has(w))
     }
 
+    // Is entry `a` redundant against entry `b` (the one we'd keep)? True when
+    // they overlap heavily (near-identical) OR when `a` is the shorter entry
+    // almost entirely CONTAINED in `b` — a length-mismatched paraphrase like
+    // "the cold shrine" sitting inside "the cold shrine pulses at dusk and I
+    // wait". The containment arm is DIRECTIONAL on purpose: it only ever
+    // discards the shorter/vaguer entry, never the more detailed one. Both
+    // paths require ≥2 shared content words so tiny entries can't match
+    // spuriously. Deliberately general — NO project-specific topic lists,
+    // since this pipeline is shared across agents — and additive: it never
+    // loosens the original 0.7 bar.
+    _keywordsSimilar(a, b) {
+        if (a.length < 2 || b.length < 2) return false
+        const overlap = a.filter(k => b.includes(k)).length
+        if (overlap < 2) return false
+        const simMax = overlap / Math.max(a.length, b.length)
+        if (simMax >= 0.7) return true
+        // containment: drop `a` only when it is the shorter/equal entry
+        const simMin = overlap / Math.min(a.length, b.length)
+        return simMin >= 0.8 && a.length <= b.length
+    }
+
     // pre-consolidation dedup
     // strips near-duplicate entries from memory.md before the LLM sees it.
     // the LLM cant be trusted to merge duplicates, it keeps everything.
@@ -157,9 +176,7 @@ export class MemoryFiles {
             let isDuplicate = false
             if (keywords.length >= 2) {
                 for (const existing of seen) {
-                    const overlap = keywords.filter(k => existing.keywords.includes(k)).length
-                    const similarity = overlap / Math.max(keywords.length, existing.keywords.length)
-                    if (similarity >= 0.7) {
+                    if (this._keywordsSimilar(keywords, existing.keywords)) {
                         isDuplicate = true
                         removed++
                         break
