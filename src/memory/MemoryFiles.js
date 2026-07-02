@@ -335,6 +335,30 @@ export class MemoryFiles {
         return false
     }
 
+    // ── current thread (the desire layer) ────────────────────────────
+    // ONE thing the agent is chasing across days — formed/updated during
+    // sleep, injected into every decision prompt. Stored as small JSON:
+    // { text, formedAt, updatedAt } or null when nothing pulls.
+
+    async readCurrentThread() {
+        const raw = await this._read('current-thread.json')
+        if (!raw) return null
+        try {
+            const t = JSON.parse(raw)
+            return t && typeof t.text === 'string' && t.text.trim() ? t : null
+        } catch {
+            return null
+        }
+    }
+
+    async writeCurrentThread(thread) {
+        if (!thread || !thread.text) {
+            await this._write('current-thread.json', 'null')
+            return
+        }
+        await this._write('current-thread.json', JSON.stringify(thread, null, 2))
+    }
+
     // helpers
 
     async _read(filename) {

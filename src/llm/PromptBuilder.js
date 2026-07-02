@@ -21,6 +21,20 @@ export class PromptBuilder {
         const voice = p.voice?.style || 'natural'
         const vocab = p.voice?.vocabulary?.join(', ') || ''
 
+        // LIVE persona rendering: each day, 2 traits are "loud" — a
+        // deterministic day-seeded rotation through the full cast, so
+        // different days FEEL different without the character drifting.
+        // (Static sheets read as a form; a self has weather.)
+        let loudLine = ''
+        const traitList = p.traits || []
+        if (traitList.length >= 2) {
+            const dayIndex = Math.floor(Date.now() / 86_400_000)
+            const first = dayIndex % traitList.length
+            const second = (first + 1 + (dayIndex % Math.max(1, traitList.length - 1))) % traitList.length
+            const loud = [traitList[first], traitList[second === first ? (second + 1) % traitList.length : second]]
+            loudLine = `\nTODAY, LOUDEST IN YOU: ${loud.join(' + ')} — let these two colour today more than the rest.`
+        }
+
         // extract action names for conditional rules
         const actionNames = new Set(
             (availableActions || []).map(a => typeof a === 'string' ? a : a.name)
@@ -53,7 +67,7 @@ export class PromptBuilder {
             interactionRules.push('- When you hold, name what HASN\'T changed — don\'t repeat the same hold reason')
         }
 
-        return `You are ${p.name}.
+        return `You are ${p.name}.${loudLine}
 PERSONALITY: ${traits}
 VALUES: ${values}
 FEARS: ${fears}
@@ -117,6 +131,12 @@ ${toolsContent || '(none yet)'}`
         if (extras.internalState) {
             const s = extras.internalState
             parts.push(`HOW YOU FEEL:\n${s.description}`)
+        }
+
+        // the desire layer: the ONE thing currently pulling at you across
+        // days. Not an order — a throughline. Formed/retired during sleep.
+        if (extras.currentThread) {
+            parts.push(`WHAT'S BEEN PULLING AT YOU LATELY:\n"${extras.currentThread}"\n— let it colour some of your choices. You don't have to serve it every moment, but a life has a throughline; drift toward it when nothing urgent calls.`)
         }
 
         // what changed since last tick
