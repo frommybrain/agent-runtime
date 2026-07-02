@@ -168,13 +168,48 @@ export class InternalState {
         else if (v <= -0.2 && a > -0.2) description = 'A growing frustration — things are not going well'
         else description = 'Feeling drained and discouraged — nothing is working'
 
+        // Named mood REGIMES — only at the edges of the state space, so
+        // they're events a watcher can recognise ("he's sulking today"),
+        // not a constant costume. Each carries a voice/behaviour directive
+        // the prompt surfaces verbatim.
+        const regime = this._regime(v, a)
+        if (regime) {
+            description += ` You're in a ${regime.name}: ${regime.directive}`
+        }
+
         return {
             mood: this.mood,
             energy: this.energy,
             moodLabel: vLabel,
             energyLabel: aLabel,
+            regime,
             description,
         }
+    }
+
+    // Map (mood, energy) to a named regime, or null in the broad middle.
+    _regime(v, a) {
+        if (v > 0.3 && a > 0.45) return {
+            name: 'MANIC BRIGHT',
+            directive: 'everything glitters — say yes to the wilder option, talk quicker, chase the thing. You\'ll regret nothing until later.',
+        }
+        if (v > 0.25 && a < -0.2) return {
+            name: 'TENDER LULL',
+            directive: 'small things hit hard today. Linger on them. Speak softer, notice textures, let one detail matter more than it should.',
+        }
+        if (v < -0.25 && a < -0.1) return {
+            name: 'SULK',
+            directive: 'unimpressed by default. Short answers. Things have to EARN your attention today — and mostly they won\'t.',
+        }
+        if (v < -0.2 && a > 0.35) return {
+            name: 'RATTLED HOUR',
+            directive: 'jumpy, on edge. Keep near safe ground, snap at small provocations, double-check things that were fine yesterday.',
+        }
+        if (a < -0.5) return {
+            name: 'FOG',
+            directive: 'thoughts arrive slow and half-finished. Drift. It\'s allowed.',
+        }
+        return null
     }
 
     // track entity stability. how many consecutive ticks the same entities are present.

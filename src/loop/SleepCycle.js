@@ -154,6 +154,11 @@ export class SleepCycle {
             // Pass 3: self-reflection — review behaviour and optionally evolve persona
             stats.selfReflected = await this._selfReflect()
 
+            // Pass 4: the desire layer — form, keep, or retire the ONE
+            // thread that pulls at the agent across days. Needs but no
+            // desires reads as a Tamagotchi; this is where wanting lives.
+            stats.desireFormed = await this._formDesire()
+
             // Pass 4: garbage collect old daily logs
             stats.logsDeleted = await this.dailyLog.garbageCollect()
 
@@ -454,6 +459,81 @@ Should ${persona.name} evolve? Respond with JSON.`
         }
 
         return false
+    }
+
+    // the desire layer: distill ONE current thread — a want with direction,
+    // grounded in the day — that persists across days in the decision
+    // prompt. Kept small on purpose: one thread, plain sentence, first
+    // person. The LLM may keep, replace, or retire it each sleep.
+    async _formDesire() {
+        const todayLog = await this.dailyLog.readForConsolidation(80)
+        if (!todayLog.trim()) return false
+
+        const existing = await this.memoryFiles.readCurrentThread()
+        const memory = await this.memoryFiles.readMemory()
+        const memTail = memory.split('\n').filter(l => l.startsWith('- ')).slice(-8).join('\n')
+
+        let pName = 'the agent'
+        try {
+            const persona = JSON.parse(await readFile(this.personaPath, 'utf-8'))
+            pName = persona.name || pName
+        } catch { /* generic */ }
+
+        const prompt = `You are ${pName}, drifting at the edge of sleep, feeling for what's pulling at you.
+
+A "thread" is the ONE thing currently tugging you across days — a want with direction, not a task. Good threads come from real experience: something you keep circling, a question that won't settle, a place or thing you want more of. ("I want to find where the music actually comes from." / "The garden — I want to see it bloom once, properly.")
+
+Rules:
+- ONE thread only, first person, one plain sentence, max 20 words.
+- It must be GROUNDED in the day's log or your memories — never invented from nothing.
+- If the current thread still pulls, KEEP it (don't churn).
+- If today resolved it or it's gone quiet, RETIRE it (thread: null) or REPLACE it.
+- Respond with JSON only: {"action": "keep" | "replace" | "retire", "thread": "<sentence or null>", "reason": "<short why>"}`
+
+        const userPrompt = `CURRENT THREAD: ${existing?.text ? `"${existing.text}" (since ${existing.formedAt || 'recently'})` : '(none — nothing has been pulling at you)'}
+
+TODAY:
+${todayLog}
+
+RECENT MEMORY:
+${memTail || '(little so far)'}
+
+What pulls at ${pName} now? JSON only.`
+
+        const result = await this.think.consolidate(prompt, userPrompt, 45000)
+        if (!result) return false
+
+        try {
+            let jsonStr = result.trim()
+            const fence = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/)
+            if (fence) jsonStr = fence[1].trim()
+            const s = jsonStr.indexOf('{'); const e = jsonStr.lastIndexOf('}')
+            if (s !== -1 && e > s) jsonStr = jsonStr.slice(s, e + 1)
+            const parsed = JSON.parse(sanitizeJson(jsonStr))
+
+            const now = new Date().toISOString()
+            if (parsed.action === 'retire' || !parsed.thread) {
+                if (existing) {
+                    await this.memoryFiles.writeCurrentThread(null)
+                    await this.dailyLog.append(`Thread retired: ${parsed.reason || 'it let go'}`)
+                    this.logger.info(`Desire retired: ${parsed.reason || ''}`)
+                }
+                return true
+            }
+            const text = String(parsed.thread).trim().slice(0, 160)
+            if (parsed.action === 'keep' && existing?.text) {
+                // keep as-is; refresh updatedAt so we can see it's alive
+                await this.memoryFiles.writeCurrentThread({ ...existing, updatedAt: now })
+                return true
+            }
+            await this.memoryFiles.writeCurrentThread({ text, formedAt: existing?.text === text ? existing.formedAt : now, updatedAt: now })
+            await this.dailyLog.append(`A thread pulls: "${text}" — ${parsed.reason || ''}`)
+            this.logger.info(`Desire formed: "${text}"`)
+            return true
+        } catch (err) {
+            this.logger.warn(`Desire parse error: ${err.message}`)
+            return false
+        }
     }
 
     // persona drift guard

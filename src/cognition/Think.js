@@ -44,6 +44,13 @@ export class Think {
         const recentLog = await this.dailyLog.readRecentLines(5)
         const recentMemory = this.workingMemory.recent(5)
 
+        // The desire layer: surface the current thread (formed during
+        // sleep) so every decision feels the pull of a throughline.
+        try {
+            const thread = await this.memoryFiles.readCurrentThread()
+            if (thread?.text) extras.currentThread = thread.text
+        } catch { /* threadless is fine */ }
+
         const systemPrompt = this.promptBuilder.buildSystemPrompt(memory, skills, tools, observation.available_actions)
         const userPrompt = this.promptBuilder.buildUserPrompt(situation, recentLog, recentMemory, extras)
 
