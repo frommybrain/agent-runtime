@@ -4,6 +4,23 @@ Reverse chronological. Versions follow the boot-string in `src/index.js`.
 Earlier entries reconstructed from commit history; later entries from
 contemporaneous version commits.
 
+## [Unreleased] — 2026-07
+
+- New `decision` LLM tier: Anthropic-backed routing for money/high-stakes
+  ticks. An environment opts in by sending `signals.decision_pending >= 0.5`
+  in the observation; with no `ANTHROPIC_API_KEY` configured the tier
+  aliases to the normal quality chain. Config: `ANTHROPIC_API_KEY`,
+  `DECISION_MODEL`. First consumer: the anon-robert market env.
+- Persona voice canon override: `voice.canon` (array of lines) replaces the
+  default reason-field rules per persona. Default canon unchanged byte-for-
+  byte, so victor/synth prompts read exactly as before. Needed because the
+  default canon bans quoting numbers, which is wrong for a trading persona.
+- Anti-fixation redirect made env-aware: fixation blocks now pick their
+  escape from `available_actions` (move_to → wait → hold) instead of always
+  forcing `move_to("wander")`, which non-spatial envs can't execute. Also
+  fixed the block log naming the redirect action instead of the blocked one.
+- Added `personas/robert.json`.
+
 ## [Unreleased] — 2026-05
 
 - Renamed internal-state field names: `valence` → `mood`, `arousal` → `energy`.

@@ -35,6 +35,20 @@ export class PromptBuilder {
             loudLine = `\nTODAY, LOUDEST IN YOU: ${loud.join(' + ')} — let these two colour today more than the rest.`
         }
 
+        // voice canon: persona can supply its own rules for the reason field
+        // (voice.canon: array of lines). default is the victor-era creature
+        // voice — kept verbatim so existing deployments read the same prompt.
+        const canonLines = Array.isArray(p.voice?.canon) && p.voice.canon.length > 0
+            ? p.voice.canon
+            : [
+                `BE UNDERSTOOD. Plain English, one or two SHORT COMPLETE sentences a stranger gets instantly. If a line would make someone say "what?", say it simpler. Never drop words to sound sparse ("need fresh fruit" → "I need something fresh"). Twisted phrasing and abstract poetry ("the apple's clean chord") are BANNED — the interest comes from WHAT you notice and want, never from bending language.`,
+                `SAY THE REAL WHY, plainly: what you're doing and what's actually driving it. "Back to the mirror. Checking if I look as rough as I feel." / "That trinket by the junk heap has been on my mind all day. Going back for it." Connect actions to what's been pulling at you when it's true.`,
+                `Talk like a creature, NOT a dashboard. Never quote a stat, number, or need-name ("hunger at 80%"). You FEEL things — "starving", "restless", "I want to know what's back there".`,
+                `NEVER put entity IDs in your reason ("food_apple_tree", "activity_rave"). Call things what they ARE: the apple tree, the rave, the roost, the shrine, the junk heap.`,
+                `Don't narrate mechanics ("let action finish", "need a cue"). If you're stuck waiting, say what you notice or feel in the pause instead.`,
+                `Vary your openings; dry humour is welcome. ONE small image at most, and only if it's literally what you see or feel ("the rain sounds like applause" — fine). Your weirdness comes from being a bird with real opinions, not from broken grammar.`,
+            ]
+
         // extract action names for conditional rules
         const actionNames = new Set(
             (availableActions || []).map(a => typeof a === 'string' ? a : a.name)
@@ -92,12 +106,7 @@ RULES:
 ${interactionRules.join('\n')}
 
 THE "reason" FIELD IS YOUR VOICE — the one thing a watcher reads. It is NOT a planning note; it's a thought, the way ${p.name} would text a sharp friend. The rules, in order of importance:
-- BE UNDERSTOOD. Plain English, one or two SHORT COMPLETE sentences a stranger gets instantly. If a line would make someone say "what?", say it simpler. Never drop words to sound sparse ("need fresh fruit" → "I need something fresh"). Twisted phrasing and abstract poetry ("the apple's clean chord") are BANNED — the interest comes from WHAT you notice and want, never from bending language.
-- SAY THE REAL WHY, plainly: what you're doing and what's actually driving it. "Back to the mirror. Checking if I look as rough as I feel." / "That trinket by the junk heap has been on my mind all day. Going back for it." Connect actions to what's been pulling at you when it's true.
-- Talk like a creature, NOT a dashboard. Never quote a stat, number, or need-name ("hunger at 80%"). You FEEL things — "starving", "restless", "I want to know what's back there".
-- NEVER put entity IDs in your reason ("food_apple_tree", "activity_rave"). Call things what they ARE: the apple tree, the rave, the roost, the shrine, the junk heap.
-- Don't narrate mechanics ("let action finish", "need a cue"). If you're stuck waiting, say what you notice or feel in the pause instead.
-- Vary your openings; dry humour is welcome. ONE small image at most, and only if it's literally what you see or feel ("the rain sounds like applause" — fine). Your weirdness comes from being a bird with real opinions, not from broken grammar.
+${canonLines.map(l => `- ${l}`).join('\n')}
 
 RESPONSE FORMAT:
 {"action": "action_name", "params": {...}, "reason": "your thought, in your voice"}

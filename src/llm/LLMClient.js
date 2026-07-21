@@ -24,6 +24,10 @@ export class LLMClient {
         this.cloudApiUrl = config.cloudApiUrl
         this.cloudModel = config.cloudModel              // 70B quality
         this.cloudModelFast = config.cloudModelFast      // 8B fast
+
+        // decision tier (optional). anthropic, for money/high-stakes ticks.
+        this.anthropicApiKey = config.anthropicApiKey || null
+        this.decisionModel = config.decisionModel
         // reasoning_effort for gpt-oss reasoning models. 'low' caps the
         // internal chain-of-thought so it cannot consume the whole
         // max_tokens budget before emitting the JSON action (the
@@ -54,7 +58,7 @@ export class LLMClient {
         this._cloudSoftCooldownMs = 8000
 
         // observability counters
-        this.tierCounts = { skip: 0, fast: 0, quality: 0 }
+        this.tierCounts = { skip: 0, fast: 0, quality: 0, decision: 0 }
         // rolling outcome window for a live LLM-success / fallback-rate metric
         // (the single number that tells you the brain is alive). Each entry is
         // true (an LLM produced text) or false (fell through to null/heuristic).
@@ -98,11 +102,11 @@ export class LLMClient {
     }
 
     // generate a response with tier-aware routing.
-    // tier: 'quality' (default) | 'fast'
-    // returns: { text: string, source: 'cloud'|'cloud-fast'|'ollama'|null }
-    // tier: 'quality' (default) | 'fast'. jsonMode (default true) controls
-    // whether response_format:json_object is sent — markdown-output prompts
-    // (sleep consolidation) MUST pass false or Groq 400s the request.
+    // tier: 'quality' (default) | 'fast' | 'decision'
+    // returns: { text: string, source: 'decision'|'cloud'|'cloud-fast'|'ollama'|null }
+    // jsonMode (default true) controls whether response_format:json_object
+    // is sent — markdown-output prompts (sleep consolidation) MUST pass
+    // false or Groq 400s the request.
     async generate(systemPrompt, userPrompt, timeoutMs = 30000, tier = 'quality', jsonMode = true) {
         // periodically re-check Ollama if it was unavailable
         if (!this.ollamaAvailable && Date.now() - this._lastOllamaCheck > this._ollamaRecheckMs) {
@@ -114,10 +118,66 @@ export class LLMClient {
 
         const result = tier === 'fast'
             ? await this._generateFast(systemPrompt, userPrompt, timeoutMs, jsonMode)
-            : await this._generateQuality(systemPrompt, userPrompt, timeoutMs, jsonMode)
+            : tier === 'decision'
+                ? await this._generateDecision(systemPrompt, userPrompt, timeoutMs, jsonMode)
+                : await this._generateQuality(systemPrompt, userPrompt, timeoutMs, jsonMode)
 
         this._recordOutcome(!!result.text)
         return result
+    }
+
+    // decision tier: anthropic first, then the whole quality chain. an env
+    // asks for this on ticks where being wrong costs money; if no anthropic
+    // key is configured the tier is just a quality alias.
+    async _generateDecision(systemPrompt, userPrompt, timeoutMs, jsonMode) {
+        if (this.anthropicApiKey) {
+            try {
+                const result = await this._anthropicGenerate(systemPrompt, userPrompt, timeoutMs)
+                return { text: result, source: 'decision' }
+            } catch (err) {
+                this.logger.warn(`Anthropic decision failed: ${err.message} — demoting to quality chain`)
+            }
+        }
+        return this._generateQuality(systemPrompt, userPrompt, timeoutMs, jsonMode)
+    }
+
+    async _anthropicGenerate(systemPrompt, userPrompt, timeoutMs) {
+        const controller = new AbortController()
+        const timeout = setTimeout(() => controller.abort(), timeoutMs)
+
+        // no response_format equivalent here — Think's parser already
+        // handles fences/preamble, and the system prompt demands raw JSON.
+        try {
+            const response = await fetch('https://api.anthropic.com/v1/messages', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': this.anthropicApiKey,
+                    'anthropic-version': '2023-06-01',
+                },
+                body: JSON.stringify({
+                    model: this.decisionModel,
+                    max_tokens: this.maxTokens,
+                    temperature: this.temperature,
+                    system: systemPrompt,
+                    messages: [
+                        { role: 'user', content: userPrompt },
+                    ],
+                }),
+                signal: controller.signal,
+            })
+
+            if (!response.ok) {
+                let body = ''
+                try { body = await response.text() } catch { /* ignore */ }
+                throw new Error(`Anthropic API ${response.status}: ${response.statusText}${body ? ` — ${body.slice(0, 300)}` : ''}`)
+            }
+
+            const data = await response.json()
+            return data.content?.[0]?.text || ''
+        } finally {
+            clearTimeout(timeout)
+        }
     }
 
     // fast tier: 20B cloud first (fast + cheap), Ollama fallback.

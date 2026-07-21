@@ -148,7 +148,7 @@ export class Heartbeat {
                 lastActionResult: this._lastActionResult,
                 recentlyDisappeared: this._recentlyDisappeared,
                 repetitionWarnings,
-            })
+            }, observation)
 
             // 3c. EXPLORATION CONTEXT
             const explorationHint = this.repetitionGuard.explorationContext(nearbyIds)
@@ -190,15 +190,19 @@ export class Heartbeat {
 
             // 4b2. ANTI-FIXATION BLOCK
             // env-agnostic: if the same action+target dominates the recent
-            // window (40%+), force a wander to break the loop.
+            // window (40%+), force a redirect to break the loop.
             // works for anything: inspect(shiny_01), set_step(step_5), etc.
             const fixationTarget = decision.params?.target || decision.params?.entityId
             if (fixationTarget && this.repetitionGuard.isFixated(decision.action, fixationTarget)) {
                 const count = this.repetitionGuard.comboCount(decision.action, fixationTarget)
-                this.logger.warn(`Hard block: ${decision.action}("${fixationTarget}") fixated (${count}x) — forcing wander`)
-                decision.action = 'move_to'
-                decision.params = { target: 'wander', reason: `(blocked: ${decision.action} ${fixationTarget} fixated after ${count}x)` }
-                decision.reason = `(blocked: fixation on ${fixationTarget})`
+                const blocked = decision.action
+                const redirect = this._fixationRedirect(observation)
+                if (redirect) {
+                    this.logger.warn(`Hard block: ${blocked}("${fixationTarget}") fixated (${count}x) — forcing ${redirect.action}`)
+                    decision.action = redirect.action
+                    decision.params = { ...redirect.params, reason: `(blocked: ${blocked} ${fixationTarget} fixated after ${count}x)` }
+                    decision.reason = `(blocked: fixation on ${fixationTarget})`
+                }
             }
             // 4b3. TARGET-ONLY ANTI-FIXATION BLOCK
             // The combo block above misses fixation that's spread across
@@ -208,10 +212,13 @@ export class Heartbeat {
             // including fallback decisions, so it survives the heuristic path.
             else if (fixationTarget && this.repetitionGuard.isTargetFixated(fixationTarget)) {
                 const count = this.repetitionGuard.targetCount(fixationTarget)
-                this.logger.warn(`Hard block: target "${fixationTarget}" fixated (${count}x across actions) — forcing redirect`)
-                decision.action = 'move_to'
-                decision.params = { target: 'wander', reason: `(blocked: target ${fixationTarget} fixated ${count}x across actions)` }
-                decision.reason = `(blocked: target fixation on ${fixationTarget})`
+                const redirect = this._fixationRedirect(observation)
+                if (redirect) {
+                    this.logger.warn(`Hard block: target "${fixationTarget}" fixated (${count}x across actions) — forcing ${redirect.action}`)
+                    decision.action = redirect.action
+                    decision.params = { ...redirect.params, reason: `(blocked: target ${fixationTarget} fixated ${count}x across actions)` }
+                    decision.reason = `(blocked: target fixation on ${fixationTarget})`
+                }
             }
 
             // 4c. VALIDATE SPEECH PARAMS
@@ -336,6 +343,20 @@ export class Heartbeat {
         }
     }
 
+    // where to send a fixated agent. spatial envs get the classic wander;
+    // non-spatial envs (markets, synth) redirect to wait/hold instead of
+    // being handed a move_to they can't execute. null = no safe redirect,
+    // let the original decision through rather than invent an action.
+    _fixationRedirect(observation) {
+        const names = new Set(
+            (observation.available_actions || []).map(a => typeof a === 'string' ? a : a.name)
+        )
+        if (names.size === 0 || names.has('move_to')) return { action: 'move_to', params: { target: 'wander' } }
+        if (names.has('wait')) return { action: 'wait', params: {} }
+        if (names.has('hold')) return { action: 'hold', params: {} }
+        return null
+    }
+
     // adapt heartbeat interval based on energy and activity.
     // high energy → faster ticks (engaged, responsive).
     // low energy → slower ticks (resting).
@@ -350,10 +371,16 @@ export class Heartbeat {
     }
 
     // classify tick complexity → route to the right model tier.
+    // 'decision' = anthropic (env-flagged money moments)
     // 'quality' = 70B cloud (expensive, high stakes)
     // 'fast'    = Ollama/8B cloud (routine)
     // 'skip'    = FallbackBrain (nothing happening, no LLM)
-    _classifyTick(deltas, worldEvents, context) {
+    _classifyTick(deltas, worldEvents, context, observation) {
+        // decision tier: the env is flagging a moment where being wrong
+        // costs money (trade dossier awaiting a verdict, etc). LLMClient
+        // aliases this to quality when no anthropic key is configured.
+        if ((observation?.signals?.decision_pending || 0) >= 0.5) return 'decision'
+
         // quality tier: genuinely high-stakes ticks that need the big model.
         // Kept DELIBERATELY narrow — the quality (120B) path is the slowest
         // and most failure-prone, so over-routing to it (a) maximises

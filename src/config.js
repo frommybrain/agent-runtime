@@ -34,6 +34,12 @@ export function loadConfig() {
         //             llama produces under sustained use
         cloudModel: process.env.CLOUD_MODEL || 'openai/gpt-oss-120b',
         cloudModelFast: process.env.CLOUD_MODEL_FAST || 'openai/gpt-oss-20b',
+        // decision tier (optional). anthropic for high-stakes ticks — an env
+        // opts in by sending signals.decision_pending >= 0.5 (eg a trade
+        // dossier waiting on a verdict). no key set = tier quietly routes to
+        // the normal quality chain, so victor/synth deployments are untouched.
+        anthropicApiKey: process.env.ANTHROPIC_API_KEY || null,
+        decisionModel: process.env.DECISION_MODEL || 'claude-sonnet-5',
         // reasoning_effort for gpt-oss models. 'low' keeps per-tick action
         // decisions fast + cheap and stops unbounded reasoning from
         // starving the JSON output (the 400 json_validate_failed cause).
