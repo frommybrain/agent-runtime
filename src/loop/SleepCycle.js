@@ -48,6 +48,131 @@ export function enforceRichnessFloor(persona, originalPersona, logger = null) {
     return persona
 }
 
+// --- evolution sanitizer helpers ---------------------------------------
+
+const MOTIF_STOPWORDS = new Set([
+    'the', 'and', 'but', 'for', 'not', 'was', 'are', 'with', 'that', 'this',
+    'his', 'him', 'her', 'its', 'own', 'has', 'have', 'had', 'can', 'may',
+    'when', 'than', 'then', 'them', 'they', 'from', 'into', 'over', 'out',
+    'about', 'after', 'before', 'while', 'more', 'most', 'some', 'only',
+    'often', 'sometimes', 'occasionally', 'small', 'things', 'himself',
+])
+
+function motifTokens(s) {
+    const seen = new Set()
+    for (const raw of String(s).toLowerCase().split(/[^a-z']+/)) {
+        const w = raw.replace(/^'+|'+$/g, '')
+        if (w.length >= 3 && !MOTIF_STOPWORDS.has(w)) seen.add(w)
+    }
+    return seen
+}
+
+function tokenJaccard(a, b) {
+    if (a.size === 0 || b.size === 0) return 0
+    let inter = 0
+    for (const t of a) if (b.has(t)) inter++
+    return inter / (a.size + b.size - inter)
+}
+
+// log-observation dressed as personality: "recognizes that X", "notes Y".
+// anything OPENING with an epistemic verb is a diary line, not a
+// disposition — real traits read "steps back when...", "quietly proud of..."
+const OBSERVATION_RE = /^(recognizes|notes|realizes|understands|learns|acknowledges|accepts|observes|notices)\b/i
+
+/**
+ * Scrub a self-reflection's proposed array fields before they merge.
+ * enforceRichnessFloor stops the persona hollowing OUT; this stops it
+ * silting UP. Victor's hum spiral arrived as 46 separate "recognizes that
+ * X eases the hum" entries — each an observation dressed as a trait, each
+ * individually passing the drift check (drift measures loss of baseline,
+ * so pure additions never trip it), until the character sheet WAS the
+ * motif. Rules, per array field (traits/values/fears/quirks):
+ *   1. baseline entries are canon — never dropped
+ *   2. drop observation-shaped entries (see OBSERVATION_RE) and anything
+ *      over 90 chars: traits are dispositions, short by nature
+ *   3. drop exact and near duplicates (token jaccard >= 0.6 within field)
+ *   4. motif ceiling: one content word may appear in at most 3 entries
+ *      across the whole sheet; later entries carrying it drop
+ *   5. hard cap per field: baseline size + 5 (8 if no baseline), keeping
+ *      the head — existing entries lead the list in a honest reflection
+ * Pure + exported so it can be unit-tested in isolation.
+ *
+ * @param {object} changes          - reflection.changes (mutated in place)
+ * @param {object} persona          - current persona (for unchanged fields)
+ * @param {object} originalPersona  - immutable baseline (comparable fields)
+ * @param {object} [logger]         - optional logger with .info()
+ * @returns {number} how many entries were dropped
+ */
+export function sanitizeEvolvedArrays(changes, persona, originalPersona, logger = null) {
+    if (!changes || typeof changes !== 'object') return 0
+    const fields = ['traits', 'values', 'fears', 'quirks']
+    const wordCounts = new Map()  // content word -> entries kept containing it
+    let dropped = 0
+
+    const drop = (field, entry, why) => {
+        dropped++
+        logger?.info?.(`Evolution sanitizer: dropped ${field} entry (${why}): "${String(entry).slice(0, 80)}"`)
+    }
+
+    for (const field of fields) {
+        const isProposed = Array.isArray(changes[field])
+        // unchanged fields still walk through so their words seed the motif
+        // counts, but nothing is judged or written back for them
+        const proposed = isProposed
+            ? changes[field]
+            : Array.isArray(persona?.[field]) ? persona[field] : []
+        const baseline = new Set(
+            (originalPersona?.[field] || []).map((s) => String(s).trim().toLowerCase())
+        )
+        const cap = baseline.size > 0 ? baseline.size + 5 : 8
+
+        const kept = []
+        const keptTokens = []
+        const seenExact = new Set()
+
+        for (const rawEntry of proposed) {
+            if (typeof rawEntry !== 'string' || !rawEntry.trim()) { if (isProposed) dropped++; continue }
+            const entry = rawEntry.trim()
+            const lower = entry.toLowerCase()
+            const isCanon = baseline.has(lower) || !isProposed
+
+            if (seenExact.has(lower)) { if (isProposed) drop(field, entry, 'duplicate'); continue }
+
+            if (!isCanon) {
+                if (OBSERVATION_RE.test(entry)) { drop(field, entry, 'observation-shaped'); continue }
+                if (entry.length > 90) { drop(field, entry, 'over 90 chars'); continue }
+            }
+
+            const tokens = motifTokens(entry)
+
+            if (!isCanon) {
+                let nearDup = false
+                for (const kt of keptTokens) {
+                    if (tokenJaccard(tokens, kt) >= 0.6) { nearDup = true; break }
+                }
+                if (nearDup) { drop(field, entry, 'near-duplicate'); continue }
+
+                let overMotif = null
+                for (const t of tokens) {
+                    if ((wordCounts.get(t) || 0) >= 3) { overMotif = t; break }
+                }
+                if (overMotif) { drop(field, entry, `motif ceiling "${overMotif}"`); continue }
+
+                if (kept.length >= cap) { drop(field, entry, `field cap ${cap}`); continue }
+            }
+
+            kept.push(entry)
+            keptTokens.push(tokens)
+            seenExact.add(lower)
+            for (const t of tokens) wordCounts.set(t, (wordCounts.get(t) || 0) + 1)
+        }
+
+        // only write back fields the reflection actually proposed
+        if (Array.isArray(changes[field])) changes[field] = kept
+    }
+    return dropped
+}
+
 export class SleepCycle {
     constructor(think, memoryFiles, dailyLog, workingMemory, internalState, repetitionGuard, speechLog, config, logger) {
         this.think = think
@@ -412,6 +537,14 @@ Should ${persona.name} evolve? Respond with JSON.`
                         this.logger.warn(`Persona evolution rejected: "voice" must be object`)
                         return false
                     }
+                }
+
+                // scrub silt before the merge: observation-shaped entries,
+                // dupes, motif pile-ups, over-cap growth. the richness floor
+                // below guards the opposite failure (hollowing out).
+                const scrubbed = sanitizeEvolvedArrays(reflection.changes, persona, this._originalPersona, this.logger)
+                if (scrubbed > 0) {
+                    await this.dailyLog.append(`Self-reflection: sanitizer dropped ${scrubbed} proposed entries (observations/dupes/motif ceiling/cap)`)
                 }
 
                 // backup persona before overwriting
