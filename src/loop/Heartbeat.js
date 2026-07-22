@@ -14,6 +14,8 @@
 // 7. record action for repetition detection
 // 8. adapt heartbeat interval
 
+import { sanitizeReason } from '../util/sanitizeReason.js'
+
 export class Heartbeat {
     constructor(socket, think, workingMemory, memoryFiles, dailyLog, sleepCycle, internalState, deltaDetector, repetitionGuard, speechLog, config, logger) {
         this.socket = socket
@@ -231,6 +233,15 @@ export class Heartbeat {
                     decision.reason = '(corrected: speak had no valid message)'
                 }
             }
+
+            // 4d. SCRUB THE REASON — last gate before it's logged + shipped to
+            // the env's journal. the prompt bans quoting stats/ids but the fast
+            // tier slips ("Hunger at 100%, need something fresh"); a number or a
+            // raw entity id must never reach the feed. leaves the meta
+            // (corrected:/blocked:) strings and clean lines untouched.
+            const need = decision.params?.target && /food|hunger/i.test(decision.params.target) ? 'hunger' : undefined
+            if (decision.reason) decision.reason = sanitizeReason(decision.reason, { need })
+            if (decision.params?.reason) decision.params.reason = sanitizeReason(decision.params.reason, { need })
 
             this.logger.info(`[tick ${this.tickCount}] ${decision.action} (${decision.source}/${tier}) — ${decision.reason} [v=${stateDesc.mood.toFixed(2)} a=${stateDesc.energy.toFixed(2)}]`)
 
