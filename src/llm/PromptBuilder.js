@@ -181,6 +181,13 @@ ${toolsContent || '(none yet)'}`
             parts.push('YOUR RECENT SPEECHES (do NOT repeat these — say something fresh each time):\n' + extras.recentSpeeches)
         }
 
+        // worn-out words: he's leaned on these across recent reasons. ban them
+        // this turn so a motif can't self-feed (no synonym-swapping the same
+        // image either — "scream" → "howl" is still the same crutch).
+        if (extras.wornWords?.length > 0) {
+            parts.push(`WORN-OUT WORDS: ${extras.wornWords.map(w => `"${w}"`).join(', ')}. You've leaned on these lately — do NOT use them this turn, and don't just swap in a synonym for the same image. Notice something else, or say the plain thing without them.`)
+        }
+
         if (workingMemoryLines?.length > 0) {
             parts.push('RECENT ACTIONS:\n' + workingMemoryLines.join('\n'))
         }
