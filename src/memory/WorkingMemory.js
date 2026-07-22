@@ -53,6 +53,19 @@ export class WorkingMemory {
         })
     }
 
+    // last n non-empty action reasons, oldest first. feeds the worn-words
+    // guard: what he's been saying to himself lately.
+    recentReasons(n = 10) {
+        const out = []
+        for (let i = this.events.length - 1; i >= 0 && out.length < n; i--) {
+            const e = this.events[i]
+            if (e.type === 'action' && e.reason && String(e.reason).trim()) {
+                out.push(String(e.reason))
+            }
+        }
+        return out.reverse()
+    }
+
     // get salient events (for sleep consolidation, prioritises important memories)
     salientEvents(threshold = 0.6) {
         return this.events.filter(e => (e.salience || 0.5) >= threshold)
