@@ -16,23 +16,40 @@ const STOPWORDS = new Set([
     'could', 'would', 'might', 'first', 'here', 'there', 'about',
 ])
 
+// light stem so a motif's inflections collapse to one key: scream/screaming/
+// screams -> "scream", hunger's/hunger -> "hunger", beat/beats -> "beat".
+// only strips when >=4 chars survive, so short words aren't mangled.
+function stem(w) {
+    let s = w.replace(/'s$/, '')
+    for (const suf of ['ings', 'ing', 'edly', 'ed', 'es', 's']) {
+        if (s.length - suf.length >= 4 && s.endsWith(suf)) return s.slice(0, -suf.length)
+    }
+    return s
+}
+
 export function wornWords(reasons, { minCount = 3, max = 6 } = {}) {
-    const counts = new Map()
+    // stem -> { count, forms: Map(surface -> n) }. we count by stem but report
+    // a real surface form (the shortest, usually the root) so the ban line
+    // reads "scream" not "scre".
+    const groups = new Map()
     for (const r of reasons || []) {
         if (!r) continue
-        const seen = new Set()
+        const seen = new Set()  // one vote per reason, per stem
         for (const raw of String(r).toLowerCase().split(/[^a-z']+/)) {
-            // strip wrapping quotes and the possessive 's so "hunger's" and
-            // "hunger" count as one word (else a motif splits under threshold)
             const w = raw.replace(/^'+|'+$/g, '').replace(/'s$/, '')
-            if (w.length < 3 || STOPWORDS.has(w) || seen.has(w)) continue
-            seen.add(w)
-            counts.set(w, (counts.get(w) || 0) + 1)
+            if (w.length < 3 || STOPWORDS.has(w)) continue
+            const key = stem(w)
+            if (seen.has(key)) continue
+            seen.add(key)
+            let g = groups.get(key)
+            if (!g) { g = { count: 0, forms: new Map() }; groups.set(key, g) }
+            g.count++
+            g.forms.set(w, (g.forms.get(w) || 0) + 1)
         }
     }
-    return [...counts.entries()]
-        .filter(([, n]) => n >= minCount)
-        .sort((a, b) => b[1] - a[1])
+    return [...groups.values()]
+        .filter((g) => g.count >= minCount)
+        .sort((a, b) => b.count - a.count)
         .slice(0, max)
-        .map(([w]) => w)
+        .map((g) => [...g.forms.keys()].sort((a, b) => a.length - b.length)[0])
 }
