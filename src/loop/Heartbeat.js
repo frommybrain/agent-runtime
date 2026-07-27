@@ -248,6 +248,17 @@ export class Heartbeat {
             if (decision.reason) decision.reason = sanitizeReason(decision.reason, { need })
             if (decision.params?.reason) decision.params.reason = sanitizeReason(decision.params.reason, { need })
 
+            // The env only ever receives `params` — act(action, params) — and
+            // 3eyes drops any decision with no reason from the journal. So a
+            // reason the model put at the TOP level (schema-correct, but a
+            // sibling of params) never reaches the diary and the bird reads as
+            // silent. Whether it lands top-level or nested is model-dependent,
+            // so mirror it down rather than trusting the shape.
+            if (decision.reason) {
+                decision.params = decision.params || {}
+                if (!decision.params.reason) decision.params.reason = decision.reason
+            }
+
             this.logger.info(`[tick ${this.tickCount}] ${decision.action} (${decision.source}/${tier}) — ${decision.reason} [v=${stateDesc.mood.toFixed(2)} a=${stateDesc.energy.toFixed(2)}]`)
 
             // 5. ACT
