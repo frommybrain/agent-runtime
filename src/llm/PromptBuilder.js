@@ -54,6 +54,16 @@ export class PromptBuilder {
             (availableActions || []).map(a => typeof a === 'string' ? a : a.name)
         )
 
+        // The catalogue lives here rather than in the per-tick situation.
+        // These descriptions carry real character ("You want one. You are
+        // not brave enough yet"), so they are worth keeping in full, but
+        // they never change, and repeating them inside the live percept made
+        // half of what he read each tick a menu he had already memorised.
+        const actionCatalogue = (availableActions || [])
+            .filter((a) => typeof a !== 'string' && a.description)
+            .map((a) => `- ${a.name}(${a.params || ''}): ${a.description}`)
+            .join('\n')
+
         // build interaction rules based on what actions exist
         const interactionRules = []
         if (actionNames.has('speak')) {
@@ -141,7 +151,10 @@ MY SKILLS:
 ${skillsContent || '(none yet)'}
 
 THINGS I CAN DO:
-${toolsContent || '(none yet)'}`
+${toolsContent || '(none yet)'}
+
+WHAT EACH ACTION IS:
+${actionCatalogue || '(nothing available)'}`
     }
 
     // extras: { internalState, deltaNarrative, lastActionResult, repetitionWarnings, tickCount, uptimeMinutes }
