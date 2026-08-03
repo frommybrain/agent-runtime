@@ -91,6 +91,32 @@ export class Heartbeat {
                 return
             }
 
+            // Don't think while you are walking somewhere.
+            //
+            // This is how sim-server's own brain has always behaved: in
+            // LLMBrain, if the bird is MOVE-ing toward a live goal it moves
+            // and RETURNS, before the think cooldown is even checked. No
+            // decision is requested, so none can contradict the last one.
+            //
+            // The Pi thought on a fixed heartbeat instead, about every 20
+            // seconds, and it moves at 1.5 u/s across a patch 290 units
+            // wide. So anywhere further than one decision cycle could not be
+            // reached: he would set off for the museum and pick somewhere
+            // else before arriving. Over 120 production entries he announced
+            // 6 trips to the museum, 3 to the cinema, 3 to the rave, and
+            // arrived at none of them. The only places he ever reached were
+            // the two closest to him.
+            //
+            // The environment tells us plainly: "move toward X for Y (~Nu
+            // away)" while a journey is live, versus "move (no destination
+            // tracked...)" when it wants a fresh decision. Walk, don't
+            // deliberate. It also saves an LLM call every tick of a journey.
+            const doing = String(observation.self?.action || '')
+            if (/^move toward /i.test(doing)) {
+                this.logger.debug(`[tick ${this.tickCount}] walking, not deciding: ${doing.slice(0, 60)}`)
+                return
+            }
+
             // drain buffered world events (speech, etc)
             const worldEvents = this.socket.drainWorldEvents()
 
