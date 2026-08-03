@@ -188,6 +188,10 @@ ${toolsContent || '(none yet)'}`
             parts.push(`WORN-OUT WORDS: ${extras.wornWords.map(w => `"${w}"`).join(', ')}. You've leaned on these lately — do NOT use them this turn, and don't just swap in a synonym for the same image. Notice something else, or say the plain thing without them.`)
         }
 
+        if (extras.wornOpeners?.length > 0) {
+            parts.push(`SAME OPENING: you have started several recent reasons with ${extras.wornOpeners.map(w => `"${w}"`).join(', ')}. Begin this one somewhere else entirely, and don't reach for a synonym of it either.`)
+        }
+
         if (workingMemoryLines?.length > 0) {
             parts.push('RECENT ACTIONS:\n' + workingMemoryLines.join('\n'))
         }

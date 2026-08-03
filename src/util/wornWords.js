@@ -77,3 +77,31 @@ export function wornWords(reasons, { minCount = 3, max = 6 } = {}) {
         .slice(0, max)
         .map((g) => [...g.forms.keys()].sort((a, b) => a.length - b.length)[0])
 }
+
+/**
+ * Words he keeps STARTING with.
+ *
+ * wornWords only sees content words, so it never noticed that six of eight
+ * consecutive reasons opened with "need": "need a quick bite...", "need
+ * something to quiet...", "need the pond's ripple...". The vocabulary was
+ * varied enough to pass while the sentences were all the same sentence. A
+ * reader clocks that shape long before they clock a repeated noun.
+ *
+ * @param {string[]} reasons
+ * @param {object} [opts]
+ * @param {number} [opts.minCount=3] how many repeats before it counts as a tic
+ * @returns {string[]} openers to avoid, commonest first
+ */
+export function wornOpeners(reasons, { minCount = 3 } = {}) {
+    const counts = new Map()
+    for (const r of reasons || []) {
+        if (!r) continue
+        const first = String(r).trim().toLowerCase().split(/[^a-z']+/).filter(Boolean)[0]
+        if (!first || first.length < 2) continue
+        counts.set(first, (counts.get(first) || 0) + 1)
+    }
+    return [...counts.entries()]
+        .filter(([, n]) => n >= minCount)
+        .sort((a, b) => b[1] - a[1])
+        .map(([w]) => w)
+}
