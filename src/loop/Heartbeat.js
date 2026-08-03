@@ -281,6 +281,33 @@ export class Heartbeat {
             // 5. ACT
             const result = await this.socket.act(decision.action, decision.params)
 
+            // Send what he chose to REMEMBER to the world too.
+            //
+            // remember arrives as a field on the decision, not as an action,
+            // so it never went through act() and never left the Pi. Think.js
+            // wrote it to memory.md here on the box and that was the end of
+            // it: the environment kept its own separate memory, the diary
+            // never showed a Learned Fact or an Important Memory, and the
+            // whole "watch him remember things" side of the project was
+            // invisible in production while working fine locally, where the
+            // sim's own brain uses the remember TOOL.
+            //
+            // The environment has accepted a remember action all along. It
+            // stores nothing on the npc's action state, so a second act() in
+            // the same tick is safe and does not disturb what he is doing.
+            if (decision.remember?.content) {
+                try {
+                    await this.socket.act('remember', {
+                        category: decision.remember.section || 'Learned Facts',
+                        memory: String(decision.remember.content).slice(0, 200),
+                    })
+                } catch (err) {
+                    // his own copy is already written; the world missing one
+                    // is not worth failing a tick over
+                    this.logger.warn(`Could not send memory to the world: ${err.message}`)
+                }
+            }
+
             // store action result for next tick's feedback loop
             this._lastActionResult = {
                 action: decision.action,
