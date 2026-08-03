@@ -10,6 +10,7 @@
 // - flushes daily log buffer before consolidation
 
 import { sanitizeJson } from '../util/sanitizeJson.js'
+import { stem } from '../util/wornWords.js'
 
 import { readFile, writeFile, copyFile } from 'node:fs/promises'
 
@@ -56,15 +57,44 @@ const MOTIF_STOPWORDS = new Set([
     'when', 'than', 'then', 'them', 'they', 'from', 'into', 'over', 'out',
     'about', 'after', 'before', 'while', 'more', 'most', 'some', 'only',
     'often', 'sometimes', 'occasionally', 'small', 'things', 'himself',
+    // frame verbs: structural, not thematic. The frame check below counts
+    // these properly, and leaving them in made "find" register as a motif.
+    'find', 'finds', 'seek', 'seeks', 'draw', 'draws', 'drawn', 'brief',
 ])
 
 function motifTokens(s) {
     const seen = new Set()
     for (const raw of String(s).toLowerCase().split(/[^a-z']+/)) {
         const w = raw.replace(/^'+|'+$/g, '')
-        if (w.length >= 3 && !MOTIF_STOPWORDS.has(w)) seen.add(w)
+        if (w.length >= 3 && !MOTIF_STOPWORDS.has(w)) seen.add(stem(w))
     }
     return seen
+}
+
+// The shape of an entry, not its words.
+//
+// Token overlap cannot see what was actually wrong with his sheet: "finds
+// calm in water's ripple", "finds brief lift in warm air", "finds brief
+// focus in warm mechanical hums" and "seeks fleeting sparks in mundane
+// environments" share almost no content words, so every pairwise jaccard
+// was around 0.1, yet they are plainly one idea written four times. They
+// are all <verb> <sensation> in <ambient thing>. A disposition says what he
+// DOES; these say what he likes the feel of, which is a diary entry wearing
+// a trait's clothes.
+//
+// So entries are also bucketed by frame, and a frame may appear at most
+// twice among the additions.
+const FRAME_VERBS = /^(finds?|seeks?|draws?|drawn|attuned|soothed|comforted|calmed|steadied|settled|lifted|grounded|takes? comfort|likes? the)\b/i
+const FRAME_TAIL = /\b(in|by|when|among|through|from)\b/
+
+// Every one of these is ONE frame, whichever verb opens it. Bucketing per
+// verb was useless: "finds calm in X", "seeks sparks in Y" and "attuned to
+// Z" are the same move, and he had four of them. A couple of sensory
+// affinities is character; five is a tic.
+function entryFrame(entry) {
+    const e = String(entry).trim().toLowerCase()
+    if (!FRAME_VERBS.test(e)) return null
+    return FRAME_TAIL.test(e) ? 'sensory-affinity' : 'sensory-affinity-bare'
 }
 
 function tokenJaccard(a, b) {
@@ -78,6 +108,11 @@ function tokenJaccard(a, b) {
 // anything OPENING with an epistemic verb is a diary line, not a
 // disposition — real traits read "steps back when...", "quietly proud of..."
 const OBSERVATION_RE = /^(recognizes|notes|realizes|understands|learns|acknowledges|accepts|observes|notices)\b/i
+
+// How many kept entries may carry the same stemmed content word, and how
+// many may share a sentence shape. Both are counted across the whole sheet.
+const MOTIF_CEILING = 2
+const FRAME_CEILING = 2
 
 /**
  * Scrub a self-reflection's proposed array fields before they merge.
@@ -107,6 +142,7 @@ export function sanitizeEvolvedArrays(changes, persona, originalPersona, logger 
     if (!changes || typeof changes !== 'object') return 0
     const fields = ['traits', 'values', 'fears', 'quirks']
     const wordCounts = new Map()  // content word -> entries kept containing it
+    const frameCounts = new Map() // entry shape -> entries kept using it
     let dropped = 0
 
     const drop = (field, entry, why) => {
@@ -152,11 +188,20 @@ export function sanitizeEvolvedArrays(changes, persona, originalPersona, logger 
                 }
                 if (nearDup) { drop(field, entry, 'near-duplicate'); continue }
 
+                // Ceiling of 3 was too generous against a cap of +5: it let
+                // a single motif own most of everything he had grown.
                 let overMotif = null
                 for (const t of tokens) {
-                    if ((wordCounts.get(t) || 0) >= 3) { overMotif = t; break }
+                    if ((wordCounts.get(t) || 0) >= MOTIF_CEILING) { overMotif = t; break }
                 }
                 if (overMotif) { drop(field, entry, `motif ceiling "${overMotif}"`); continue }
+
+                const frame = entryFrame(entry)
+                if (frame) {
+                    const n = frameCounts.get(frame) || 0
+                    if (n >= FRAME_CEILING) { drop(field, entry, `same shape as ${n} others`); continue }
+                    frameCounts.set(frame, n + 1)
+                }
 
                 if (kept.length >= cap) { drop(field, entry, `field cap ${cap}`); continue }
             }

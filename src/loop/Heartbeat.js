@@ -245,6 +245,7 @@ export class Heartbeat {
             // raw entity id must never reach the feed. leaves the meta
             // (corrected:/blocked:) strings and clean lines untouched.
             const need = decision.params?.target && /food|hunger/i.test(decision.params.target) ? 'hunger' : undefined
+            const beforeScrub = decision.reason || decision.params?.reason || ''
             if (decision.reason) decision.reason = sanitizeReason(decision.reason, { need })
             if (decision.params?.reason) decision.params.reason = sanitizeReason(decision.params.reason, { need })
 
@@ -253,10 +254,25 @@ export class Heartbeat {
             // reason the model put at the TOP level (schema-correct, but a
             // sibling of params) never reaches the diary and the bird reads as
             // silent. Whether it lands top-level or nested is model-dependent,
-            // so mirror it down rather than trusting the shape.
-            if (decision.reason) {
-                decision.params = decision.params || {}
-                if (!decision.params.reason) decision.params.reason = decision.reason
+            // so mirror BOTH ways rather than trusting the shape.
+            //
+            // It used to mirror down only. When a model put the reason solely
+            // in params the top level stayed undefined, and the tick line
+            // logged an empty reason while the diary was fine, which reads
+            // like he had nothing to say when he did.
+            decision.params = decision.params || {}
+            if (decision.reason && !decision.params.reason) decision.params.reason = decision.reason
+            if (!decision.reason && decision.params.reason) decision.reason = decision.params.reason
+
+            // Genuinely nothing to say. Either the model omitted it or the
+            // scrub ate the whole line (a reason that was ALL stat leak).
+            // Silent decisions are invisible in the diary, so say so here.
+            if (!decision.reason) {
+                this.logger.warn(
+                    beforeScrub
+                        ? `Reason lost in scrub (${decision.source}/${tier}): "${beforeScrub.slice(0, 60)}"`
+                        : `No reason returned (${decision.source}/${tier}) for ${decision.action}`
+                )
             }
 
             this.logger.info(`[tick ${this.tickCount}] ${decision.action} (${decision.source}/${tier}) — ${decision.reason} [v=${stateDesc.mood.toFixed(2)} a=${stateDesc.energy.toFixed(2)}]`)
