@@ -19,11 +19,35 @@ const STOPWORDS = new Set([
 // light stem so a motif's inflections collapse to one key: scream/screaming/
 // screams -> "scream", hunger's/hunger -> "hunger", beat/beats -> "beat".
 // only strips when >=4 chars survive, so short words aren't mangled.
-function stem(w) {
-    let s = w.replace(/'s$/, '')
-    for (const suf of ['ings', 'ing', 'edly', 'ed', 'es', 's']) {
-        if (s.length - suf.length >= 4 && s.endsWith(suf)) return s.slice(0, -suf.length)
+// Words ending in s that are not plurals. Without these, "news" files under
+// "new" and "focus" under "focu".
+const NOT_PLURAL = new Set(['news', 'lens', 'gas', 'atlas', 'canvas', 'chess', 'bias'])
+
+/**
+ * Fold a word to its stem so one motif counts as one word.
+ *
+ * The old version required `length - suffix >= 4`, which is longer than most
+ * of the words that actually become tics. "hum", "hums", "humming" and
+ * "hummed" came out as three different stems, so the guard built to catch
+ * the hum could never count it to its own threshold. Exported and shared
+ * with the persona sanitizer so both use the same notion of one word.
+ */
+export function stem(w) {
+    let s = String(w).toLowerCase().replace(/'s$/, '')
+    if (NOT_PLURAL.has(s) || /(ss|us|is|os)$/.test(s)) return s
+
+    for (const suf of ['ings', 'ing', 'edly', 'ed']) {
+        if (s.endsWith(suf) && s.length - suf.length >= 3) {
+            const base = s.slice(0, -suf.length)
+            // humming -> humm -> hum, running -> runn -> run
+            return /([bdfglmnprt])\1$/.test(base) ? base.slice(0, -1) : base
+        }
     }
+    // watches/boxes/buzzes lose "es"; ripples/hums lose just the "s"
+    if (s.endsWith('es') && s.length >= 5) {
+        return /(s|x|z|ch|sh)es$/.test(s) ? s.slice(0, -2) : s.slice(0, -1)
+    }
+    if (s.endsWith('s') && s.length >= 4) return s.slice(0, -1)
     return s
 }
 
