@@ -113,7 +113,11 @@ export class Heartbeat {
             // deliberate. It also saves an LLM call every tick of a journey.
             const doing = String(observation.self?.action || '')
             if (/^move toward /i.test(doing)) {
-                this.logger.debug(`[tick ${this.tickCount}] walking, not deciding: ${doing.slice(0, 60)}`)
+                // info, not debug: "he is on his way somewhere" is the
+                // behaviour we spent a long time not having, and a silent
+                // skip is indistinguishable from a dead tick in the log.
+                const eta = doing.match(/~(\d+)u away/)
+                this.logger.info(`[tick ${this.tickCount}] walking${eta ? ` (${eta[1]}u to go)` : ''}, not deciding`)
                 return
             }
 
