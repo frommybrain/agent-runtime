@@ -106,13 +106,18 @@ export function perceive(observation, worldEvents) {
         }
     }
 
-    // available actions
+    // The menu of what he can do used to be narrated HERE, into the live
+    // situation, with every description in full. Twenty-two of them, about a
+    // thousand tokens, identical on every tick, sitting in the slot that is
+    // supposed to say what is happening right now. It belongs in the system
+    // prompt with the rest of the standing facts about himself, which is
+    // where it now goes (PromptBuilder renders it), so this slot is only
+    // ever the world as it is this second.
     if (observation.available_actions?.length > 0) {
-        const actionDescs = observation.available_actions.map(a => {
-            if (typeof a === 'string') return a
-            return `${a.name}(${a.params || ''}) — ${a.description || ''}`
-        })
-        lines.push(`Available actions:\n${actionDescs.map(d => `  - ${d}`).join('\n')}`)
+        const names = observation.available_actions
+            .map((a) => (typeof a === 'string' ? a : a.name))
+            .join(', ')
+        lines.push(`Actions available right now: ${names}.`)
     }
 
     // anything else at the top level we havent handled.
@@ -151,7 +156,12 @@ function _narrateValue(key, val) {
 
     // object with level + urgency (needs pattern: {level: 70, urgency: "strong"})
     if (val.level !== undefined && val.urgency !== undefined) {
-        return [`My ${key}: ${val.urgency} (${val.level}%)`]
+        // The urgency word IS the signal; the percentage only teaches him to
+        // talk like a dashboard. Four of these went into every prompt ("My
+        // hunger: mild (40%)") and then came back out as "Hunger at 87%,
+        // need something fresh", which we were scrubbing downstream with a
+        // regex. Cheaper to not say it.
+        return [`My ${key}: ${val.urgency}`]
     }
 
     // object with status (wellbeing pattern: {status: "suffering", criticalNeeds: [...], ...})
