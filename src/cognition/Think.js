@@ -102,6 +102,11 @@ export class Think {
             params: parsed.params || {},
             reason: parsed.reason || '',
             source: source,
+            // Pass the memory back up as well as writing it above. The
+            // environment keeps its own memory and its own diary, and until
+            // now it never heard about any of this: he remembered things
+            // into a file on the Pi and the world showed nothing.
+            remember: parsed.remember?.content ? parsed.remember : undefined,
         }
     }
 

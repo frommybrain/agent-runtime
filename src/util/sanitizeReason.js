@@ -5,7 +5,10 @@
 // whatever produced it. pure + exported so it can be tested on its own.
 
 // "hunger at 100%", "curiosity's at 100", "rest is 42%", "safety level 80"
-const STAT_CLAUSE = /\b(hunger|rest|curiosity|social|safety|energy|mood|arousal|valence)('s|s)?\s*(is|at|level|sits at|sitting at)?\s*(at\s*)?\d{1,3}\s*%?/gi
+// -? and the decimal group matter: the raw mood floats leak as "valence
+// -0.21 so I want the pond" and the integer-only version walked straight
+// past them. Kept in step with sim-server's copy in bridge/BridgeAction.js.
+const STAT_CLAUSE = /\b(hunger|rest|curiosity|social|safety|energy|mood|arousal|valence)('s|s)?\s*(is|at|level|sits at|sitting at)?\s*(at\s*)?-?\d{1,3}(\.\d+)?\s*%?/gi
 // a bare "80%" / "at 100 %" with no need-name in front
 const BARE_PCT = /\b(at\s*)?\d{1,3}\s*%/gi
 // entity ids that should have been spoken as names (food_apple_tree)
