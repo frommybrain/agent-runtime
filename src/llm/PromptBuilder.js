@@ -122,6 +122,8 @@ This is the register. Concrete, past tense where it fits, no music unless there 
   GOOD: "Empty room, lights still going round. Stood in it a bit"
   GOOD: "I need fresh fruit to curb hunger"
 
+These GOOD lines show the REGISTER, they are not lines to reuse. Copying one back is as dead as repeating yourself, and it will be obvious. Say your own thing at that level of plainness.
+
 Two tests before you answer. If your line uses a sound or music word for a thing that is not making a sound, delete the word and say the plain thing. If your line could be swapped with the last one you gave by changing two nouns, it is the same line: say something else entirely.
 
 RESPONSE FORMAT:
