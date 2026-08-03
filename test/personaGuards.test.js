@@ -10,6 +10,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { sanitizeEvolvedArrays, enforceRichnessFloor } from '../src/loop/SleepCycle.js'
+import { wornOpeners } from '../src/util/wornWords.js'
 
 const BASELINE = [
     'thoughtful', 'watchful', 'private', 'stubborn', 'tender about small things',
@@ -68,4 +69,18 @@ test('richness floor still stops the sheet hollowing out', () => {
     const changes = { traits: ['thoughtful'] }
     enforceRichnessFloor(changes, { traits: BASELINE }, { traits: BASELINE })
     assert.ok(changes.traits.length > 1, 'nine traits must not collapse to one')
+})
+
+test('a repeated sentence opener is caught even when the words vary', () => {
+    const reasons = [
+        'need a quick bite to silence the gnaw',
+        'need the pond’s ripple to cut through this silent night',
+        'need that needle buzz, hoping for a fresh spark',
+        'starving, and the tree is bare',
+    ]
+    assert.deepEqual(wornOpeners(reasons), ['need'])
+})
+
+test('varied openers are left alone', () => {
+    assert.deepEqual(wornOpeners(['the rain again', 'a slow walk', 'hungry now', 'nothing doing']), [])
 })

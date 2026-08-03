@@ -15,7 +15,7 @@
 // 8. adapt heartbeat interval
 
 import { sanitizeReason } from '../util/sanitizeReason.js'
-import { wornWords } from '../util/wornWords.js'
+import { wornWords, wornOpeners } from '../util/wornWords.js'
 
 export class Heartbeat {
     constructor(socket, think, workingMemory, memoryFiles, dailyLog, sleepCycle, internalState, deltaDetector, repetitionGuard, speechLog, config, logger) {
@@ -170,6 +170,7 @@ export class Heartbeat {
                 // this turn so a motif ("scream", "beat") can't self-feed. the
                 // action-fixation guard above doesn't watch reason wording.
                 wornWords: wornWords(this.workingMemory.recentReasons(10)),
+                wornOpeners: wornOpeners(this.workingMemory.recentReasons(10)),
                 tickCount: this.tickCount,
                 uptimeMinutes: Math.floor(this.uptimeSeconds() / 60),
                 salience,
