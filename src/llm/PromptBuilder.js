@@ -223,6 +223,15 @@ ${actionCatalogue || '(nothing available)'}`
             parts.push(`WORN-OUT WORDS: ${extras.wornWords.map(w => `"${w}"`).join(', ')}. You've leaned on these lately — do NOT use them this turn, and don't just swap in a synonym for the same image. Notice something else, or say the plain thing without them.`)
         }
 
+        // His own best and worst, which beats any rule I can write. Until
+        // he has enough of a record this stays quiet rather than guessing.
+        if (extras.ownVoice?.best?.length > 0) {
+            parts.push(`YOUR BEST RECENT LINES. This is the standard, and they are yours:\n${extras.ownVoice.best.map((l) => `  "${l}"`).join('\n')}`)
+        }
+        if (extras.ownVoice?.worst?.length > 0) {
+            parts.push(`YOUR RECENT LINES THAT FAILED. Vague, or naming a feeling instead of a thing, or something you had already said. Nothing like these:\n${extras.ownVoice.worst.map((l) => `  "${l}"`).join('\n')}`)
+        }
+
         if (extras.wornOpeners?.length > 0) {
             parts.push(`SAME OPENING: you have started several recent reasons with ${extras.wornOpeners.map(w => `"${w}"`).join(', ')}. Begin this one somewhere else entirely, and don't reach for a synonym of it either.`)
         }

@@ -55,9 +55,19 @@ export class RepetitionGuard {
                 this._targetInteractions.set(target, { count: 1, lastTime: Date.now() })
             }
         }
-        // speech tracked seperately
-        if (action === 'speak' && params?.message) {
-            this._recentSpeech.push(params.message.toLowerCase().trim())
+        // Everything he says, which is almost entirely his reasons.
+        //
+        // This used to record `speak` messages only. He has produced ZERO
+        // speak actions in 210,240 ticks, so the three language checks below
+        // ("you already said that", "your lines keep starting the same way",
+        // "your wording is narrowing") have never fired once. They are the
+        // guards built specifically to stop repetitive, uncreative output,
+        // they work, and they were pointed at a channel that has never
+        // carried a single message. Meanwhile the diary is made entirely of
+        // reasons, which they never saw.
+        const said = action === 'speak' ? params?.message : params?.reason
+        if (said && String(said).trim()) {
+            this._recentSpeech.push(String(said).toLowerCase().trim())
             if (this._recentSpeech.length > 20) this._recentSpeech.shift()
         }
     }
@@ -176,7 +186,7 @@ export class RepetitionGuard {
             if (lastWords.length > 5) {
                 const similar = this._recentSpeech.filter(s => s.startsWith(lastWords)).length
                 if (similar >= 3) {
-                    warnings.push(`Your recent speech keeps starting with "${lastWords}..." — vary your language.`)
+                    warnings.push(`Your recent lines keep starting with "${lastWords}..." Start somewhere else entirely.`)
                 }
             }
         }
@@ -203,7 +213,7 @@ export class RepetitionGuard {
                 .slice(0, 4)
                 .map(([w, c]) => `"${w}" (${c}×)`)
             if (overused.length > 0) {
-                warnings.push(`Your wording is narrowing — you keep reaching for ${overused.join(', ')}. Drop those words and find fresh ones.`)
+                warnings.push(`Your wording is narrowing. You keep reaching for ${overused.join(', ')}. Drop those words and find fresh ones.`)
             }
         }
 
