@@ -578,9 +578,26 @@ Should ${persona.name} evolve? Respond with JSON.`
                         await this.dailyLog.append(`Persona evolution REJECTED — "${key}" had wrong type (${typeof val})`)
                         return false
                     }
-                    if (key === 'voice' && (typeof val !== 'object' || val === null)) {
-                        this.logger.warn(`Persona evolution rejected: "voice" must be object`)
-                        return false
+                    // voice.style is not his to rewrite.
+                    //
+                    // It was the only field the nightly evolution could edit
+                    // freely: the sanitizer covers traits, values, fears and
+                    // quirks, and voice was checked for TYPE and nothing
+                    // else. It had drifted from the authored "plain, dry,
+                    // short complete sentences anyone instantly understands,
+                    // never twisted language, a sharp friend texting you, not
+                    // a poet" to "sparse, fragmentary, like he's listening to
+                    // something else under the surface, plays loose with
+                    // grammar, thinks in fragments".
+                    //
+                    // Every rule added to make him concrete was arguing with
+                    // that line, and losing, because it sits in the persona
+                    // block above them. How he SOUNDS is authored. What he
+                    // notices and cares about is his.
+                    if (key === 'voice') {
+                        this.logger.info('Persona evolution: ignoring a proposed voice change, voice.style is authored')
+                        delete reflection.changes.voice
+                        continue
                     }
                 }
 
