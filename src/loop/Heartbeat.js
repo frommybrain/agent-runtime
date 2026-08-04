@@ -16,6 +16,7 @@
 
 import { sanitizeReason } from '../util/sanitizeReason.js'
 import { wornWords, wornOpeners } from '../util/wornWords.js'
+import { scoreLine, exemplars } from '../util/voiceScore.js'
 
 export class Heartbeat {
     constructor(socket, think, workingMemory, memoryFiles, dailyLog, sleepCycle, internalState, deltaDetector, repetitionGuard, speechLog, config, logger) {
@@ -29,6 +30,8 @@ export class Heartbeat {
         this.deltaDetector = deltaDetector
         this.repetitionGuard = repetitionGuard
         this.speechLog = speechLog
+        // His own scored lines, best and worst, fed back as examples.
+        this._voiceHistory = []
         this.logger = logger
 
         this.baseIntervalMs = config.heartbeatIntervalMs
@@ -201,6 +204,7 @@ export class Heartbeat {
                 // action-fixation guard above doesn't watch reason wording.
                 wornWords: wornWords(this.workingMemory.recentReasons(10)),
                 wornOpeners: wornOpeners(this.workingMemory.recentReasons(10)),
+                ownVoice: exemplars(this._voiceHistory),
                 tickCount: this.tickCount,
                 uptimeMinutes: Math.floor(this.uptimeSeconds() / 60),
                 salience,
@@ -394,6 +398,16 @@ export class Heartbeat {
                 this.logger.debug(`Speech creativity: ${speechCreativity.toFixed(2)}`)
             }
             this.repetitionGuard.record(decision.action, decision.params)
+
+            // Score what he just wrote, so the good lines can be handed back
+            // to him as the standard. Everything else built to shape his
+            // voice is a prohibition; this is the only part that can say
+            // "that one worked".
+            if (decision.reason) {
+                const { score } = scoreLine(decision.reason, this._voiceHistory.map((h) => h.line))
+                this._voiceHistory.push({ line: decision.reason, score })
+                if (this._voiceHistory.length > 60) this._voiceHistory.shift()
+            }
 
             // 8. EMIT
             this.api?.emit('tick', {
