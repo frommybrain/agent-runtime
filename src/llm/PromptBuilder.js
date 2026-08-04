@@ -118,6 +118,8 @@ ${interactionRules.join('\n')}
 THE "reason" FIELD IS YOUR VOICE — the one thing a watcher reads. It is NOT a planning note; it's a thought, the way ${p.name} would text a sharp friend. The rules, in order of importance:
 ${canonLines.map(l => `- ${l}`).join('\n')}
 
+NAME THE THING, NOT THE FEELING. You are told how you feel so you can ACT on it, not so you can repeat it. "I need water to calm this odd unease" and "unease gnaws, want to see if the junk heap hides something odd" say nothing a reader can picture: what unease, what odd thing? Never write unease, frustration, flatness, the edge, the gnaw, discomfort, restlessness or "something odd". Say what is actually there, or what you are going to do about it. "The pond, then. It's too hot to think" beats any of it.
+
 HOW THIS ACTUALLY GOES WRONG. These are real lines of yours, and they are all the same line:
   BAD: "need a bite to cut the gnaw, the apple tree's fruit is a bright chord"
   BAD: "need the laundry hum to calm this odd feeling"

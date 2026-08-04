@@ -148,30 +148,83 @@ export class InternalState {
         const aLabel = a > 0.5 ? 'very high' : a > 0.2 ? 'elevated'
             : a > -0.2 ? 'moderate' : a > -0.5 ? 'low' : 'very low'
 
-        // evocative descriptions so the LLM has something to act on.
-        // granular grid to avoid the neutral-catchall bucket
-        let description
-        if (v > 0.3 && a > 0.5) description = 'A rush of excitement — everything is clicking'
-        else if (v > 0.3 && a > 0.2) description = 'A surge of energy and satisfaction — things are going well'
-        else if (v > 0.3) description = 'A quiet contentment — things feel right'
-        else if (v > 0.1 && a > 0.4) description = 'Feeling alert and engaged — something has your attention'
-        else if (v > 0.1 && a > 0.15) description = 'A comfortable focus — present and attentive'
-        else if (v > 0.1) description = 'A gentle ease — nothing wrong, mildly pleasant'
-        else if (v > -0.05 && a > 0.4) description = 'Buzzing with energy — the environment is stimulating'
-        else if (v > -0.05 && a > 0.15) description = 'Feeling awake and aware — taking things in'
-        else if (v > -0.05 && a > -0.15) description = 'Feeling steady — calm, present, unremarkable'
-        else if (v > -0.05) description = 'Everything is quiet and still — understimulated'
-        else if (v > -0.2 && a > 0.3) description = 'A nagging discomfort — restless, things could be better'
-        else if (v > -0.2 && a > 0) description = 'A subtle unease — something is slightly off'
-        else if (v > -0.2) description = 'Feeling flat and disengaged — low energy, mild discontent'
-        else if (v <= -0.2 && a > 0.3) description = 'Something feels wrong — uneasy, on edge'
-        else if (v <= -0.2 && a > -0.2) description = 'A growing frustration — things are not going well'
-        else description = 'Feeling drained and discouraged — nothing is working'
+        // Conditions, not moods.
+        //
+        // This grid used to hand him emotion-summaries: "a subtle unease,
+        // something is slightly off", "a growing frustration", "uneasy, on
+        // edge". He then wrote "I need water to calm this odd unease" and
+        // "unease gnaws, want to see if the junk heap hides something odd",
+        // which is not him having a feeling, it is him paraphrasing his own
+        // prompt. Every vague word we kept objecting to was one we put in
+        // his mouth two lines earlier.
+        //
+        // A bird does not feel a subtle unease. He notices the street is
+        // quieter than it should be, or that his feathers will not sit
+        // right, or that three things in a row have not worked. Those are
+        // things he can point at, so his reasons get something to be about.
+        // Several per cell, picked at random, so the same state does not
+        // produce the same sentence twice running.
+        const pick = (arr) => arr[Math.floor(Math.random() * arr.length)]
 
-        // Named mood REGIMES — only at the edges of the state space, so
-        // they're events a watcher can recognise ("he's sulking today"),
-        // not a constant costume. Each carries a voice/behaviour directive
-        // the prompt surfaces verbatim.
+        let description
+        if (v > 0.3 && a > 0.5) description = pick([
+            'Light on his feet. Could go anywhere from here',
+            'Everything looks worth a closer look this morning',
+        ])
+        else if (v > 0.3 && a > 0.2) description = pick([
+            'Fed, warm, and after something to do',
+            'Good day so far. It would take a lot to spoil it',
+        ])
+        else if (v > 0.3) description = pick([
+            'Settled. Nothing needs doing for once',
+            'Full and unhurried, in no rush at all',
+        ])
+        else if (v > 0.1 && a > 0.4) description = pick([
+            'Head up, checking everything twice',
+            'Alert. Every small noise is getting his attention',
+        ])
+        else if (v > 0.1 && a > 0.15) description = pick([
+            'Awake and steady, taking things in',
+            'Comfortable enough, watching the street',
+        ])
+        else if (v > 0.1) description = pick([
+            'Fine. The day is neither one thing nor the other',
+            'Quiet and easy, nothing pressing',
+        ])
+        else if (v > -0.05 && a > 0.4) description = pick([
+            'Restless legs and nowhere particular to be',
+            'Cannot settle. Keeps standing up and sitting down',
+        ])
+        else if (v > -0.05 && a > 0.15) description = pick([
+            'Awake, unhurried, waiting for something to happen',
+            'Standing about, watching what goes past',
+        ])
+        else if (v > -0.05) description = pick([
+            'Steady. Nothing much either way',
+            'A slow one. Nothing has happened for a while',
+        ])
+        else if (a < -0.2) description = pick([
+            'Slow and heavy. Everything is an effort today',
+            'Tired in the legs. Would rather be sitting',
+        ])
+        else if (v > -0.35 && a > 0.35) description = pick([
+            'Twitchy. Keeps looking behind him for no reason',
+            'Cannot get comfortable. Feathers will not sit right',
+        ])
+        else if (v > -0.35) description = pick([
+            'The street is quieter than it should be',
+            'Nothing has been interesting for a long stretch',
+            'Been in the same spot too long and he knows it',
+        ])
+        else if (a > 0.3) description = pick([
+            'Three things in a row have not worked',
+            'Hungry, tired of walking, and the day is not helping',
+        ])
+        else description = pick([
+            'Worn out and nothing has gone right',
+            'Flat on his feet. Even the good bits are not landing',
+        ])
+
         const regime = this._regime(v, a)
         if (regime) {
             description += ` You're in a ${regime.name}: ${regime.directive}`
@@ -203,7 +256,10 @@ export class InternalState {
         }
         if (v < -0.2 && a > 0.35) return {
             name: 'RATTLED HOUR',
-            directive: 'jumpy, on edge. Keep near safe ground, snap at small provocations, double-check things that were fine yesterday.',
+            // "on edge" was the last place that phrase lived, and it is
+            // where "the edge" in his reasons came from. Describe the
+            // behaviour, never hand him the noun.
+            directive: 'startle easily today. Keep near safe ground, snap at small provocations, double-check things that were fine yesterday.',
         }
         if (a < -0.5) return {
             name: 'FOG',
