@@ -25,9 +25,32 @@ const FALLBACKS = {
     safety: 'I want somewhere that feels safe',
 }
 
+// A clause that only reports a dial.
+//
+// "Curiosity spikes, need to chase that sparkle online" and "I need to
+// sleep, rest is desperate" and "Hunger's gnawing, heading for the apple
+// tree" all carry one clause that is a gauge reading and one that is a
+// person talking. The gauge reading is removable, and removing it leaves
+// the sentence better than it was. Belt and braces with the prompt rule,
+// because a prompt rule has been routed around twice today.
+const DRIVE = /\b(curiosity|hunger|rest|social|safety|energy|tiredness)\b/i
+const GAUGE = /\b(spike[sd]?|pull[sing]*|gnaw\w*|scream\w*|desperate|surg\w+|climb\w*|rising|is (high|low|up|at)|'s (high|low|gnawing|screaming))\b/i
+
+function dropGaugeClauses(text) {
+  const parts = String(text).split(/,\s*/)
+  if (parts.length < 2) return text
+  const kept = parts.filter((c) => !(DRIVE.test(c) && GAUGE.test(c)))
+  // Only if something real is left. A reason is better slightly odd than
+  // empty, so anything shorter than a few words means we leave it alone.
+  if (kept.length === 0 || kept.length === parts.length) return text
+  const out = kept.join(', ').trim()
+  if (out.split(/\s+/).length < 3) return text
+  return out.charAt(0).toUpperCase() + out.slice(1)
+}
+
 export function sanitizeReason(reason, { need } = {}) {
     if (typeof reason !== 'string') return reason
-    let out = reason
+    let out = dropGaugeClauses(reason)
 
     // which need was named before we strip it, for a graceful fallback
     let spotted = need

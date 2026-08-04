@@ -11,6 +11,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { sanitizeEvolvedArrays, enforceRichnessFloor } from '../src/loop/SleepCycle.js'
 import { wornOpeners } from '../src/util/wornWords.js'
+import { sanitizeReason } from '../src/util/sanitizeReason.js'
 
 const BASELINE = [
     'thoughtful', 'watchful', 'private', 'stubborn', 'tender about small things',
@@ -83,4 +84,22 @@ test('a repeated sentence opener is caught even when the words vary', () => {
 
 test('varied openers are left alone', () => {
     assert.deepEqual(wornOpeners(['the rain again', 'a slow walk', 'hungry now', 'nothing doing']), [])
+})
+
+test('a clause that only reports a dial is dropped', () => {
+    assert.equal(sanitizeReason('Curiosity spikes, need to chase that sparkle online'), 'Need to chase that sparkle online')
+    assert.equal(sanitizeReason('I need to sleep, rest is desperate'), 'I need to sleep')
+    assert.equal(sanitizeReason("Hunger's gnawing, heading for the apple tree."), 'Heading for the apple tree.')
+})
+
+test('a line with nothing left over is left alone rather than gutted', () => {
+    // no second clause to fall back on, so keep it: odd beats empty
+    assert.equal(sanitizeReason('Curiosity spikes'), 'Curiosity spikes')
+})
+
+test('lines that were already fine are untouched', () => {
+    for (const good of [
+        "There was a thing about squirrels I didn't finish",
+        'Feeling twitchy, want to rawdog it and loosen up at the bar',
+    ]) assert.equal(sanitizeReason(good), good)
 })
