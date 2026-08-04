@@ -1,6 +1,4 @@
-// What a good line is, as a number. Shared with sim-server's copy at
-// sim-server/src/world/VoiceScore.js; keep the two in step.
-//
+// fingerprint: 363c1e082f89cd1e
 // What a good line is, as a number.
 //
 // Everything built so far to control his voice is a prohibition. wornWords
