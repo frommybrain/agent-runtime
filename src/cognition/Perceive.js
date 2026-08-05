@@ -100,7 +100,7 @@ export function perceive(observation, worldEvents) {
             } else {
                 // generic event narration. let the LLM figure it out
                 const { event, ...rest } = data
-                const detail = Object.keys(rest).length > 0 ? ` — ${JSON.stringify(rest)}` : ''
+                const detail = Object.keys(rest).length > 0 ? `, ${JSON.stringify(rest)}` : ''
                 lines.push(`Event: ${event || 'unknown'}${detail}`)
             }
         }
@@ -169,7 +169,7 @@ function _narrateValue(key, val) {
         const parts = [val.status]
         if (val.criticalNeeds?.length > 0) parts.push(`critical: ${val.criticalNeeds.join(', ')}`)
         if (val.discomfortNeeds?.length > 0) parts.push(`discomfort: ${val.discomfortNeeds.join(', ')}`)
-        return [`My ${key}: ${parts.join(' — ')}`]
+        return [`My ${key}: ${parts.join(', ')}`]
     }
 
     // generic object — recurse one level for readable narration
@@ -196,16 +196,16 @@ function _describeSignals(signals) {
 
     if (signals.vitality !== undefined) {
         const v = signals.vitality
-        if (v >= 0.8) parts.push('This place feels alive — buzzing with energy.')
+        if (v >= 0.8) parts.push('This place feels alive, buzzing with energy.')
         else if (v >= 0.6) parts.push('There is a healthy energy here, things feel vibrant.')
-        else if (v >= 0.45) parts.push('The energy here feels ordinary — nothing special.')
+        else if (v >= 0.45) parts.push('The energy here feels ordinary, nothing special.')
         else if (v >= 0.3) parts.push('The energy feels low, like this place is fading.')
         else parts.push('This place feels drained, almost lifeless.')
     }
 
     if (signals.resonance !== undefined) {
         const r = signals.resonance
-        if (r >= 0.7) parts.push('There is an intense hum in the air — everything feels deeply connected.')
+        if (r >= 0.7) parts.push('There is an intense hum in the air, everything feels deeply connected.')
         else if (r >= 0.4) parts.push('There is a gentle hum, a sense of things being in tune.')
         else if (r >= 0.2) parts.push('The atmosphere is quiet and still.')
         else parts.push('Everything feels disconnected and flat.')
@@ -214,15 +214,15 @@ function _describeSignals(signals) {
     if (signals.warmth !== undefined) {
         const w = signals.warmth
         if (w >= 0.7) parts.push('A comforting warmth surrounds you.')
-        else if (w >= 0.45) parts.push('The air feels neutral — neither warm nor cold.')
+        else if (w >= 0.45) parts.push('The air feels neutral, neither warm nor cold.')
         else if (w >= 0.25) parts.push('There is a chill in the air.')
-        else parts.push('The cold is biting — unwelcoming.')
+        else parts.push('The cold is biting, unwelcoming.')
     }
 
     if (signals.abundance !== undefined) {
         const a = signals.abundance
         if (a >= 0.7) parts.push('This place feels rich and full of possibility.')
-        else if (a >= 0.45) parts.push('Things seem adequate — enough, but nothing more.')
+        else if (a >= 0.45) parts.push('Things seem adequate, enough, but nothing more.')
         else if (a >= 0.25) parts.push('There is a sense of scarcity here.')
         else parts.push('This place feels barren and empty.')
     }
@@ -231,45 +231,45 @@ function _describeSignals(signals) {
 
     if (signals.temperature !== undefined) {
         const t = signals.temperature
-        if (t >= 0.8) parts.push('The heat is heavy — the air feels thick and oppressive.')
+        if (t >= 0.8) parts.push('The heat is heavy, the air feels thick and oppressive.')
         else if (t >= 0.6) parts.push('The air is warm and soft against the skin.')
-        else if (t >= 0.4) parts.push('The temperature is mild — comfortable and easy.')
+        else if (t >= 0.4) parts.push('The temperature is mild, comfortable and easy.')
         else if (t >= 0.25) parts.push('There is a cool edge to the air.')
-        else if (t >= 0.12) parts.push('The cold is sharp — biting at every surface.')
-        else parts.push('A deep freeze grips everything — brittle and still.')
+        else if (t >= 0.12) parts.push('The cold is sharp, biting at every surface.')
+        else parts.push('A deep freeze grips everything, brittle and still.')
     }
 
     if (signals.humidity !== undefined) {
         const h = signals.humidity
-        if (h >= 0.8) parts.push('The air is thick with moisture — everything feels damp and close.')
+        if (h >= 0.8) parts.push('The air is thick with moisture, everything feels damp and close.')
         else if (h >= 0.6) parts.push('There is a heaviness to the air, moisture clinging to everything.')
-        else if (h >= 0.4) parts.push('The air feels balanced — neither dry nor damp.')
+        else if (h >= 0.4) parts.push('The air feels balanced, neither dry nor damp.')
         else if (h >= 0.2) parts.push('The air is dry and crisp, clean to breathe.')
-        else parts.push('The air is parched — bone-dry, almost desert-like.')
+        else parts.push('The air is parched, bone-dry, almost desert-like.')
     }
 
     if (signals.wind_speed !== undefined) {
         const w = signals.wind_speed
-        if (w >= 0.7) parts.push('Strong gusts push through the space — everything sways and rustles.')
+        if (w >= 0.7) parts.push('Strong gusts push through the space, everything sways and rustles.')
         else if (w >= 0.4) parts.push('A steady breeze moves through, carrying scents and sounds.')
         else if (w >= 0.15) parts.push('A gentle breath of wind, barely felt.')
-        else parts.push('The air is completely still — no movement at all.')
+        else parts.push('The air is completely still, no movement at all.')
     }
 
     if (signals.cloud_cover !== undefined) {
         const c = signals.cloud_cover
-        if (c >= 0.85) parts.push('The sky is blanketed — heavy, enclosed, the light flat and diffuse.')
+        if (c >= 0.85) parts.push('The sky is blanketed, heavy, enclosed, the light flat and diffuse.')
         else if (c >= 0.6) parts.push('Clouds drift overhead, softening and dimming the light.')
         else if (c >= 0.3) parts.push('Patches of cloud break the sky, shifting between light and shadow.')
-        else parts.push('The sky is wide open — bright and clear.')
+        else parts.push('The sky is wide open, bright and clear.')
     }
 
     if (signals.crowd_energy !== undefined) {
         const e = signals.crowd_energy
-        if (e >= 0.7) parts.push('The space is alive with people — energy, movement, voices overlapping.')
-        else if (e >= 0.4) parts.push('People move through the space — a moderate human presence.')
-        else if (e >= 0.15) parts.push('A few souls drift through — quiet but not empty.')
-        else parts.push('The space is nearly deserted — deep solitude.')
+        if (e >= 0.7) parts.push('The space is alive with people, energy, movement, voices overlapping.')
+        else if (e >= 0.4) parts.push('People move through the space, a moderate human presence.')
+        else if (e >= 0.15) parts.push('A few souls drift through, quiet but not empty.')
+        else parts.push('The space is nearly deserted, deep solitude.')
     }
 
     // fall through for any unknown signals. narrate generically

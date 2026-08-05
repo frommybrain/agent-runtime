@@ -26,7 +26,7 @@ export class Think {
 
         // skip tier: no LLM, fallback brain directly
         if (tier === 'skip') {
-            this.logger.debug('Tick classified as skip — using fallback brain')
+            this.logger.debug('Tick classified as skip, using fallback brain')
             return this._wrapFallback(observation)
         }
 
@@ -62,7 +62,7 @@ export class Think {
         this._lastPromptChars = totalChars
         if (totalChars > this._maxInputChars) {
             const overBy = totalChars - this._maxInputChars
-            this.logger.warn(`Prompt over budget by ~${Math.round(overBy / 4)} tokens — truncating Learned Facts`)
+            this.logger.warn(`Prompt over budget by ~${Math.round(overBy / 4)} tokens, truncating Learned Facts`)
             const truncatedMemory = this._truncateLearnedFacts(memory, overBy)
             finalSystemPrompt = this.promptBuilder.buildSystemPrompt(truncatedMemory, skills, tools, observation.available_actions)
         }

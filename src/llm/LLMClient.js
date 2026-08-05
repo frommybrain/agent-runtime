@@ -170,7 +170,7 @@ export class LLMClient {
             if (!response.ok) {
                 let body = ''
                 try { body = await response.text() } catch { /* ignore */ }
-                throw new Error(`Anthropic API ${response.status}: ${response.statusText}${body ? ` — ${body.slice(0, 300)}` : ''}`)
+                throw new Error(`Anthropic API ${response.status}: ${response.statusText}${body ? `, ${body.slice(0, 300)}` : ''}`)
             }
 
             const data = await response.json()
@@ -320,7 +320,7 @@ export class LLMClient {
                 // root cause for a long time. The body is the diagnosis.
                 let body = ''
                 try { body = await response.text() } catch { /* ignore */ }
-                throw new Error(`Cloud API ${response.status}: ${response.statusText}${body ? ` — ${body.slice(0, 300)}` : ''}`)
+                throw new Error(`Cloud API ${response.status}: ${response.statusText}${body ? `, ${body.slice(0, 300)}` : ''}`)
             }
 
             const data = await response.json()

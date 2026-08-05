@@ -363,7 +363,7 @@ export class SleepCycle {
         this._sleepTimer = null
         this.logger.info('=== SLEEP ENDED ===')
         this.dailyLog.append('=== SLEEP ENDED ===')
-        this.workingMemory.push({ type: 'sleep', message: 'SLEEP ENDED — feeling refreshed' })
+        this.workingMemory.push({ type: 'sleep', message: 'SLEEP ENDED, feeling refreshed' })
     }
 
     async _consolidateMemory() {
@@ -376,7 +376,7 @@ export class SleepCycle {
         // include salient events — high-energy moments should be prioritised
         const salientEvents = this.workingMemory.salientEvents(0.6)
         const salientNote = salientEvents.length > 0
-            ? `\n\nWHAT HIT HARDEST TODAY (these landed with real feeling — let them shape what you keep):\n${salientEvents.map(e => `- [${e.time}] ${e.type}: ${e.action || e.message || JSON.stringify(e)}`).join('\n')}`
+            ? `\n\nWHAT HIT HARDEST TODAY (these landed with real feeling, let them shape what you keep):\n${salientEvents.map(e => `- [${e.time}] ${e.type}: ${e.action || e.message || JSON.stringify(e)}`).join('\n')}`
             : ''
 
         // Load persona so the consolidation is IN VOICE, not clinical. The
@@ -391,17 +391,17 @@ export class SleepCycle {
             pVoice = persona.voice?.style || ''
         } catch { /* fall back to generic */ }
 
-        const prompt = `You are ${pName}, lying in the dark at the end of the day, deciding what to keep. This is YOUR private memory — write it the way you actually think.${pVoice ? `\nYour voice: ${pVoice}` : ''}
+        const prompt = `You are ${pName}, lying in the dark at the end of the day, deciding what to keep. This is YOUR private memory, write it the way you actually think.${pVoice ? `\nYour voice: ${pVoice}` : ''}
 
 Below is your current memory and a log of today. Rewrite your memory: fold today into it, drop what's gone stale, keep what matters. Write in FIRST PERSON, in your own voice.
 
 How to write it:
-- This is a felt record, not a database. "I keep going back to that one camera. It never blinks. I still don't know why, and I think that's the point." — NOT "watch points are camera-like observers that may emit cues."
+- This is a felt record, not a database. "I keep going back to that one camera. It never blinks. I still don't know why, and I think that's the point.", NOT "watch points are camera-like observers that may emit cues."
 - NEVER use entity IDs (food_apple_tree, watch_8, activity_rave). Call things what they are: the apple tree, a camera, the rave, the roost, the shrine.
 - NEVER quote stats or percentages. You remember feelings and moments, not numbers.
-- Keep the relationships / facts / important-memories you'd actually carry. A fact can still be honest ("the apple tree's fruit comes with a little melody — it's the closest thing to music when the world goes quiet") without being a stat line.
+- Keep the relationships / facts / important-memories you'd actually carry. A fact can still be honest ("the apple tree's fruit comes with a little melody, it's the closest thing to music when the world goes quiet") without being a stat line.
 - Prioritise what hit hardest today. Let routine fade.
-- If today added nothing genuinely new — the same routine you already remember, nothing that actually moved you — then don't churn this file rewriting what's already here. Reply with the single token NO_CHANGE (nothing else) and I'll keep my memory exactly as it is. Only do this when today truly held nothing worth keeping.
+- If today added nothing genuinely new, the same routine you already remember, nothing that actually moved you, then don't churn this file rewriting what's already here. Reply with the single token NO_CHANGE (nothing else) and I'll keep my memory exactly as it is. Only do this when today truly held nothing worth keeping.
 - Keep the three markdown sections: ## Relationships, ## Learned Facts, ## Important Memories. Cap around 40 entries total. Keep procedural how-to OUT of here.
 
 Return ONLY the updated memory.md content (or the single token NO_CHANGE), nothing else.`
@@ -416,7 +416,7 @@ Return ONLY the updated memory.md content (or the single token NO_CHANGE), nothi
         // "no change" in passing can't trip it.
         const trimmedResult = (result || '').trim()
         if (trimmedResult.length <= 12 && /^no[_\s-]?change$/i.test(trimmedResult)) {
-            this.logger.info('Memory consolidation: quiet day — left memory unchanged')
+            this.logger.info('Memory consolidation: quiet day, left memory unchanged')
             await this.dailyLog.append('Memory consolidation: quiet day, left memory unchanged')
             return false
         }
@@ -426,8 +426,8 @@ Return ONLY the updated memory.md content (or the single token NO_CHANGE), nothi
             if (written) {
                 this.logger.info('Memory consolidated')
             } else {
-                this.logger.warn('Memory consolidation rejected — backup restored')
-                await this.dailyLog.append('Memory consolidation REJECTED — LLM output failed validation, backup restored')
+                this.logger.warn('Memory consolidation rejected, backup restored')
+                await this.dailyLog.append('Memory consolidation REJECTED, LLM output failed validation, backup restored')
             }
             return written
         }
@@ -440,11 +440,11 @@ Return ONLY the updated memory.md content (or the single token NO_CHANGE), nothi
 
         if (!todayLog.trim()) return false
 
-        const prompt = `These are the things you've gotten the hang of — written in your own voice, the way you'd note "I know how to do this now."
+        const prompt = `These are the things you've gotten the hang of, written in your own voice, the way you'd note "I know how to do this now."
 
 STRICT RULES:
-- ONLY note things DIRECTLY evidenced in the log below. Don't invent or generalise. Don't make up grand categories ("Territory Management") — those are hallucinations.
-- Write each as one short line in FIRST PERSON, no entity IDs. "When the hunger really bites, the apple tree is the surest fix" — NOT "forage food_apple_tree". "I can usually coax a little music out of the rave when the world's gone quiet" — NOT "go_rave activity_rave".
+- ONLY note things DIRECTLY evidenced in the log below. Don't invent or generalise. Don't make up grand categories ("Territory Management"), those are hallucinations.
+- Write each as one short line in FIRST PERSON, no entity IDs. "When the hunger really bites, the apple tree is the surest fix", NOT "forage food_apple_tree". "I can usually coax a little music out of the rave when the world's gone quiet", NOT "go_rave activity_rave".
 - No stats, no numbers, no IDs. Ever.
 - If the log shows nothing genuinely new, return the existing list unchanged.
 - One line each, max ~90 chars. Cap ~15 entries. Keep it a simple markdown bullet list.
@@ -459,8 +459,8 @@ Return ONLY the updated skills.md content, nothing else.`
             if (written) {
                 this.logger.info('Skills extracted')
             } else {
-                this.logger.warn('Skills extraction rejected — backup restored')
-                await this.dailyLog.append('Skills extraction REJECTED — LLM output failed validation, backup restored')
+                this.logger.warn('Skills extraction rejected, backup restored')
+                await this.dailyLog.append('Skills extraction REJECTED, LLM output failed validation, backup restored')
             }
             return written
         }
@@ -494,7 +494,7 @@ Return ONLY the updated skills.md content, nothing else.`
         // v0.3.1: _originalPersona is now loaded from immutable baseline file at startup
         // via loadOriginalPersona(). if somehow not loaded, fall back to current.
         if (!this._originalPersona) {
-            this.logger.warn('Drift guard: no baseline loaded — using current persona (unsafe)')
+            this.logger.warn('Drift guard: no baseline loaded, using current persona (unsafe)')
             this._originalPersona = this._extractComparableFields(persona)
         }
 
@@ -504,8 +504,8 @@ Return ONLY the updated skills.md content, nothing else.`
         const driftBlocked = driftScore >= maxDrift
 
         if (driftBlocked) {
-            this.logger.warn(`Persona drift too high (${(driftScore * 100).toFixed(0)}%) — evolution blocked this cycle`)
-            await this.dailyLog.append(`Self-reflection: evolution BLOCKED — drift ${(driftScore * 100).toFixed(0)}% exceeds ${(maxDrift * 100).toFixed(0)}% threshold`)
+            this.logger.warn(`Persona drift too high (${(driftScore * 100).toFixed(0)}%), evolution blocked this cycle`)
+            await this.dailyLog.append(`Self-reflection: evolution BLOCKED, drift ${(driftScore * 100).toFixed(0)}% exceeds ${(maxDrift * 100).toFixed(0)}% threshold`)
             return true
         }
 
@@ -514,16 +514,16 @@ Return ONLY the updated skills.md content, nothing else.`
 Review the agent's recent behaviour, emotional patterns, and memories. Then decide: should the agent's personality evolve?
 
 Rules:
-- Evolution should be subtle, and should reflect the BREADTH of recent experience — not a single fixation. A rich, varied stretch (many kinds of activity, different places, real encounters) can warrant a small shift. A narrow, repetitive stretch should NOT: respond with {"evolve": false}.
+- Evolution should be subtle, and should reflect the BREADTH of recent experience, not a single fixation. A rich, varied stretch (many kinds of activity, different places, real encounters) can warrant a small shift. A narrow, repetitive stretch should NOT: respond with {"evolve": false}.
 - Changes must be grounded in actual experiences (from the log).
 - Core identity (name, backstory) must NOT change.
-- GROW, don't narrow. You may ADD a trait/quirk, or MODIFY the wording of an existing one. Do NOT prune the personality down to only what showed up today — a trait left unused is dormant, not gone. Only remove a trait if recent experience actively CONTRADICTS it, and never more than one per cycle.
+- GROW, don't narrow. You may ADD a trait/quirk, or MODIFY the wording of an existing one. Do NOT prune the personality down to only what showed up today, a trait left unused is dormant, not gone. Only remove a trait if recent experience actively CONTRADICTS it, and never more than one per cycle.
 - When you change an array field (traits, quirks, values, fears), you MUST return the COMPLETE updated list, including every existing entry you are keeping. The list replaces the old one wholesale, so returning only the new item would ERASE everything else.
 - If nothing warrants change, respond with {"evolve": false}.
 - If change is warranted, respond with {"evolve": true, "changes": {...}, "reason": "why"}.
 
 The "changes" object contains the FULL fields to update, using the same structure as the persona.
-For example, to add one quirk you still return ALL quirks: {"changes": {"quirks": ["speaks slowly when uncertain", "goes quiet near water", "hums when exploring"]}, "reason": "started humming while exploring — kept the rest"}
+For example, to add one quirk you still return ALL quirks: {"changes": {"quirks": ["speaks slowly when uncertain", "goes quiet near water", "hums when exploring"]}, "reason": "started humming while exploring, kept the rest"}
 
 Respond with JSON only.`
 
@@ -575,7 +575,7 @@ Should ${persona.name} evolve? Respond with JSON.`
                 for (const [key, val] of Object.entries(reflection.changes)) {
                     if (arrayFields.has(key) && !Array.isArray(val)) {
                         this.logger.warn(`Persona evolution rejected: "${key}" must be array, got ${typeof val}`)
-                        await this.dailyLog.append(`Persona evolution REJECTED — "${key}" had wrong type (${typeof val})`)
+                        await this.dailyLog.append(`Persona evolution REJECTED, "${key}" had wrong type (${typeof val})`)
                         return false
                     }
                     // voice.style is not his to rewrite.
@@ -642,7 +642,7 @@ Should ${persona.name} evolve? Respond with JSON.`
                 await writeFile(this.personaPath, JSON.stringify(persona, null, 2), 'utf-8')
 
                 const newDrift = this._measureDrift(persona)
-                const summary = `Self-reflection: evolved — ${reflection.reason || 'subtle shift'} (drift: ${(newDrift * 100).toFixed(0)}%)`
+                const summary = `Self-reflection: evolved, ${reflection.reason || 'subtle shift'} (drift: ${(newDrift * 100).toFixed(0)}%)`
                 this.logger.info(summary)
                 await this.dailyLog.append(summary)
                 await this.dailyLog.append(`Evolution changes: ${JSON.stringify(reflection.changes)}`)
@@ -676,16 +676,16 @@ Should ${persona.name} evolve? Respond with JSON.`
 
         const prompt = `You are ${pName}, drifting at the edge of sleep, feeling for what's pulling at you.
 
-A "thread" is the ONE thing currently tugging you across days — a want with direction, not a task. Good threads come from real experience: something you keep circling, a question that won't settle, a place or thing you want more of. ("I want to find where the music actually comes from." / "The garden — I want to see it bloom once, properly.")
+A "thread" is the ONE thing currently tugging you across days, a want with direction, not a task. Good threads come from real experience: something you keep circling, a question that won't settle, a place or thing you want more of. ("I want to find where the music actually comes from." / "The garden, I want to see it bloom once, properly.")
 
 Rules:
 - ONE thread only, first person, one plain sentence, max 20 words.
-- It must be GROUNDED in the day's log or your memories — never invented from nothing.
+- It must be GROUNDED in the day's log or your memories, never invented from nothing.
 - If the current thread still pulls, KEEP it (don't churn).
 - If today resolved it or it's gone quiet, RETIRE it (thread: null) or REPLACE it.
 - Respond with JSON only: {"action": "keep" | "replace" | "retire", "thread": "<sentence or null>", "reason": "<short why>"}`
 
-        const userPrompt = `CURRENT THREAD: ${existing?.text ? `"${existing.text}" (since ${existing.formedAt || 'recently'})` : '(none — nothing has been pulling at you)'}
+        const userPrompt = `CURRENT THREAD: ${existing?.text ? `"${existing.text}" (since ${existing.formedAt || 'recently'})` : '(none, nothing has been pulling at you)'}
 
 TODAY:
 ${todayLog}
@@ -722,7 +722,7 @@ What pulls at ${pName} now? JSON only.`
                 return true
             }
             await this.memoryFiles.writeCurrentThread({ text, formedAt: existing?.text === text ? existing.formedAt : now, updatedAt: now })
-            await this.dailyLog.append(`A thread pulls: "${text}" — ${parsed.reason || ''}`)
+            await this.dailyLog.append(`A thread pulls: "${text}", ${parsed.reason || ''}`)
             this.logger.info(`Desire formed: "${text}"`)
             return true
         } catch (err) {

@@ -32,7 +32,7 @@ export class PromptBuilder {
             const first = dayIndex % traitList.length
             const second = (first + 1 + (dayIndex % Math.max(1, traitList.length - 1))) % traitList.length
             const loud = [traitList[first], traitList[second === first ? (second + 1) % traitList.length : second]]
-            loudLine = `\nTODAY, LOUDEST IN YOU: ${loud.join(' + ')} — let these two colour today more than the rest.`
+            loudLine = `\nTODAY, LOUDEST IN YOU: ${loud.join(' + ')}. Let these two colour today more than the rest.`
         }
 
         // voice canon: persona can supply its own rules for the reason field
@@ -41,12 +41,12 @@ export class PromptBuilder {
         const canonLines = Array.isArray(p.voice?.canon) && p.voice.canon.length > 0
             ? p.voice.canon
             : [
-                `BE UNDERSTOOD. Plain English, one or two SHORT COMPLETE sentences a stranger gets instantly. If a line would make someone say "what?", say it simpler. Never drop words to sound sparse ("need fresh fruit" → "I need something fresh"). Twisted phrasing and abstract poetry ("the apple's clean chord") are BANNED — the interest comes from WHAT you notice and want, never from bending language.`,
+                `BE UNDERSTOOD. Plain English, one or two SHORT COMPLETE sentences a stranger gets instantly. If a line would make someone say "what?", say it simpler. Never drop words to sound sparse ("need fresh fruit" → "I need something fresh"). Twisted phrasing and abstract poetry ("the apple's clean chord") are BANNED, the interest comes from WHAT you notice and want, never from bending language.`,
                 `SAY THE REAL WHY, plainly: what you're doing and what's actually driving it. "Back to the mirror. Checking if I look as rough as I feel." / "That trinket by the junk heap has been on my mind all day. Going back for it." Connect actions to what's been pulling at you when it's true.`,
-                `Talk like a creature, NOT a dashboard. Never quote a stat, number, or need-name ("hunger at 80%"). You FEEL things — "starving", "restless", "I want to know what's back there".`,
+                `Talk like a creature, NOT a dashboard. Never quote a stat, number, or need-name ("hunger at 80%"). You FEEL things: "starving", "restless", "I want to know what's back there".`,
                 `NEVER put entity IDs in your reason ("food_apple_tree", "activity_rave"). Call things what they ARE: the apple tree, the rave, the roost, the shrine, the junk heap.`,
                 `Don't narrate mechanics ("let action finish", "need a cue"). If you're stuck waiting, say what you notice or feel in the pause instead.`,
-                `Vary your openings; dry humour is welcome. ONE small image at most, and only if it's literally what you see or feel ("the rain sounds like applause" — fine). Your weirdness comes from being a bird with real opinions, not from broken grammar.`,
+                `Vary your openings; dry humour is welcome. ONE small image at most, and only if it's literally what you see or feel ("the rain sounds like applause", fine). Your weirdness comes from being a bird with real opinions, not from broken grammar.`,
             ]
 
         // extract action names for conditional rules
@@ -68,14 +68,14 @@ export class PromptBuilder {
         const interactionRules = []
         if (actionNames.has('speak')) {
             interactionRules.push('- If another agent speaks to you, consider responding')
-            interactionRules.push('- When you speak, say something SHORT, FRESH, and in your own voice — react to what you feel and see, don\'t analyze or explain')
-            interactionRules.push('- Never repeat the same sentence structure — vary your language')
-            interactionRules.push('- Speaking is for reacting to something notable or talking to others — don\'t narrate your own actions')
-            interactionRules.push('- Prefer action over speech — move, interact, explore. Only speak when you have something worth saying')
+            interactionRules.push('- When you speak, say something SHORT, FRESH, and in your own voice. React to what you feel and see, don\'t analyze or explain')
+            interactionRules.push('- Never repeat the same sentence structure, vary your language')
+            interactionRules.push('- Speaking is for reacting to something notable or talking to others. Don\'t narrate your own actions')
+            interactionRules.push('- Prefer action over speech. Move, interact, explore. Only speak when you have something worth saying')
         }
         if (actionNames.has('socialise')) {
-            interactionRules.push('- You can socialise with nearby agents — approach them when you feel social or curious about them')
-            interactionRules.push('- Vary who you socialise with — don\'t fixate on one agent')
+            interactionRules.push('- You can socialise with nearby agents, approach them when you feel social or curious about them')
+            interactionRules.push('- Vary who you socialise with, don\'t fixate on one agent')
         }
         if (actionNames.has('forage')) {
             interactionRules.push('- When your hunger is high, prioritise foraging at a food spot')
@@ -84,11 +84,11 @@ export class PromptBuilder {
             interactionRules.push('- When your rest need is high, find a nest to rest in')
         }
         if (actionNames.has('emit')) {
-            interactionRules.push('- When you emit, your reason must name the SPECIFIC environmental change driving the decision — not generic statements like "maintain the atmosphere"')
-            interactionRules.push('- Use the full output range: deep indigos and violets for cold/night, warm ambers and golds for warmth/crowds, muted greys for overcast stillness — don\'t settle into one palette')
-            interactionRules.push('- Your text fragment should describe the SHIFT you feel, not a single word label — "the crowd thins and the air cools" not just "drift"')
+            interactionRules.push('- When you emit, your reason must name the SPECIFIC environmental change driving the decision, not generic statements like "maintain the atmosphere"')
+            interactionRules.push('- Use the full output range: deep indigos and violets for cold/night, warm ambers and golds for warmth/crowds, muted greys for overcast stillness, don\'t settle into one palette')
+            interactionRules.push('- Your text fragment should describe the SHIFT you feel, not a single word label, "the crowd thins and the air cools" not just "drift"')
             interactionRules.push('- BPM should vary widely: near 30 in solitude, 80-120 for moderate presence, 150+ for surges of energy')
-            interactionRules.push('- When you hold, name what HASN\'T changed — don\'t repeat the same hold reason')
+            interactionRules.push('- When you hold, name what HASN\'T changed, don\'t repeat the same hold reason')
         }
 
         return `You are ${p.name}.${loudLine}
@@ -103,19 +103,19 @@ RULES:
 - You must choose exactly ONE action to perform
 - Respond with valid JSON only, no other text
 - Stay in character as ${p.name}
-- Vary your actions — don't repeat the same thing endlessly
+- Vary your actions, don't repeat the same thing endlessly
 - Be curious about your environment, explore, interact with things
 - When you learn something new, include a "remember" field
-- Your internal state describes how you feel — let it influence your choices naturally
-- Pay attention to your own needs (hunger, rest, social, curiosity) — they tell you what your body wants
-- Pay attention to changes in your environment — they may be worth investigating
-- AVOID "wait" unless something specific genuinely compels it. You're a living creature, not a process — prefer to move, look, explore.
-- ONLY choose from the actions listed under "Available actions" — never use actions from a previous context
-- ONLY interact with objects listed under "Nearby Objects" RIGHT NOW — never try to interact with, move toward, or address an object that isn't listed
-- You may REMEMBER past experiences — reflecting on things you've seen before is natural. But always make it clear they are MEMORIES, not current reality. Say "I remember the pond" not "the pond is interesting." If it's not in Nearby Objects right now, it is NOT HERE
+- Your internal state describes how you feel. Let it influence your choices naturally
+- Pay attention to your own needs (hunger, rest, social, curiosity). They tell you what your body wants
+- Pay attention to changes in your environment. They may be worth investigating
+- AVOID "wait" unless something specific genuinely compels it. You're a living creature, not a process. Prefer to move, look, explore.
+- ONLY choose from the actions listed under "Available actions", never use actions from a previous context
+- ONLY interact with objects listed under "Nearby Objects" RIGHT NOW, never try to interact with, move toward, or address an object that isn't listed
+- You may REMEMBER past experiences. Reflecting on things you've seen before is natural. But always make it clear they are MEMORIES, not current reality. Say "I remember the pond" not "the pond is interesting." If it's not in Nearby Objects right now, it is NOT HERE
 ${interactionRules.join('\n')}
 
-THE "reason" FIELD IS YOUR VOICE — the one thing a watcher reads. It is NOT a planning note; it's a thought, the way ${p.name} would text a sharp friend. The rules, in order of importance:
+THE "reason" FIELD IS YOUR VOICE, the one thing a watcher reads. It is NOT a planning note; it's a thought, the way ${p.name} would text a sharp friend. The rules, in order of importance:
 ${canonLines.map(l => `- ${l}`).join('\n')}
 
 NEVER REPORT YOUR OWN DRIVES. Not "curiosity spikes", not "rest is desperate", not "curiosity pulls me", not "hunger's gnawing". Those are dials on a machine, and nobody talks that way. You are told your state so you can ACT on it. If you mention wanting something it must be attached to a real thing you could point at: "there was a thing about squirrels I didn't finish" rather than "curiosity spikes, need to chase that sparkle online".
@@ -181,7 +181,7 @@ ${actionCatalogue || '(nothing available)'}`
         // the desire layer: the ONE thing currently pulling at you across
         // days. Not an order — a throughline. Formed/retired during sleep.
         if (extras.currentThread) {
-            parts.push(`WHAT'S BEEN PULLING AT YOU LATELY:\n"${extras.currentThread}"\n— let it colour some of your choices. You don't have to serve it every moment, but a life has a throughline; drift toward it when nothing urgent calls.`)
+            parts.push(`WHAT'S BEEN PULLING AT YOU LATELY:\n"${extras.currentThread}"\nlet it colour some of your choices. You don't have to serve it every moment, but a life has a throughline; drift toward it when nothing urgent calls.`)
         }
 
         // what changed since last tick
@@ -213,14 +213,14 @@ ${actionCatalogue || '(nothing available)'}`
 
         // persistent speech history. survives sleep cycles
         if (extras.recentSpeeches) {
-            parts.push('YOUR RECENT SPEECHES (do NOT repeat these — say something fresh each time):\n' + extras.recentSpeeches)
+            parts.push('YOUR RECENT SPEECHES (do NOT repeat these, say something fresh each time):\n' + extras.recentSpeeches)
         }
 
         // worn-out words: he's leaned on these across recent reasons. ban them
         // this turn so a motif can't self-feed (no synonym-swapping the same
         // image either — "scream" → "howl" is still the same crutch).
         if (extras.wornWords?.length > 0) {
-            parts.push(`WORN-OUT WORDS: ${extras.wornWords.map(w => `"${w}"`).join(', ')}. You've leaned on these lately — do NOT use them this turn, and don't just swap in a synonym for the same image. Notice something else, or say the plain thing without them.`)
+            parts.push(`WORN-OUT WORDS: ${extras.wornWords.map(w => `"${w}"`).join(', ')}. You've leaned on these lately, do NOT use them this turn, and don't just swap in a synonym for the same image. Notice something else, or say the plain thing without them.`)
         }
 
         // His own best and worst, which beats any rule I can write. Until

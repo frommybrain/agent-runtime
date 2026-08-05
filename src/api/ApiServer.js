@@ -97,7 +97,7 @@ export class ApiServer {
         // (status/memory/metrics/events) stay open for the dashboard.
         if (req.method !== 'GET' && req.method !== 'OPTIONS' && !this._authorised(req)) {
             this.logger.warn(`API ${req.method} ${path} rejected — bad/missing admin token`)
-            return this._json(res, 401, { error: 'Unauthorised — Bearer ADMIN_TOKEN required' })
+            return this._json(res, 401, { error: 'Unauthorised, Bearer ADMIN_TOKEN required' })
         }
 
         try {
