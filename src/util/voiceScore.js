@@ -1,4 +1,4 @@
-// fingerprint: 363c1e082f89cd1e
+// fingerprint: 91ce0d9a46b618eb
 // What a good line is, as a number.
 //
 // Everything built so far to control his voice is a prohibition. wornWords
@@ -9,13 +9,22 @@
 // you get "the whisper", ban that and you get "the pull". Nothing in the
 // system has ever said "that one was good, do more of that."
 //
-// So this scores a line instead of judging it. The score is not used to
-// reject anything (a rejection is just another prohibition). It is used to
-// decide which of HIS OWN lines get shown back to him as the examples to
-// write like, and which get shown as the ones that failed. He learns his
-// voice from his own best work rather than from mine, which also fixes a
-// problem I caused: my hand-written examples taught a writerly tic
-// ("badly and completely") that came straight back in his output.
+// So this scores a line instead of judging it. It decides which of HIS OWN
+// lines get shown back to him as the examples to write like, and which get
+// shown as the ones that failed. He learns his voice from his own best work
+// rather than from mine, which also fixes a problem I caused: my
+// hand-written examples taught a writerly tic ("badly and completely") that
+// came straight back in his output.
+//
+// It is ALSO, since JournalGate, what decides which lines anybody reads.
+// That was not the original intent ("a rejection is just another
+// prohibition" is what this comment used to say) and it raises the stakes
+// on every pattern below: a blind spot here is no longer a ranking
+// curiosity, it selects what the diary becomes. The INVERTED pattern exists
+// because of exactly that. Before it, this file scored "lay beside the
+// beach photographs" at 2.3 and Sam's own plainer rewrite at 1.02, so
+// publishing on score would have printed the register he keeps objecting
+// to. Test any new pattern against his good and bad examples, both.
 //
 // Deliberately mechanical, no model call. A fitness function that needs an
 // LLM to run is a fitness function nobody runs on every line.
@@ -35,7 +44,26 @@ const GAUGE = /\b(curiosity|hunger|rest|social|safety|energy)\b[^.,]{0,18}\b(spi
 const STIFF = /\b(curb|quell|assuage|alleviate|sate|satiate|imbibe|partake|traverse|procure)\b/i
 
 // Hedges. A moment that happened does not need "maybe".
-const HEDGE = /\b(maybe|perhaps|might|seems? to|somehow|something (odd|strange)|kind of|sort of)\b/i
+//
+// "kind of" and "sort of" USED to be in here and should never have been.
+// They are casual speech markers, not hedges about facts, and Sam's own
+// preferred rewrite was "saw a silver comb next to the mirror on the salon
+// bench, kind of like it". This pattern was scoring down the exact register
+// it exists to encourage.
+const HEDGE = /\b(maybe|perhaps|might|seems? to|somehow|something (odd|strange))\b/i
+
+// Literary inversion. "The cracked glass still lay beside the beach
+// photographs" is writing; "saw a comb next to the mirror" is speech. Sam
+// flagged "lay beside" twice, and the scorer was ranking it ABOVE his own
+// rewrite, which meant the fitness function was training him toward the
+// register he dislikes. Now that JournalGate publishes on score, that was
+// no longer a ranking curiosity, it decided what people read.
+const INVERTED = /\b(lay|lays|lies)\s+(beside|by|near|against|across|among|amid|there)\b|\bstill\s+(lay|lies)\b/i
+
+// The status report. "Went back for the rusted soda can; it still lay
+// rusted" is a state check on an object, not a moment. This shape came out
+// of an example in the moment prompt and took over 16% of the diary.
+const STATUS_REPORT = /;\s*(it|they)\s+(still|was|were|had)\b/i
 
 // Paired adverbs that cancel each other out.
 const PAIRED_ADVERB = /\b(\w+ly)\s+and\s+(\w+ly)\b/i
@@ -111,6 +139,12 @@ export function scoreLine(line, recent = []) {
 
   if (STIFF.test(text)) { score -= 1.5; notes.push('stiff') }
 
+  // Sized to beat the +1.5 a concrete noun earns: "lay beside the beach
+  // photographs" names a photograph and was riding that bonus to 2.3.
+  if (INVERTED.test(text)) { score -= 2; notes.push('inverted') }
+
+  if (STATUS_REPORT.test(text)) { score -= 1.5; notes.push('status-report') }
+
   // Saying it again. Compared against the shorter line so a long paraphrase
   // cannot hide behind its own extra words.
   let worst = 0
@@ -140,4 +174,4 @@ export function exemplars(history, { best = 4, worst = 3 } = {}) {
   }
 }
 
-export const _patterns = { HOLLOW, GAUGE, HEDGE, PAIRED_ADVERB, CONCRETE }
+export const _patterns = { HOLLOW, GAUGE, HEDGE, PAIRED_ADVERB, CONCRETE, INVERTED, STATUS_REPORT }
