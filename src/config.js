@@ -74,6 +74,27 @@ export function loadConfig() {
         activeHoursBeforeSleep: parseFloat(process.env.ACTIVE_HOURS_BEFORE_SLEEP || '0.83'),
         sleepDurationMinutes: parseInt(process.env.SLEEP_DURATION_MINUTES || '10'),
 
+        // How often self-reflection may actually rewrite the persona.
+        //
+        // Sleep runs about every 50 minutes, which is right for memory: he
+        // consolidates what just happened while it is still fresh. It is
+        // badly wrong for identity. Persona evolution rode the same cadence,
+        // so who he is was up for revision roughly 24 times a day, and
+        // Victor picked up seven near-identical traits in a single night,
+        // one per sleep, each justified with the same sentence about
+        // visiting "many varied locations".
+        //
+        // Decoupled rather than slowed: consolidation stays hourly, the
+        // character sheet changes about twice a day. Nothing is skipped,
+        // only deferred to the next eligible sleep.
+        personaEvolutionMinHours: parseFloat(process.env.PERSONA_EVOLUTION_MIN_HOURS || '12'),
+
+        // A thread is what pulls at him across days; see SleepCycle
+        // _formDesire. It has to be able to die, or it writes his memory
+        // and then cites it back as proof it should stay.
+        threadMaxRenewals: parseInt(process.env.THREAD_MAX_RENEWALS || '12'),
+        threadMaxAgeDays: parseFloat(process.env.THREAD_MAX_AGE_DAYS || '2'),
+
         // quiet hours. reduced activity during low-viewership windows.
         // format: "HH:MM-HH:MM" in UTC (eg "02:00-10:00")
         quietHours: process.env.QUIET_HOURS || null,
