@@ -128,8 +128,11 @@ const FRAME_CEILING = 2
  *   3. drop exact and near duplicates (token jaccard >= 0.6 within field)
  *   4. motif ceiling: one content word may appear in at most 3 entries
  *      across the whole sheet; later entries carrying it drop
- *   5. hard cap per field: baseline size + 5 (8 if no baseline), keeping
- *      the head — existing entries lead the list in a honest reflection
+ *   5. hard cap per field: baseline size + 2 (8 if no baseline), keeping
+ *      the head, since existing entries lead the list in an honest
+ *      reflection. This is the load-bearing rule: rules 2 to 4 are all
+ *      lexical and a model varies wording faster than we can enumerate it,
+ *      so the count is the only limit that cannot be worded around.
  * Pure + exported so it can be unit-tested in isolation.
  *
  * @param {object} changes          - reflection.changes (mutated in place)
@@ -160,7 +163,25 @@ export function sanitizeEvolvedArrays(changes, persona, originalPersona, logger 
         const baseline = new Set(
             (originalPersona?.[field] || []).map((s) => String(s).trim().toLowerCase())
         )
-        const cap = baseline.size > 0 ? baseline.size + 5 : 8
+        // Headroom above the authored sheet. Was +5, and it let seven
+        // versions of one trait onto Victor's: "finds calm in water's
+        // ripple", "attuned to subtle rhythms in mundane hums", "finds
+        // brief clarity from coffee aroma", "is fascinated by
+        // bioluminescent beetles", "feels a spark from neon lights",
+        // "finds momentary spark from flickering bar lights", "uses
+        // sensory spikes to reset focus". All one trait, worded seven ways.
+        //
+        // The frame check below caught two of them and the other five
+        // walked past it, because "attuned to" and "is fascinated by" and
+        // "uses" are not in FRAME_VERBS. Widening that list is the same
+        // losing game as banning "the edge" and getting "the whisper": the
+        // model varies the wording faster than we can enumerate it, and a
+        // lexical guard cannot see that seven sentences mean one thing.
+        //
+        // So the cap is the real defence, because it does not care how
+        // something is phrased. Two slots of headroom is enough to grow
+        // into and far too few to build a monoculture in.
+        const cap = baseline.size > 0 ? baseline.size + 2 : 8
 
         const kept = []
         const keptTokens = []
@@ -491,6 +512,33 @@ Return ONLY the updated skills.md content, nothing else.`
             return false
         }
 
+        // Identity changes on its own clock, not the sleep clock. Sleep is
+        // hourly because memory should be consolidated while the day is
+        // still fresh; running the character sheet at that rate gave 24
+        // chances a day to rewrite him, and produced seven versions of one
+        // trait in a single night. This does not skip a reflection, it
+        // defers it to the next eligible sleep.
+        //
+        // The clock is read from the persona's own evolution log rather than
+        // kept in a new state file, so it survives a restart. That matters:
+        // the service restarts often enough that an in-memory timestamp
+        // would hand back a free reflection every time.
+        const minGapMs = (this.config.personaEvolutionMinHours || 0) * 3600 * 1000
+        if (minGapMs > 0) {
+            const lastAt = [...(persona.evolution || [])].reverse()
+                .map((e) => Date.parse(e?.at || ''))
+                .find((t) => Number.isFinite(t))
+            if (lastAt) {
+                const waited = Date.now() - lastAt
+                if (waited < minGapMs) {
+                    this.logger.info(
+                        `Self-reflection: deferred, ${(waited / 3600000).toFixed(1)}h since the last one, needs ${this.config.personaEvolutionMinHours}h`,
+                    )
+                    return false
+                }
+            }
+        }
+
         // v0.3.1: _originalPersona is now loaded from immutable baseline file at startup
         // via loadOriginalPersona(). if somehow not loaded, fall back to current.
         if (!this._originalPersona) {
@@ -517,7 +565,7 @@ Rules:
 - Evolution should be subtle, and should reflect the BREADTH of recent experience, not a single fixation. A rich, varied stretch (many kinds of activity, different places, real encounters) can warrant a small shift. A narrow, repetitive stretch should NOT: respond with {"evolve": false}.
 - Changes must be grounded in actual experiences (from the log).
 - Core identity (name, backstory) must NOT change.
-- GROW, don't narrow. You may ADD a trait/quirk, or MODIFY the wording of an existing one. Do NOT prune the personality down to only what showed up today, a trait left unused is dormant, not gone. Only remove a trait if recent experience actively CONTRADICTS it, and never more than one per cycle.
+- GROW, don't narrow, but the sheet does not get longer. You have room for about two entries beyond the ones you started with, so prefer MODIFYING the wording of an existing trait/quirk, or swapping one out, over piling another on. Do NOT prune the personality down to only what showed up today, a trait left unused is dormant, not gone. Only remove a trait if recent experience actively CONTRADICTS it, and never more than one per cycle.
 - When you change an array field (traits, quirks, values, fears), you MUST return the COMPLETE updated list, including every existing entry you are keeping. The list replaces the old one wholesale, so returning only the new item would ERASE everything else.
 - If nothing warrants change, respond with {"evolve": false}.
 - If change is warranted, respond with {"evolve": true, "changes": {...}, "reason": "why"}.
@@ -656,10 +704,32 @@ Should ${persona.name} evolve? Respond with JSON.`
         return false
     }
 
-    // the desire layer: distill ONE current thread — a want with direction,
-    // grounded in the day — that persists across days in the decision
+    // the desire layer: distill ONE current thread, a want with direction,
+    // grounded in the day, that persists across days in the decision
     // prompt. Kept small on purpose: one thread, plain sentence, first
     // person. The LLM may keep, replace, or retire it each sleep.
+    //
+    // A thread must be able to die of old age, and until now it could not.
+    //
+    // Victor spent over a day on "I want to hear what the shrine whispers",
+    // and the shrine cannot whisper: there is no stone in the world, he
+    // invented it. That single line sits at the top of every decision
+    // prompt, so he went to the shrine constantly, the day's log filled
+    // with it (217 mentions of "stone" and 216 of "whisper" in one day),
+    // consolidation read that log back and wrote his entire long-term
+    // memory about it, and then this pass asked "does it still pull?"
+    // while showing the model a day made of nothing but pursuing it.
+    //
+    // It always answered keep, and it was right to: the thread was
+    // magnificently well grounded. It had manufactured its own evidence.
+    // No input could ever have retired it, which means the honest reading
+    // is that the exit was missing rather than that the model chose badly.
+    //
+    // So threads now expire. Not because wanting something unreachable is
+    // wrong (it is one of the better things about him, and "the shrine
+    // stays mute no matter how often I check it" is a real Learned Fact he
+    // formed) but because a want that has survived this many sleeps has
+    // stopped being a want and become the whole personality.
     async _formDesire() {
         const todayLog = await this.dailyLog.readForConsolidation(80)
         if (!todayLog.trim()) return false
@@ -667,6 +737,23 @@ Should ${persona.name} evolve? Respond with JSON.`
         const existing = await this.memoryFiles.readCurrentThread()
         const memory = await this.memoryFiles.readMemory()
         const memTail = memory.split('\n').filter(l => l.startsWith('- ')).slice(-8).join('\n')
+
+        // Has this one run its course? Two independent limits, because they
+        // fail differently: renewals catches a thread that is renewed hard
+        // and often, age catches one that quietly never lets go.
+        const renewals = Number(existing?.renewals || 0)
+        const ageDays = existing?.formedAt
+            ? (Date.now() - new Date(existing.formedAt).getTime()) / 86400000
+            : 0
+        const spent = Boolean(existing?.text) && (
+            renewals >= this.config.threadMaxRenewals ||
+            ageDays >= this.config.threadMaxAgeDays
+        )
+        if (spent) {
+            this.logger.info(
+                `Thread is spent after ${renewals} renewals / ${ageDays.toFixed(1)} days: "${existing.text}"`,
+            )
+        }
 
         let pName = 'the agent'
         try {
@@ -683,9 +770,10 @@ Rules:
 - It must be GROUNDED in the day's log or your memories, never invented from nothing.
 - If the current thread still pulls, KEEP it (don't churn).
 - If today resolved it or it's gone quiet, RETIRE it (thread: null) or REPLACE it.
+- A want you have carried for days without it ever moving is not a thread any more, it is a rut. Let it go and notice something else.
 - Respond with JSON only: {"action": "keep" | "replace" | "retire", "thread": "<sentence or null>", "reason": "<short why>"}`
 
-        const userPrompt = `CURRENT THREAD: ${existing?.text ? `"${existing.text}" (since ${existing.formedAt || 'recently'})` : '(none, nothing has been pulling at you)'}
+        const userPrompt = `CURRENT THREAD: ${existing?.text ? `"${existing.text}" (since ${existing.formedAt || 'recently'}, carried through ${renewals} sleeps)` : '(none, nothing has been pulling at you)'}${spent ? `\n\nYou have carried that one long enough and it has not moved. It cannot be kept tonight. REPLACE it with something else the day actually gave you, or RETIRE it.` : ''}
 
 TODAY:
 ${todayLog}
@@ -716,12 +804,30 @@ What pulls at ${pName} now? JSON only.`
                 return true
             }
             const text = String(parsed.thread).trim().slice(0, 160)
-            if (parsed.action === 'keep' && existing?.text) {
-                // keep as-is; refresh updatedAt so we can see it's alive
-                await this.memoryFiles.writeCurrentThread({ ...existing, updatedAt: now })
+            const sameAsBefore = existing?.text && text.toLowerCase() === existing.text.toLowerCase()
+            if (spent && (parsed.action === 'keep' || sameAsBefore)) {
+                // It was told it could not keep this one and kept it anyway,
+                // or handed the same sentence back as a "replacement". The
+                // whole point is that this decision cannot be left to a
+                // model reading evidence the thread produced, so retire it
+                // here and let tomorrow start clean.
+                await this.memoryFiles.writeCurrentThread(null)
+                await this.dailyLog.append(`Thread retired: carried ${renewals} sleeps without moving`)
+                this.logger.info(`Desire retired (spent): "${existing.text}"`)
                 return true
             }
-            await this.memoryFiles.writeCurrentThread({ text, formedAt: existing?.text === text ? existing.formedAt : now, updatedAt: now })
+            if (parsed.action === 'keep' && existing?.text) {
+                // keep as-is; refresh updatedAt and count the renewal, which
+                // is what eventually retires it
+                await this.memoryFiles.writeCurrentThread({ ...existing, updatedAt: now, renewals: renewals + 1 })
+                return true
+            }
+            await this.memoryFiles.writeCurrentThread({
+                text,
+                formedAt: existing?.text === text ? existing.formedAt : now,
+                updatedAt: now,
+                renewals: existing?.text === text ? renewals : 0,
+            })
             await this.dailyLog.append(`A thread pulls: "${text}", ${parsed.reason || ''}`)
             this.logger.info(`Desire formed: "${text}"`)
             return true
