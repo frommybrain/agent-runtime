@@ -1,4 +1,4 @@
-// fingerprint: 91ce0d9a46b618eb
+// fingerprint: 75b712b4c01667cf
 // What a good line is, as a number.
 //
 // Everything built so far to control his voice is a prohibition. wornWords
@@ -60,10 +60,13 @@ const HEDGE = /\b(maybe|perhaps|might|seems? to|somehow|something (odd|strange))
 // no longer a ranking curiosity, it decided what people read.
 const INVERTED = /\b(lay|lays|lies)\s+(beside|by|near|against|across|among|amid|there)\b|\bstill\s+(lay|lies)\b/i
 
-// The status report. "Went back for the rusted soda can; it still lay
-// rusted" is a state check on an object, not a moment. This shape came out
-// of an example in the moment prompt and took over 16% of the diary.
-const STATUS_REPORT = /;\s*(it|they)\s+(still|was|were|had)\b/i
+// The status report: a state check on an object rather than a moment.
+//
+// The first version keyed on a semicolon, so when the shape came back as
+// "cracked bottle cap still cracked, I left it" and "tin can still flat,
+// I'll leave it" it sailed through. Two forms now: "<thing> still <state>",
+// and the shrug that closes it ("I left it", "I noted it", "it stayed").
+const STATUS_REPORT = /;\s*(it|they)\s+(still|was|were|had)\b|\bstill\s+\w+,\s*(i|it|they)\b|\b(i'?(ll)? ?(left|leave|noted|note) it|it stayed)\b/i
 
 // Paired adverbs that cancel each other out.
 const PAIRED_ADVERB = /\b(\w+ly)\s+and\s+(\w+ly)\b/i
