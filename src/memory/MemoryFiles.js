@@ -221,12 +221,12 @@ export class MemoryFiles {
         // rebuild discovered objects from current observation. only show whats
         // actually nearby RIGHT NOW. stale objects = hallucination.
         const nearbyObjects = observation.nearbyObjects || observation.nearby_objects || []
-        const objectsSection = '# Nearby Objects (GROUND TRUTH — if something is not listed here, it is not present)\n' + (
+        const objectsSection = '# Nearby Objects (GROUND TRUTH, if something is not listed here, it is not present)\n' + (
             nearbyObjects.length > 0
                 ? nearbyObjects.map(obj =>
                     `- ${obj.id}: ${obj.type}${obj.interactive ? ', interactive' : ''}, at (${obj.pos?.x?.toFixed(0) ?? '?'}, ${obj.pos?.z?.toFixed(0) ?? '?'})`
                 ).join('\n') + '\n'
-                : '(nothing nearby — the area is empty)\n'
+                : '(nothing nearby, the area is empty)\n'
         )
         // replace or append the objects section
         const objMarker = updated.match(/# (?:Discovered|Nearby) Objects[^\n]*/)

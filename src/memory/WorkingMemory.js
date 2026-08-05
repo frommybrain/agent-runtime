@@ -44,7 +44,7 @@ export class WorkingMemory {
                     : ''
                 return `[${t}] I did: ${e.action} ${e.reason || ''}${result}${star}`
             }
-            if (e.type === 'action_result') return `[${t}] Result: ${e.success ? 'succeeded' : 'failed'}${e.message ? ' — ' + e.message : ''}${star}`
+            if (e.type === 'action_result') return `[${t}] Result: ${e.success ? 'succeeded' : 'failed'}${e.message ? ': ' + e.message : ''}${star}`
             if (e.type === 'observation') return `[${t}] I saw: ${e.summary}${star}`
             if (e.type === 'speech_heard') return `[${t}] ${e.speaker} said: "${e.message}"${star}`
             if (e.type === 'speech_sent') return `[${t}] I said: "${e.message}"${star}`

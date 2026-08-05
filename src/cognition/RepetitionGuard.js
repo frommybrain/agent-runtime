@@ -296,7 +296,7 @@ export class RepetitionGuard {
 
         const parts = []
         if (heavilyUsed.length > 0) {
-            parts.push(`Heavily used: ${heavilyUsed.join(', ')}. Consider varying your approach — try different targets or actions.`)
+            parts.push(`Heavily used: ${heavilyUsed.join(', ')}. Consider varying your approach. Try different targets or actions.`)
         }
         if (wellExplored.length > 0) {
             parts.push(`Well explored: ${wellExplored.join(', ')}.`)

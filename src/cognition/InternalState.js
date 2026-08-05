@@ -244,7 +244,7 @@ export class InternalState {
     _regime(v, a) {
         if (v > 0.3 && a > 0.45) return {
             name: 'MANIC BRIGHT',
-            directive: 'everything glitters — say yes to the wilder option, talk quicker, chase the thing. You\'ll regret nothing until later.',
+            directive: 'everything glitters. Say yes to the wilder option, talk quicker, chase the thing. You\'ll regret nothing until later.',
         }
         if (v > 0.25 && a < -0.2) return {
             name: 'TENDER LULL',
@@ -252,7 +252,7 @@ export class InternalState {
         }
         if (v < -0.25 && a < -0.1) return {
             name: 'SULK',
-            directive: 'unimpressed by default. Short answers. Things have to EARN your attention today — and mostly they won\'t.',
+            directive: 'unimpressed by default. Short answers. Things have to EARN your attention today, and mostly they won\'t.',
         }
         if (v < -0.2 && a > 0.35) return {
             name: 'RATTLED HOUR',
@@ -356,7 +356,7 @@ export class InternalState {
             if (ageMs < 60 * 60 * 1000) {
                 this.mood = this._clamp(data.mood || 0)
                 this.energy = this._clamp(data.energy || 0)
-                this.logger.info(`State restored from checkpoint (age: ${Math.round(ageMs / 1000)}s) — v=${this.mood.toFixed(2)} a=${this.energy.toFixed(2)}`)
+                this.logger.info(`State restored from checkpoint (age: ${Math.round(ageMs / 1000)}s), v=${this.mood.toFixed(2)} a=${this.energy.toFixed(2)}`)
                 return data
             }
             this.logger.info(`State checkpoint too old (${Math.round(ageMs / 60000)}min), starting fresh`)
