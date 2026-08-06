@@ -1,4 +1,4 @@
-// fingerprint: 19f2afc14c694f60
+// fingerprint: 2829c2dd98b3ae2a
 // What a good line is, as a number.
 //
 // Everything built so far to control his voice is a prohibition. wornWords
@@ -86,11 +86,24 @@ const STATUS_REPORT = /;\s*(it|they)\s+(still|was|were|had)\b|\bstill\s+\w+,\s*(
 // person reporting that they observed a thing instead of saying anything
 // about it.
 //
-// Checked against his own good and bad lists before shipping: no false
-// positives across eight lines he liked, including "Stood knee-deep,
-// watched a green bottle drift past the reeds", which contains "watched"
-// but is not him narrating his own attention.
-const SHRUG = /\bi\s+(noted|stared|shrugged|blinked|watched|looked)\b\s*[.,!]?|[;,]\s*(i|it|they)\s+\w+(\s+it)?\s*[.!]?$|\b\w+ed\s+again\s*[.!]?$/i
+// FIFTH form. The version before this keyed on "I noted", so the tic
+// simply dropped the pronoun: "pulled rusted nail, left it, noted",
+// "bobbing leaf gone, noted", "coin that clinked twice stayed, noted".
+// Those scored 0.8 to 2.3 and went straight to the diary.
+//
+// Every version of this guard has been a slightly narrower regex than the
+// last, which is the losing game I keep naming and keep playing. So this
+// one keys on the SHAPE with nothing optional about the wording: a line
+// that ENDS on a bare past-tense verb after a clause break, with or
+// without a subject. That is the thing itself, a sentence trailing off
+// into a report of having observed something, rather than one phrasing
+// of it.
+//
+// Checked against nine lines Sam has liked and eight he has not: clean
+// separation, no false positives. "Stood knee-deep, watched a green
+// bottle drift past the reeds" survives, because "watched" is doing work
+// mid-sentence rather than closing it.
+const SHRUG = /[,;]\s*(i\s+)?\w+ed(\s+again)?\s*[.!]?$|\bi\s+(noted|stared|shrugged|blinked|watched|looked)\b/i
 
 // Paired adverbs that cancel each other out.
 const PAIRED_ADVERB = /\b(\w+ly)\s+and\s+(\w+ly)\b/i
