@@ -1,4 +1,4 @@
-// fingerprint: 2e5a3b469c5d14f5
+// fingerprint: 19f2afc14c694f60
 // What a good line is, as a number.
 //
 // Everything built so far to control his voice is a prohibition. wornWords
@@ -40,7 +40,13 @@ const HOLLOW = /\b(the|a|an|any|some|that|this)\s+(\w+\s+){0,2}(edge|gnaw|flatne
 // Reading his own dials.
 const GAUGE = /\b(curiosity|hunger|rest|social|safety|energy)\b[^.,]{0,18}\b(spike|pull|gnaw|scream|surge|climb|desperate|rising|is (high|low))/i
 
-// Formal where a plain word exists. Sam has flagged "curb" twice.
+// Formal where a plain word exists. Sam has now flagged "curb" three
+// times, most recently in "Apple bites curb hunger, and music drifts".
+// The penalty used to be -1.5, which a single concrete noun paid off:
+// that line scored 0.8 and sailed onto the screen because "apple" is in
+// CONCRETE. A word somebody has objected to three times should not be
+// winnable on arithmetic, so this now outweighs anything else a short
+// line can earn.
 const STIFF = /\b(curb|quell|assuage|alleviate|sate|satiate|imbibe|partake|traverse|procure)\b/i
 
 // Hedges. A moment that happened does not need "maybe".
@@ -166,7 +172,7 @@ export function scoreLine(line, recent = []) {
 
   if (PAIRED_ADVERB.test(text)) { score -= 1.2; notes.push('paired-adverb') }
 
-  if (STIFF.test(text)) { score -= 1.5; notes.push('stiff') }
+  if (STIFF.test(text)) { score -= 2.5; notes.push('stiff') }
 
   // Sized to beat the +1.5 a concrete noun earns: "lay beside the beach
   // photographs" names a photograph and was riding that bonus to 2.3.
