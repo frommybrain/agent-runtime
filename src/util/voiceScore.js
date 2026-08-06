@@ -1,4 +1,4 @@
-// fingerprint: 75b712b4c01667cf
+// fingerprint: 2e5a3b469c5d14f5
 // What a good line is, as a number.
 //
 // Everything built so far to control his voice is a prohibition. wornWords
@@ -68,6 +68,24 @@ const INVERTED = /\b(lay|lays|lies)\s+(beside|by|near|against|across|among|amid|
 // and the shrug that closes it ("I left it", "I noted it", "it stayed").
 const STATUS_REPORT = /;\s*(it|they)\s+(still|was|were|had)\b|\bstill\s+\w+,\s*(i|it|they)\b|\b(i'?(ll)? ?(left|leave|noted|note) it|it stayed)\b/i
 
+// The shrug. A bare first-person reaction closing the line, or the flat
+// report verbs "I noted" and "I stared" anywhere in it.
+//
+// This is the same tic on its fourth outing, and each time it moved rather
+// than died: "Went back for X; it still Y", then "still cracked, I left
+// it", then "the sock stayed, I noted", "the helmet glinted; I stared",
+// "picked it up, set it, lifted again". Sam: "I noted feels like unnatural
+// language and repeats a lot". It survives because the guards kept keying
+// on where it sat in the sentence rather than on what it is, which is a
+// person reporting that they observed a thing instead of saying anything
+// about it.
+//
+// Checked against his own good and bad lists before shipping: no false
+// positives across eight lines he liked, including "Stood knee-deep,
+// watched a green bottle drift past the reeds", which contains "watched"
+// but is not him narrating his own attention.
+const SHRUG = /\bi\s+(noted|stared|shrugged|blinked|watched|looked)\b\s*[.,!]?|[;,]\s*(i|it|they)\s+\w+(\s+it)?\s*[.!]?$|\b\w+ed\s+again\s*[.!]?$/i
+
 // Paired adverbs that cancel each other out.
 const PAIRED_ADVERB = /\b(\w+ly)\s+and\s+(\w+ly)\b/i
 
@@ -76,7 +94,15 @@ const PAIRED_ADVERB = /\b(\w+ly)\s+and\s+(\w+ly)\b/i
 // this list still earns through the proper-noun and number checks below.
 const CONCRETE = /\b(sock|shoe|drum|machine|glass|bottle|leaf|coin|bag|door|window|wall|sign|light|lamp|bench|step|rail|paper|card|box|tin|lid|cup|plate|fruit|apple|chip|crumb|feather|wing|beak|claw|puddle|reed|gravel|kerb|gutter|receipt|ticket|button|lace|wrist|arm|hand|coat|hat|bandage|needle|ink|screen|keyboard|phone|receiver|beep|speaker|towel|comb|brush|mirror|chair|table|clock|plaque|case|rock|water|rain|wind|dust|smoke)\b/i
 
-const IDEAL_WORDS = 10
+// Length was carrying almost no signal and a lot of noise. Counting words
+// across the lines Sam has actually judged: the ones he liked run 4, 7, 10,
+// 12, 12, 15, 17 and the ones he disliked run 8, 8, 10, 11, 11, 15. They
+// overlap almost exactly, so a steep penalty was not separating good from
+// bad, it was just taxing his 17-word favourite ("I placed the found hair
+// clip on the laundrette sill, a tiny offering for any wandering hand")
+// down below a tic. Gentler, and only really biting past twenty, where the
+// model has genuinely started describing rather than noticing.
+const IDEAL_WORDS = 14
 
 function words(s) { return String(s).trim().split(/\s+/).filter(Boolean) }
 
@@ -123,7 +149,7 @@ export function scoreLine(line, recent = []) {
   // his own favourite line at 0.08, which would have taught exactly the
   // wrong thing.
   if (w.length > IDEAL_WORDS) {
-    score += Math.max(-1.5, 0.8 - (w.length - IDEAL_WORDS) * 0.18)
+    score += Math.max(-1.5, 0.8 - (w.length - IDEAL_WORDS) * 0.10)
     if (w.length > 20) notes.push('long')
   } else {
     score += 0.8
@@ -147,6 +173,10 @@ export function scoreLine(line, recent = []) {
   if (INVERTED.test(text)) { score -= 2; notes.push('inverted') }
 
   if (STATUS_REPORT.test(text)) { score -= 1.5; notes.push('status-report') }
+
+  // Sized to sink it on its own: "The dryer whirred; the sock stayed, I
+  // noted" was scoring 2.3 and outranking every line he has ever praised.
+  if (SHRUG.test(text)) { score -= 2; notes.push('shrug') }
 
   // Saying it again. Compared against the shorter line so a long paraphrase
   // cannot hide behind its own extra words.
@@ -177,4 +207,4 @@ export function exemplars(history, { best = 4, worst = 3 } = {}) {
   }
 }
 
-export const _patterns = { HOLLOW, GAUGE, HEDGE, PAIRED_ADVERB, CONCRETE, INVERTED, STATUS_REPORT }
+export const _patterns = { HOLLOW, GAUGE, HEDGE, PAIRED_ADVERB, CONCRETE, INVERTED, STATUS_REPORT, SHRUG }
