@@ -1,4 +1,4 @@
-// fingerprint: 2829c2dd98b3ae2a
+// fingerprint: 913a6059c1ac629e
 // What a good line is, as a number.
 //
 // Everything built so far to control his voice is a prohibition. wornWords
@@ -86,24 +86,21 @@ const STATUS_REPORT = /;\s*(it|they)\s+(still|was|were|had)\b|\bstill\s+\w+,\s*(
 // person reporting that they observed a thing instead of saying anything
 // about it.
 //
-// FIFTH form. The version before this keyed on "I noted", so the tic
-// simply dropped the pronoun: "pulled rusted nail, left it, noted",
-// "bobbing leaf gone, noted", "coin that clinked twice stayed, noted".
-// Those scored 0.8 to 2.3 and went straight to the diary.
+// FIFTH and SIXTH forms. The version keyed on "I noted" lost the pronoun
+// ("bobbing leaf gone, noted"); the version that fixed that keyed on PAST
+// tense, so it moved to the future: "the bent spoon stayed, I'll leave it",
+// "the strobe still pulsed, I'll watch". Six versions of one tic, and every
+// guard so far has been a regex narrower than the last.
 //
-// Every version of this guard has been a slightly narrower regex than the
-// last, which is the losing game I keep naming and keep playing. So this
-// one keys on the SHAPE with nothing optional about the wording: a line
-// that ENDS on a bare past-tense verb after a clause break, with or
-// without a subject. That is the thing itself, a sentence trailing off
-// into a report of having observed something, rather than one phrasing
-// of it.
+// So this is tense-agnostic: a line that ENDS on a bare verb phrase after a
+// clause break, whatever its tense and with or without a subject. That is
+// the thing itself, a sentence trailing off into a note-to-self about what
+// he did or will do, instead of ending on what happened.
 //
-// Checked against nine lines Sam has liked and eight he has not: clean
-// separation, no false positives. "Stood knee-deep, watched a green
-// bottle drift past the reeds" survives, because "watched" is doing work
-// mid-sentence rather than closing it.
-const SHRUG = /[,;]\s*(i\s+)?\w+ed(\s+again)?\s*[.!]?$|\bi\s+(noted|stared|shrugged|blinked|watched|looked)\b/i
+// Checked against nine lines Sam has liked and seven he has not: clean
+// separation. "I danced, the speaker cable now tied; I will check it later"
+// survives, because it ends on a time, not on the verb.
+const SHRUG = /[,;]\s*(i\s+)?(\w+ed(\s+again)?|(will|ll|d)\s+\w+(\s+it)?|\w+\s+it)\s*[.!]?$|\bi\s+(noted|stared|shrugged|blinked|watched|looked)\b/i
 
 // Paired adverbs that cancel each other out.
 const PAIRED_ADVERB = /\b(\w+ly)\s+and\s+(\w+ly)\b/i
