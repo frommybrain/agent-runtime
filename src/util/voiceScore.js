@@ -1,4 +1,4 @@
-// fingerprint: 913a6059c1ac629e
+// fingerprint: 9f912ad5bfd97668
 // What a good line is, as a number.
 //
 // Everything built so far to control his voice is a prohibition. wornWords
@@ -102,6 +102,20 @@ const STATUS_REPORT = /;\s*(it|they)\s+(still|was|were|had)\b|\bstill\s+\w+,\s*(
 // survives, because it ends on a time, not on the verb.
 const SHRUG = /[,;]\s*(i\s+)?(\w+ed(\s+again)?|(will|ll|d)\s+\w+(\s+it)?|\w+\s+it)\s*[.!]?$|\bi\s+(noted|stared|shrugged|blinked|watched|looked)\b/i
 
+// The note-to-self ending, and the moral ending. Both are one move: closing
+// on a comment about the thing rather than on the thing.
+//
+// SEVENTH form of the tic, and the one that finally made the diagnosis
+// obvious: "I'll mind its twist", "I'll note its stubbornness", "I'll mind
+// its fragility", "noting its shine". Six earlier guards all keyed on the
+// VERB and it kept ending on a possessive abstraction instead.
+//
+// This is a backstop, not the fix. The fix was removing the three-clause
+// template from the moment prompt that was mandating this shape; a scorer
+// can only mark the symptom. If an eighth form appears, look at what the
+// prompt is REQUIRING before writing a ninth pattern.
+const NOTE_TO_SELF = /\b(i'?(ll|d)?\s+(mind|note|remember|keep|watch))\s+(it|its|that|the)\b|\b(noting|minding)\s+(it|its)\b|,\s*(a|another)\s+(reminder|sign|proof)\s+that\b|\bwhich\s+reminds?\s+me\b/i
+
 // Paired adverbs that cancel each other out.
 const PAIRED_ADVERB = /\b(\w+ly)\s+and\s+(\w+ly)\b/i
 
@@ -194,6 +208,8 @@ export function scoreLine(line, recent = []) {
   // noted" was scoring 2.3 and outranking every line he has ever praised.
   if (SHRUG.test(text)) { score -= 2; notes.push('shrug') }
 
+  if (NOTE_TO_SELF.test(text)) { score -= 2; notes.push('note-to-self') }
+
   // Saying it again. Compared against the shorter line so a long paraphrase
   // cannot hide behind its own extra words.
   let worst = 0
@@ -223,4 +239,4 @@ export function exemplars(history, { best = 4, worst = 3 } = {}) {
   }
 }
 
-export const _patterns = { HOLLOW, GAUGE, HEDGE, PAIRED_ADVERB, CONCRETE, INVERTED, STATUS_REPORT, SHRUG }
+export const _patterns = { HOLLOW, GAUGE, HEDGE, PAIRED_ADVERB, CONCRETE, INVERTED, STATUS_REPORT, SHRUG, NOTE_TO_SELF }
