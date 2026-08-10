@@ -250,6 +250,17 @@ export class SleepCycle {
         this.speechLog = speechLog
         this.logger = logger
 
+        // Keep the whole config. The fields below are the long-standing
+        // shorthands; anything added later (persona evolution interval,
+        // thread expiry) reads through this.config, and three of those
+        // shipped today as reads on `undefined` because it was never
+        // stored. That threw inside the sleep pass every cycle:
+        //   "Sleep consolidation error: Cannot read properties of
+        //    undefined (reading 'personaEvolutionMinHours')"
+        // so both features were dead AND they were taking consolidation
+        // down with them.
+        this.config = config || {}
+
         this.activeHours = config.activeHoursBeforeSleep
         this.sleepMinutes = config.sleepDurationMinutes
         this.personaPath = config.personaPath
