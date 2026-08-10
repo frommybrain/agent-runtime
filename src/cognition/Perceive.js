@@ -127,7 +127,24 @@ export function perceive(observation, worldEvents) {
     const handled = new Set([
         'self', 'nearbyAgents', 'nearby_agents', 'nearbyObjects', 'nearby_objects',
         'available_actions', 'recentSpeech', 'signals', 'worldBounds',
+        'recent_events',
     ])
+
+    // What has already happened to him today, in order.
+    //
+    // The generic branch below would render this as
+    // `recent_events: ["[06:49] ate at food_coffee", ...]`, which is
+    // technically present and easy to skim past. It is the one part of the
+    // percept that carries cause and effect (he won, then the caffeine wore
+    // off, then he ate badly and felt heavy), so it gets a heading and one
+    // line each rather than being a JSON array in a list of keys.
+    const events = observation.recent_events
+    if (Array.isArray(events) && events.length) {
+        lines.push('')
+        lines.push('Earlier today:')
+        for (const e of events.slice(-10)) lines.push(`  ${String(e)}`)
+        lines.push('')
+    }
     for (const [key, val] of Object.entries(observation)) {
         if (handled.has(key)) continue
         if (typeof val === 'object' && val !== null) {
