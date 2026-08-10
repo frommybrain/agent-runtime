@@ -138,6 +138,13 @@ export class EnvironmentSocket {
                     this._identifyResolve()
                     this._identifyResolve = null
                 }
+                // tell the world who we've become. the sim's copy of the
+                // persona is frozen at its last deploy; ours evolves twice a
+                // day. every reconnect re-sends so a sim restart (render
+                // redeploys wipe nothing but ram caches) catches up straight
+                // away, and index.js re-pushes on a slow timer to cover
+                // evolutions between reconnects.
+                this.pushPersona()
                 break
 
             case 'OBSERVATION':
@@ -215,6 +222,23 @@ export class EnvironmentSocket {
 
     isConnected() {
         return this.connected && this.identified && this.ws?.readyState === WebSocket.OPEN
+    }
+
+    // who to say we are. index.js registers a provider that reads the
+    // persona file fresh each push, so whatever SleepCycle last wrote is
+    // what the sim hears, with no shared object to go stale.
+    setPersonaProvider(fn) {
+        this._personaProvider = fn
+    }
+
+    async pushPersona() {
+        if (!this._personaProvider || !this.identified) return
+        try {
+            const persona = await this._personaProvider()
+            if (persona) this._send({ type: 'PERSONA_SYNC', persona })
+        } catch (err) {
+            this.logger.warn(`Persona push failed: ${err.message}`)
+        }
     }
 
     _send(data) {
