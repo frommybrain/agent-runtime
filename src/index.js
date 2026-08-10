@@ -133,6 +133,11 @@ async function main() {
     api.emit('started', { agent: persona.name, timestamp: Date.now() })
 
     // start the heartbeat loop
+    // keep the sim's idea of him current. reads the file fresh so it always
+    // carries SleepCycle's latest evolution, not the boot-time object.
+    socket.setPersonaProvider(async () => JSON.parse(await readFile(config.personaPath, 'utf-8')))
+    const personaPush = setInterval(() => socket.pushPersona(), 60 * 60 * 1000)
+
     heartbeat.start()
 
     // graceful shutdown (guarded against double-signal)
@@ -147,6 +152,7 @@ async function main() {
         await dailyLog.append('=== AGENT STOPPED ===')
         await speechLog.save()
         await dailyLog.stop()  // flush buffer to disk
+        clearInterval(personaPush)
         socket.close()
         process.exit(0)
     }
