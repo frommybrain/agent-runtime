@@ -1,4 +1,4 @@
-// fingerprint: 9f912ad5bfd97668
+// fingerprint: fe00d71f83c8a008
 // What a good line is, as a number.
 //
 // Everything built so far to control his voice is a prohibition. wornWords
@@ -159,7 +159,7 @@ function sameness(a, b) {
  * @param {string[]} [recent] lines he has written lately, for the repetition penalty
  * @returns {{ score:number, notes:string[] }}
  */
-export function scoreLine(line, recent = []) {
+export function scoreLine(line, recent = [], opts = {}) {
   const text = String(line || '').trim()
   const notes = []
   if (!text) return { score: -5, notes: ['empty'] }
@@ -178,9 +178,19 @@ export function scoreLine(line, recent = []) {
   // to 17, so short is not a fault and long is. A symmetric curve scored
   // his own favourite line at 0.08, which would have taught exactly the
   // wrong thing.
-  if (w.length > IDEAL_WORDS) {
-    score += Math.max(-1.5, 0.8 - (w.length - IDEAL_WORDS) * 0.10)
-    if (w.length > 20) notes.push('long')
+  //
+  // The ideal is per-caller because not every entry is doing the same job.
+  // 14 was fitted on his sensory observations, where length really is
+  // waffle. A line about a film is doing two things (naming what in it he
+  // is turning over, and what he made of it) and honestly runs past twenty:
+  // measured on four real ones, this term alone put them at 1.70, 0.30,
+  // -0.10 and -0.50 while the popcorn-bucket line it replaced scored 0.60.
+  // The scorer was ranking the room above the film, which is the third time
+  // it has been quietly inverted against what we actually want.
+  const ideal = opts.idealWords || IDEAL_WORDS
+  if (w.length > ideal) {
+    score += Math.max(-1.5, 0.8 - (w.length - ideal) * 0.10)
+    if (w.length > ideal + 6) notes.push('long')
   } else {
     score += 0.8
   }
