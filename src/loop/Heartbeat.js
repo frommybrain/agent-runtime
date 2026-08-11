@@ -428,9 +428,11 @@ export class Heartbeat {
             // 9. ADAPT HEARTBEAT
             this._adaptInterval()
 
-            // time to sleep?
+            // Time to sleep? Handed his clock, so consolidation happens at
+            // night instead of on a real-time timer that was phase-locked
+            // to the same world hour every day. See SleepCycle.checkSleepTime.
             if (this.sleepCycle) {
-                this.sleepCycle.checkSleepTime()
+                this.sleepCycle.checkSleepTime(observation.world_clock || null)
             }
 
             // 10. MAINTENANCE
