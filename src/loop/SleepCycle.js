@@ -329,9 +329,43 @@ export class SleepCycle {
         return this.sleeping
     }
 
-    // called each heartbeat tick to check if its time to sleep
-    checkSleepTime() {
+    // called each heartbeat tick to check if its time to sleep.
+    //
+    // worldClock, when the host world sends one, is { hour, is_night, day }.
+    // Without it this falls back to the old real-time timer, so a runtime
+    // hosted somewhere with no day/night keeps working exactly as before.
+    //
+    // WHY THE TIMER WAS WRONG. It slept after fifty real minutes and stayed
+    // down for ten. In 3eyes one of his days is exactly one real hour, so
+    // sixty on sixty is phase-locked: the pause landed at the same world
+    // hour every single day, and that hour was the middle of his afternoon.
+    // Sam kept finding him asleep in daylight because it was never once
+    // anywhere else. Measured from the log, the consolidation WORK takes
+    // about fifteen seconds; the other nine and three quarter minutes were
+    // an arbitrary rest.
+    //
+    // So: consolidate at night, once per night, and be awake for his whole
+    // day. The world already puts him in a nest while the brain is away
+    // (see advanceSleepCycle in the sim), so the two finally mean the same
+    // thing instead of contradicting each other.
+    checkSleepTime(worldClock = null) {
         if (this.sleeping) return
+
+        if (worldClock && typeof worldClock.hour === 'number') {
+            this._lastWorldClock = worldClock
+            if (!worldClock.is_night) return
+            // Once a night. `day` is which of his days it is, so a night
+            // that straddles midnight still counts as the one night.
+            const nightId = worldClock.hour < 12 ? worldClock.day - 1 : worldClock.day
+            if (this._lastNightSlept === nightId) return
+            // Don't consolidate thirty seconds after waking from the last
+            // one: a restart mid-night would otherwise fire immediately.
+            if (Date.now() - this._wakeTime < 60_000) return
+            this._lastNightSlept = nightId
+            this._startSleep(false)
+            return
+        }
+
         const activeMs = Date.now() - this._wakeTime
         const activeMinutes = activeMs / (1000 * 60)
         const quiet = this._isQuietHours()
@@ -413,10 +447,26 @@ export class SleepCycle {
             await this.dailyLog.append(`Sleep consolidation error: ${err.message}`)
         }
 
-        // schedule wake-up. longer naps during quiet hours
-        const sleepMins = quiet ? this._quietSleepMinutes : this.sleepMinutes
-        this.logger.info(`Sleeping for ${sleepMins} minutes...${mode}`)
-        this._sleepTimer = setTimeout(() => this._wake(), sleepMins * 60 * 1000)
+        // Schedule wake-up.
+        //
+        // With a world clock, sleep until his morning: the host tells us
+        // how many real seconds are left of his night, because it is the
+        // only side that knows both where he is in the day and how long one
+        // of his days lasts. Being down for his whole night is the point,
+        // not a cost: the world puts him in a nest meanwhile, so the brain
+        // being away and the bird being asleep finally describe the same
+        // thing. Bounded either side so a bad clock cannot strand him.
+        const wc = this._lastWorldClock
+        let sleepMs
+        if (wc && typeof wc.night_ends_in_sec === 'number' && wc.night_ends_in_sec > 0) {
+            sleepMs = Math.min(Math.max(wc.night_ends_in_sec, 60), 2 * 60 * 60) * 1000
+            this.logger.info(`Sleeping until his morning, ${Math.round(sleepMs / 60000)} minutes...${mode}`)
+        } else {
+            const sleepMins = quiet ? this._quietSleepMinutes : this.sleepMinutes
+            sleepMs = sleepMins * 60 * 1000
+            this.logger.info(`Sleeping for ${sleepMins} minutes...${mode}`)
+        }
+        this._sleepTimer = setTimeout(() => this._wake(), sleepMs)
     }
 
     _wake() {
