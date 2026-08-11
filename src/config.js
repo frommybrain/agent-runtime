@@ -95,6 +95,13 @@ export function loadConfig() {
         threadMaxRenewals: parseInt(process.env.THREAD_MAX_RENEWALS || '12'),
         threadMaxAgeDays: parseFloat(process.env.THREAD_MAX_AGE_DAYS || '2'),
 
+        // How many bullets of memory.md one subject may own. Victor's was 45
+        // lines with "glow" in 7 of them and "light" in 8, every place in
+        // town written down as medicine for the same feeling. A number
+        // rather than a list of banned topics, because next month's fixation
+        // will not be this month's.
+        memorySubjectCeiling: parseInt(process.env.MEMORY_SUBJECT_CEILING || '4'),
+
         // quiet hours. reduced activity during low-viewership windows.
         // format: "HH:MM-HH:MM" in UTC (eg "02:00-10:00")
         quietHours: process.env.QUIET_HOURS || null,

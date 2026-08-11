@@ -60,6 +60,7 @@ async function main() {
     const socket = new EnvironmentSocket(config, logger)
     const workingMemory = new WorkingMemory(config)
     const memoryFiles = new MemoryFiles(config, logger)
+    memoryFiles.setPersona(persona)  // the ban list is the persona's, not the runtime's
     const dailyLog = new DailyLog(config, logger)
     const llmClient = new LLMClient(config, logger)
     const promptBuilder = new PromptBuilder(persona)
