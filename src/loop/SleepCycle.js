@@ -11,6 +11,7 @@
 
 import { sanitizeJson } from '../util/sanitizeJson.js'
 import { stem } from '../util/wornWords.js'
+import { bannedIn, bannedWords } from '../util/record.js'
 
 import { readFile, writeFile, copyFile } from 'node:fs/promises'
 
@@ -47,6 +48,25 @@ export function enforceRichnessFloor(persona, originalPersona, logger = null) {
         persona[field] = reseeded
     }
     return persona
+}
+
+/**
+ * When the character sheet last actually changed, or null if it never has.
+ *
+ * Entries are written with `date`, and the caller used to read `at`, so
+ * Date.parse('') came back NaN for every entry, nothing looked finite, and
+ * the minimum-gap check silently never applied. The sheet was reconsidered
+ * every sleep instead of twice a day. Both spellings are read because old
+ * logs are already on disk.
+ *
+ * @param {object} persona
+ * @returns {number|null} epoch ms
+ */
+export function lastEvolutionAt(persona) {
+    const found = [...(persona?.evolution || [])].reverse()
+        .map((e) => Date.parse(e?.date || e?.at || ''))
+        .find((t) => Number.isFinite(t))
+    return found ?? null
 }
 
 // --- evolution sanitizer helpers ---------------------------------------
@@ -139,9 +159,14 @@ const FRAME_CEILING = 2
  * @param {object} persona          - current persona (for unchanged fields)
  * @param {object} originalPersona  - immutable baseline (comparable fields)
  * @param {object} [logger]         - optional logger with .info()
+ * @param {string[]} [banned]       - words the voice rules forbid. baseline
+ *   entries are exempt: the authored sheet is allowed to say whatever it
+ *   says, and "just past the edge of things" is one of his real values.
+ *   This only stops the reflection WRITING new ones, which is how "resourceful
+ *   use of varied experiences to break flatness" got onto the sheet.
  * @returns {number} how many entries were dropped
  */
-export function sanitizeEvolvedArrays(changes, persona, originalPersona, logger = null) {
+export function sanitizeEvolvedArrays(changes, persona, originalPersona, logger = null, banned = []) {
     if (!changes || typeof changes !== 'object') return 0
     const fields = ['traits', 'values', 'fears', 'quirks']
     const wordCounts = new Map()  // content word -> entries kept containing it
@@ -198,6 +223,8 @@ export function sanitizeEvolvedArrays(changes, persona, originalPersona, logger 
             if (!isCanon) {
                 if (OBSERVATION_RE.test(entry)) { drop(field, entry, 'observation-shaped'); continue }
                 if (entry.length > 90) { drop(field, entry, 'over 90 chars'); continue }
+                const hits = bannedIn(entry, banned)
+                if (hits.length > 0) { drop(field, entry, `banned word "${hits[0]}"`); continue }
             }
 
             const tokens = motifTokens(entry)
@@ -267,7 +294,7 @@ export class SleepCycle {
         this.dataDir = config.dataDir
         this.sleeping = false
 
-        // quiet hours — reduced activity during low-viewership windows
+        // quiet hours, reduced activity during low-viewership windows
         this._quietHours = this._parseQuietHours(config.quietHours)
         this._quietActiveMinutes = config.quietActiveMinutes || 15
         this._quietSleepMinutes = config.quietSleepMinutes || 30
@@ -275,6 +302,9 @@ export class SleepCycle {
         this._wakeTime = Date.now()
         this._sleepTimer = null
         this._originalPersona = null  // loaded from immutable baseline file
+        // reasons the last few proposals were dropped, shown back to the
+        // reflection so it stops re-making a change the guards will eat
+        this._declinedProposals = []
     }
 
     // load the immutable original persona baseline.
@@ -480,6 +510,7 @@ STRICT RULES:
 - No stats, no numbers, no IDs. Ever.
 - If the log shows nothing genuinely new, return the existing list unchanged.
 - One line each, max ~90 chars. Cap ~15 entries. Keep it a simple markdown bullet list.
+- START with the same "# ..." heading line the list above already has, then the bullets.
 
 Return ONLY the updated skills.md content, nothing else.`
 
@@ -536,9 +567,7 @@ Return ONLY the updated skills.md content, nothing else.`
         // would hand back a free reflection every time.
         const minGapMs = (this.config.personaEvolutionMinHours || 0) * 3600 * 1000
         if (minGapMs > 0) {
-            const lastAt = [...(persona.evolution || [])].reverse()
-                .map((e) => Date.parse(e?.at || ''))
-                .find((t) => Number.isFinite(t))
+            const lastAt = lastEvolutionAt(persona)
             if (lastAt) {
                 const waited = Date.now() - lastAt
                 if (waited < minGapMs) {
@@ -586,8 +615,19 @@ For example, to add one quirk you still return ALL quirks: {"changes": {"quirks"
 
 Respond with JSON only.`
 
+        // The evolution log used to ride along inside the persona here, all
+        // twenty entries of it. Nine of Victor's twelve said "warranting the
+        // subtle addition of a resourceful trait" and carried a byte-identical
+        // trait list, because the model was reading its own past proposals and
+        // making them again. The current sheet already says what he is; the
+        // log only ever taught him to repeat himself.
+        const { evolution, ...sheet } = persona
+        const declined = this._declinedProposals.length > 0
+            ? `\n\nALREADY CONSIDERED AND DECLINED (do not propose these again, they did not survive the guards):\n${this._declinedProposals.map((r) => `- ${r}`).join('\n')}`
+            : ''
+
         const userPrompt = `CURRENT PERSONA:
-${JSON.stringify(persona, null, 2)}
+${JSON.stringify(sheet, null, 2)}${declined}
 
 INTERNAL STATE SUMMARY:
 ${stateHistory}
@@ -663,10 +703,14 @@ Should ${persona.name} evolve? Respond with JSON.`
                 // scrub silt before the merge: observation-shaped entries,
                 // dupes, motif pile-ups, over-cap growth. the richness floor
                 // below guards the opposite failure (hollowing out).
-                const scrubbed = sanitizeEvolvedArrays(reflection.changes, persona, this._originalPersona, this.logger)
+                const scrubbed = sanitizeEvolvedArrays(reflection.changes, persona, this._originalPersona, this.logger, bannedWords(persona))
                 if (scrubbed > 0) {
                     await this.dailyLog.append(`Self-reflection: sanitizer dropped ${scrubbed} proposed entries (observations/dupes/motif ceiling/cap)`)
                 }
+
+                // What the sheet looked like before, so we can tell an actual
+                // change from a proposal the guards ate.
+                const before = JSON.stringify(this._extractComparableFields(persona))
 
                 // backup persona before overwriting
                 try {
@@ -680,9 +724,28 @@ Should ${persona.name} evolve? Respond with JSON.`
 
                 // RICHNESS FLOOR: the merge above replaces an array field
                 // wholesale, so a too-short list from the model would hollow
-                // the personality out (nine traits → one). Re-seed pruned
+                // the personality out (nine traits to one). Re-seed pruned
                 // baseline entries for anything that fell below 60% richness.
                 enforceRichnessFloor(persona, this._originalPersona, this.logger)
+
+                // Nothing actually moved.
+                //
+                // Once traits sat at the cap the sanitizer dropped every new
+                // one, so the merge put back exactly what was already there.
+                // The old code still logged "evolved", still appended an
+                // evolution entry claiming a change, and still rewrote the
+                // file: nine of twelve entries on 11 Aug were this, each one
+                // a record of something that did not happen. Say so instead,
+                // keep the reason so the next pass knows not to bother, and
+                // leave the file alone.
+                if (JSON.stringify(this._extractComparableFields(persona)) === before) {
+                    const why = reflection.reason || 'no reason given'
+                    this._declinedProposals.push(why)
+                    if (this._declinedProposals.length > 5) this._declinedProposals.shift()
+                    this.logger.info('Self-reflection: proposal did not survive the guards, sheet unchanged')
+                    await this.dailyLog.append(`Self-reflection: no net change, proposal dropped by the guards (${why})`)
+                    return true
+                }
 
                 // add evolution log entry
                 if (!persona.evolution) persona.evolution = []
@@ -767,9 +830,11 @@ Should ${persona.name} evolve? Respond with JSON.`
         }
 
         let pName = 'the agent'
+        let banned = []
         try {
             const persona = JSON.parse(await readFile(this.personaPath, 'utf-8'))
             pName = persona.name || pName
+            banned = bannedWords(persona)
         } catch { /* generic */ }
 
         const prompt = `You are ${pName}, drifting at the edge of sleep, feeling for what's pulling at you.
@@ -815,6 +880,22 @@ What pulls at ${pName} now? JSON only.`
                 return true
             }
             const text = String(parsed.thread).trim().slice(0, 160)
+
+            // One sentence, at the top of every decision prompt, all day. It
+            // is the most-read string he owns, and "I want to find the pond's
+            // glow, hoping its light lifts the flatness" spent eight hours
+            // there: a want dressed as a throughline, built out of the exact
+            // abstraction the voice rules forbid. Refuse it rather than carry
+            // it, and let tonight pass threadless. A quiet night costs
+            // nothing; a bad thread costs a day.
+            const hits = bannedIn(text, banned)
+            if (hits.length > 0) {
+                this.logger.info(`Desire rejected for "${hits[0]}": "${text}"`)
+                await this.dailyLog.append(`Thread rejected: it leaned on "${hits[0]}"`)
+                if (existing) await this.memoryFiles.writeCurrentThread(null)
+                return true
+            }
+
             const sameAsBefore = existing?.text && text.toLowerCase() === existing.text.toLowerCase()
             if (spent && (parsed.action === 'keep' || sameAsBefore)) {
                 // It was told it could not keep this one and kept it anyway,

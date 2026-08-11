@@ -6,7 +6,9 @@
 // "the casino pulse", "new beat") with nothing pushing back. mirrors the
 // sim's guard so both brains behave the same.
 
-const STOPWORDS = new Set([
+// shared with the record filter, which needs the same notion of "not a
+// content word" so a bullet about the pond doesn't file under "the".
+export const STOPWORDS = new Set([
     'the', 'and', 'but', 'for', 'not', 'was', 'are', 'with', 'that', 'this',
     'have', 'from', 'just', 'need', 'want', 'get', 'got', 'gotta', 'going',
     'still', 'now', 'then', 'them', 'they', 'when', 'what', 'where', 'while',

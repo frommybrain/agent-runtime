@@ -1,6 +1,8 @@
 import { readFile, writeFile, copyFile, mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
 
+import { bannedIn, bannedWords, filterRecord } from '../util/record.js'
+
 // manages the three persistent knowledge files: memory.md, skills.md, tools.md.
 // v0.3.1: backup + restore for consolidation safety (LLMs are liars)
 
@@ -22,6 +24,17 @@ export class MemoryFiles {
         this._lastToolsHash = null  // skip redundant tools.md writes
         // read cache. avoids re-reading static files every tick
         this._cache = { memory: null, skills: null, tools: null }
+        // how many memory bullets one content word may own before the rest
+        // are dropped. see filterRecord: this is the fixation guard, and it
+        // needs no list of what the fixation might be about.
+        this._subjectCeiling = config.memorySubjectCeiling ?? 4
+        this._banned = []
+    }
+
+    // the persona owns the ban list, so the runtime stays generic. called at
+    // startup and again whenever the persona is hot-swapped.
+    setPersona(persona) {
+        this._banned = bannedWords(persona)
     }
 
     async init() {
@@ -62,14 +75,42 @@ export class MemoryFiles {
 
     // write (full replace, used by sleep consolidation)
 
+    // The gate lives HERE, not at the two callers.
+    //
+    // memory.md grows two ways: a full rewrite from sleep consolidation, and
+    // single bullets appended from a decision's "remember" field. Both end up
+    // here, so this is the one place that sees everything on its way to disk.
+    // Gating the consolidator alone would have left the append path open, and
+    // the append path is the one that runs all day.
+    //
+    // Only bullets are filtered, so the file's headers survive whatever gets
+    // dropped and it still validates as memory.md afterwards.
     async writeMemory(content) {
-        await this._write('memory.md', content)
-        this._cache.memory = content
+        const { text, banned, crowded } = filterRecord(content, {
+            banned: this._banned,
+            subjectCeiling: this._subjectCeiling,
+            logger: this.logger,
+            what: 'Memory guard',
+        })
+        if (banned || crowded) {
+            this.logger.info(`Memory guard: dropped ${banned} banned, ${crowded} over the subject cap`)
+        }
+        await this._write('memory.md', text)
+        this._cache.memory = text
     }
 
     async writeSkills(content) {
-        await this._write('skills.md', content)
-        this._cache.skills = content
+        const { text, banned, crowded } = filterRecord(content, {
+            banned: this._banned,
+            subjectCeiling: this._subjectCeiling,
+            logger: this.logger,
+            what: 'Skills guard',
+        })
+        if (banned || crowded) {
+            this.logger.info(`Skills guard: dropped ${banned} banned, ${crowded} over the subject cap`)
+        }
+        await this._write('skills.md', text)
+        this._cache.skills = text
     }
 
     async writeTools(content) {
@@ -84,6 +125,15 @@ export class MemoryFiles {
         if (content.length > 150) {
             content = content.slice(0, 150)
             this.logger.debug(`Memory entry truncated to 150 chars`)
+        }
+
+        // writeMemory is the gate and would drop this anyway. Catching it here
+        // saves a read-modify-write, and stops the debug line below claiming
+        // it appended something that never landed.
+        const hits = bannedIn(content, this._banned)
+        if (hits.length > 0) {
+            this.logger.debug(`Memory guard: refused "${hits[0]}" in "${content.slice(0, 60)}"`)
+            return
         }
 
         const current = await this.readMemory()
@@ -312,6 +362,26 @@ export class MemoryFiles {
         return true
     }
 
+    // Put the header back rather than throwing the extraction away.
+    //
+    // The prompt asks for "a simple markdown bullet list" and the validator
+    // demanded a "# " header, so a model that did exactly as it was told
+    // failed every single time: twelve extractions on 11 Aug, twelve
+    // rejections, the backup restored each cycle. Memory never hit this
+    // because "## Relationships" happens to contain "# ".
+    //
+    // The prompt now asks for the header too, but asking is the half that
+    // can regress the next time the wording is tuned. Repairing a list that
+    // is otherwise perfectly good is the half that holds.
+    normaliseSkills(content) {
+        const text = String(content ?? '').trim()
+        if (!text) return text
+        if (/^#\s/m.test(text)) return text
+        if (!/^\s*-\s+/m.test(text)) return text  // not a bullet list, leave it to fail
+        this.logger.info('Skills extraction had no header, restoring it')
+        return `# ${this.agentId}'s Skills\n\n${text}`
+    }
+
     // safe write: backup → validate → write, or restore on failure
     async safeWriteMemory(content) {
         await this.backup('memory.md')
@@ -319,18 +389,19 @@ export class MemoryFiles {
             await this.writeMemory(content)
             return true
         }
-        this.logger.warn('Memory consolidation output failed validation — restoring backup')
+        this.logger.warn('Memory consolidation output failed validation, restoring backup')
         await this.restore('memory.md')
         return false
     }
 
     async safeWriteSkills(content) {
         await this.backup('skills.md')
-        if (this.validateSkillsContent(content)) {
-            await this.writeSkills(content)
+        const repaired = this.normaliseSkills(content)
+        if (this.validateSkillsContent(repaired)) {
+            await this.writeSkills(repaired)
             return true
         }
-        this.logger.warn('Skills extraction output failed validation — restoring backup')
+        this.logger.warn('Skills extraction output failed validation, restoring backup')
         await this.restore('skills.md')
         return false
     }

@@ -199,6 +199,8 @@ export class ApiServer {
         this.state.persona = body
         // rebuild prompt builder with new persona
         this.state.promptBuilder?.setPersona(body)
+        // and the record guard, or a swapped persona keeps the old ban list
+        this.state.memoryFiles?.setPersona(body)
         this.emit('persona', { name: body.name, id: body.id })
         this.logger.info(`Persona hot-swapped to: ${body.name}`)
         this._json(res, 200, { ok: true, persona: body.name })
