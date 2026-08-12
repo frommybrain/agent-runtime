@@ -16,12 +16,21 @@ import { bannedIn, bannedWords } from '../util/record.js'
 import { readFile, writeFile, copyFile } from 'node:fs/promises'
 
 /**
- * Re-seed pruned baseline entries for any evolvable array field that fell
- * below 60% of its original richness. The self-reflection merge replaces an
- * array field wholesale, so a small model returning a too-short list (e.g.
- * the one trait it meant to "modify") would hollow the personality out —
- * exactly how Victor collapsed from nine traits to one. Pure + exported so
- * it can be unit-tested in isolation.
+ * The authored sheet is a floor, not just a ceiling: every baseline entry
+ * must be present after an evolution, full stop.
+ *
+ * This began as a 60% richness floor, which stopped the catastrophic case
+ * (nine traits collapsing to one) and waved through the slow one: the merge
+ * replaces an array wholesale, so a model that quietly omits one authored
+ * quirk deletes it, one per cycle, under the drift guard's radar, because
+ * drift additions were blocked at the cap while deletions sailed. The quirk
+ * it chose to drop was the reckless coin-flip one, the single entry that
+ * makes him fun, while logging a reason about calm water. Sanitize already
+ * says "baseline entries are canon, never dropped", but it can only judge
+ * what the model RETURNS; an omission never reaches it. So canon is
+ * enforced here, on the merged sheet, where an omission is visible.
+ * Evolved (grown) entries remain removable; the authored ones are not the
+ * model's to delete. Pure + exported so it can be unit-tested in isolation.
  *
  * @param {object} persona          - persona being evolved (mutated in place)
  * @param {object} originalPersona  - immutable baseline (comparable fields)
@@ -33,19 +42,14 @@ export function enforceRichnessFloor(persona, originalPersona, logger = null) {
     for (const field of ['traits', 'values', 'fears', 'quirks']) {
         const baseline = originalPersona[field] || []
         if (baseline.length === 0) continue
-        const floor = Math.ceil(baseline.length * 0.6)
         const current = Array.isArray(persona[field]) ? persona[field] : []
-        if (current.length >= floor) continue
         const have = new Set(current.map((s) => String(s).toLowerCase()))
-        const reseeded = [...current]
-        for (const item of baseline) {
-            if (reseeded.length >= floor) break
-            if (!have.has(String(item).toLowerCase())) {
-                reseeded.push(item)
-                logger?.info?.(`Drift guard: re-seeded ${field} "${item}" (richness floor ${reseeded.length}/${floor})`)
-            }
+        const missing = baseline.filter((item) => !have.has(String(item).toLowerCase()))
+        if (missing.length === 0) continue
+        persona[field] = [...current, ...missing]
+        for (const item of missing) {
+            logger?.info?.(`Drift guard: restored authored ${field} entry "${String(item).slice(0, 70)}"`)
         }
-        persona[field] = reseeded
     }
     return persona
 }
@@ -317,6 +321,17 @@ export class SleepCycle {
             const raw = await readFile(baselinePath, 'utf-8')
             this._originalPersona = this._extractComparableFields(JSON.parse(raw))
             this.logger.info('Drift guard: loaded immutable persona baseline')
+            // Canon repair at boot. The floor at evolution time stops NEW
+            // deletions; anything already lost before the floor existed
+            // would stay lost until the model happened to evolve again, so
+            // the check runs here too, against the sheet we just woke with.
+            // Written back to disk when something was missing, because the
+            // hourly persona sync reads the FILE, not this process.
+            const before = JSON.stringify(currentPersona)
+            enforceRichnessFloor(currentPersona, this._originalPersona, this.logger)
+            if (this.personaPath && JSON.stringify(currentPersona) !== before) {
+                try { await writeFile(this.personaPath, JSON.stringify(currentPersona, null, 2), 'utf-8') } catch { /* next evolution writes it */ }
+            }
         } catch {
             // first ever boot — save the current persona as the baseline
             await writeFile(baselinePath, JSON.stringify(currentPersona, null, 2), 'utf-8')

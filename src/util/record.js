@@ -114,21 +114,38 @@ export function isBanned(text, banned) {
  * survive whatever happens to the bullets, so the result still validates as
  * the file it came from even if every bullet were dropped.
  *
+ * Two concentration rules, because they catch different things. A single
+ * stem is a TOPIC, and the subject ceiling caps it. A PAIR of stems
+ * appearing together is an IDEA, and the same idea in six sentences is what
+ * a fixation actually looks like once it has learned synonyms: victor's
+ * live memory sat at glint 4, spark 4, glow 4, firefly 4, every count
+ * exactly at the ceiling and none over it, seventeen of thirty-one bullets
+ * one thought. The word rule cannot see that, because the fixation spreads
+ * itself across words that stem apart. The pair rule can, because the
+ * anchor words (the museum, the flash, the light) keep co-occurring however
+ * the shiny noun is spelled today. Ported from the sim's MemoryEcology,
+ * which learned this against the shrine-pulse spiral.
+ *
  * @param {string} markdown
  * @param {object} opts
  * @param {string[]} [opts.banned]          words the persona has ruled out
  * @param {number}   [opts.subjectCeiling]  max bullets sharing one content
  *                                          word; 0 or absent disables it
+ * @param {number}   [opts.ideaCeiling]     max bullets sharing one PAIR of
+ *                                          content words; 0 disables it
  * @param {object}   [opts.logger]
  * @param {string}   [opts.what]            label for the log line
  * @returns {{ text: string, banned: number, crowded: number }}
  */
-export function filterRecord(markdown, { banned = [], subjectCeiling = 0, logger = null, what = 'record' } = {}) {
+export function filterRecord(markdown, { banned = [], subjectCeiling = 0, ideaCeiling = 0, logger = null, what = 'record' } = {}) {
     const lines = String(markdown ?? '').split('\n')
     const counts = new Map()
+    const pairCounts = new Map()
     const out = []
     let bannedDropped = 0
     let crowdedDropped = 0
+
+    const pairKey = (a, b) => (a < b ? `${a} ${b}` : `${b} ${a}`)
 
     for (const line of lines) {
         if (!BULLET.test(line)) { out.push(line); continue }
@@ -140,8 +157,9 @@ export function filterRecord(markdown, { banned = [], subjectCeiling = 0, logger
             continue
         }
 
+        const tokens = subjectTokens(line)
+
         if (subjectCeiling > 0) {
-            const tokens = subjectTokens(line)
             let over = null
             for (const t of tokens) {
                 if ((counts.get(t) || 0) >= subjectCeiling) { over = t; break }
@@ -151,7 +169,37 @@ export function filterRecord(markdown, { banned = [], subjectCeiling = 0, logger
                 logger?.info?.(`${what}: dropped a line, "${over}" already owns ${subjectCeiling} (${line.trim().slice(0, 70)})`)
                 continue
             }
+        }
+
+        if (ideaCeiling > 0) {
+            const toks = [...tokens]
+            let overPair = null
+            for (let i = 0; i < toks.length && !overPair; i++) {
+                for (let j = i + 1; j < toks.length; j++) {
+                    if ((pairCounts.get(pairKey(toks[i], toks[j])) || 0) >= ideaCeiling) {
+                        overPair = pairKey(toks[i], toks[j])
+                        break
+                    }
+                }
+            }
+            if (overPair) {
+                crowdedDropped++
+                logger?.info?.(`${what}: dropped a line, "${overPair}" is already ${ideaCeiling} bullets (${line.trim().slice(0, 70)})`)
+                continue
+            }
+        }
+
+        if (subjectCeiling > 0) {
             for (const t of tokens) counts.set(t, (counts.get(t) || 0) + 1)
+        }
+        if (ideaCeiling > 0) {
+            const toks = [...tokens]
+            for (let i = 0; i < toks.length; i++) {
+                for (let j = i + 1; j < toks.length; j++) {
+                    const k = pairKey(toks[i], toks[j])
+                    pairCounts.set(k, (pairCounts.get(k) || 0) + 1)
+                }
+            }
         }
 
         out.push(line)

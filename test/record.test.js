@@ -116,3 +116,27 @@ test('a phrase ban follows its own inflections', () => {
 test('a phrase only matches as consecutive words', () => {
     assert.deepEqual(bannedIn('a bird without the faintest clue', AVOID), [])
 })
+
+test('a fixation cannot hide behind synonyms: the idea pair is capped', () => {
+    // glint/spark/glow/firefly all stem apart, so the word ceiling sat at
+    // 4-4-4-4 and caught nothing while 17 of 31 bullets were one thought.
+    // The PAIR is the idea, and the anchors (museum, flash) cannot be
+    // respelled away.
+    const md = [
+        '# M', '',
+        '- the firefly glow at the museum case',
+        '- a glow behind the museum glass again',
+        '- the museum glow was there a third time',
+        '- ate noodles at the takeaway',
+    ].join('\n')
+    const { text, crowded } = filterRecord(md, { subjectCeiling: 8, ideaCeiling: 2 })
+    assert.equal(crowded, 1, 'third glow+museum line drops')
+    assert.match(text, /noodles/, 'unrelated lines pass')
+    assert.equal((text.match(/museum/g) || []).length, 2)
+})
+
+test('two mentions of an idea are a memory, not a monoculture', () => {
+    const md = ['- the drum in the laundrette', '- that laundrette drum again'].join('\n')
+    const { crowded } = filterRecord(md, { subjectCeiling: 8, ideaCeiling: 2 })
+    assert.equal(crowded, 0)
+})

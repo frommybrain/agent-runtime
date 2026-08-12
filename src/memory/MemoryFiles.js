@@ -28,6 +28,11 @@ export class MemoryFiles {
         // are dropped. see filterRecord: this is the fixation guard, and it
         // needs no list of what the fixation might be about.
         this._subjectCeiling = config.memorySubjectCeiling ?? 4
+        // and how many bullets may share one PAIR of content words. the word
+        // ceiling alone let a fixation sit at exactly the cap under four
+        // different nouns (glint 4, spark 4, glow 4, firefly 4); the pair is
+        // the idea, and it cannot be respelled away from its anchors.
+        this._ideaCeiling = config.memoryIdeaCeiling ?? 2
         this._banned = []
     }
 
@@ -89,6 +94,7 @@ export class MemoryFiles {
         const { text, banned, crowded } = filterRecord(content, {
             banned: this._banned,
             subjectCeiling: this._subjectCeiling,
+            ideaCeiling: this._ideaCeiling,
             logger: this.logger,
             what: 'Memory guard',
         })
@@ -103,6 +109,7 @@ export class MemoryFiles {
         const { text, banned, crowded } = filterRecord(content, {
             banned: this._banned,
             subjectCeiling: this._subjectCeiling,
+            ideaCeiling: this._ideaCeiling,
             logger: this.logger,
             what: 'Skills guard',
         })
