@@ -15,7 +15,7 @@
 // 8. adapt heartbeat interval
 
 import { sanitizeReason } from '../util/sanitizeReason.js'
-import { wornWords, wornOpeners } from '../util/wornWords.js'
+import { wornWords, wornOpeners, wornPhrases } from '../util/wornWords.js'
 import { scoreLine, exemplars } from '../util/voiceScore.js'
 
 export class Heartbeat {
@@ -204,6 +204,7 @@ export class Heartbeat {
                 // action-fixation guard above doesn't watch reason wording.
                 wornWords: wornWords(this.workingMemory.recentReasons(10)),
                 wornOpeners: wornOpeners(this.workingMemory.recentReasons(10)),
+                wornPhrases: wornPhrases(this.workingMemory.recentReasons(10)),
                 ownVoice: exemplars(this._voiceHistory),
                 tickCount: this.tickCount,
                 uptimeMinutes: Math.floor(this.uptimeSeconds() / 60),
