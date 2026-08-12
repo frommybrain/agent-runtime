@@ -302,10 +302,64 @@ function _describeSignals(signals) {
         else parts.push('The space is nearly deserted, deep solitude.')
     }
 
-    // fall through for any unknown signals. narrate generically
+    // these arrived as bare decimals for months ("danger: 0.15
+    // makerPulse: 0.50") inside a prompt whose first voice rule bans
+    // quoting numbers. felt words, and silence when there is nothing to
+    // feel, which is most of the time.
+
+    if (signals.danger !== undefined) {
+        const d = signals.danger
+        if (d >= 0.5) parts.push('Something in the air says be careful right now.')
+        else if (d >= 0.25) parts.push('A thin unease about the streets.')
+        else if (d >= 0.12) parts.push('The town feels a touch off tonight.')
+    }
+
+    if (signals.wetness !== undefined) {
+        const w = signals.wetness
+        if (w >= 0.7) parts.push('Proper rain, everything soaked and dripping.')
+        else if (w >= 0.4) parts.push('Rain on and off, puddles standing about.')
+        else if (w >= 0.15) parts.push('Damp underfoot from earlier rain.')
+    }
+
+    if (signals.overcast !== undefined) {
+        const c = signals.overcast
+        if (c >= 0.85) parts.push('The sky is one flat grey lid.')
+        else if (c >= 0.5) parts.push('Grey overhead, the light dulled down.')
+    }
+
+    if (signals.makerPulse !== undefined) {
+        // 0.5 is calm; the band around it stays silent so this never
+        // becomes wallpaper.
+        const m = signals.makerPulse
+        if (m >= 0.8) parts.push('The whole town feels flush and quick today.')
+        else if (m >= 0.65) parts.push('A good current running through the streets.')
+        else if (m <= 0.2) parts.push('The town feels drained, like something is being taken from it.')
+        else if (m <= 0.35) parts.push('A low ebb in everything today.')
+    }
+
+    if (signals.intoxication !== undefined) {
+        const i = signals.intoxication
+        if (i >= 0.7) parts.push('You are properly drunk.')
+        else if (i >= 0.3) parts.push('The drink is warm in you.')
+    }
+
+    if (signals.hangover !== undefined) {
+        const h = signals.hangover
+        if (h >= 0.5) parts.push('Your head is paying for last night.')
+        else if (h >= 0.2) parts.push('A dull ache behind the eyes from last night.')
+    }
+
+    if (signals.musicPlaying === true) parts.push('Music is playing somewhere in the town.')
+
+    // fall through for any unknown signals. narrate generically.
+    // dayPhase and season are deliberately swallowed: the environment
+    // prose and world_clock already say what time it is in usable terms,
+    // and a raw 0..1 phase number only invites the model to quote it.
     const described = new Set([
         'vitality', 'resonance', 'warmth', 'abundance',
         'temperature', 'humidity', 'wind_speed', 'cloud_cover', 'crowd_energy',
+        'danger', 'wetness', 'overcast', 'makerPulse', 'intoxication', 'hangover',
+        'musicPlaying', 'dayPhase', 'season',
     ])
     for (const [k, v] of Object.entries(signals)) {
         if (described.has(k)) continue
