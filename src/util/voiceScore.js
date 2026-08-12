@@ -1,4 +1,4 @@
-// fingerprint: fe00d71f83c8a008
+// fingerprint: e8ee3f4cb74d6aa7
 // What a good line is, as a number.
 //
 // Everything built so far to control his voice is a prohibition. wornWords
@@ -119,6 +119,17 @@ const NOTE_TO_SELF = /\b(i'?(ll|d)?\s+(mind|note|remember|keep|watch))\s+(it|its
 // Paired adverbs that cancel each other out.
 const PAIRED_ADVERB = /\b(\w+ly)\s+and\s+(\w+ly)\b/i
 
+// The written scene. Sam, 2026-08-12, on three published lines: "something
+// feels weirdly AI... things like 'as the' and 'stood before'... a GCSE
+// drama student wrote the script". The tell is construction, not
+// vocabulary: a second image folded into the sentence with "as the X did
+// Y", a possessive participial tail hanging off a comma ("its hollow curve
+// catching the light"), and the stage-direction verb ("stood before").
+// Speech does none of these; a script does all three. A comparative like
+// "twice as big as the last one" is collateral here and rare enough to
+// wear it; a scene is not.
+const SCENE = /\b(as|while)\s+(the|a|an|its|his|her|their)\s+[a-z']+\s+[a-z']+|,\s*(its|his|her|their)\s+[a-z' ]{0,24}[a-z]ing\b|\b(stood|sat|paused|lingered)\s+before\b/i
+
 // Things a reader can see, hear or hold. Not exhaustive and not meant to be:
 // it rewards the SHAPE of naming an object, and any concrete noun outside
 // this list still earns through the proper-noun and number checks below.
@@ -213,6 +224,10 @@ export function scoreLine(line, recent = [], opts = {}) {
   if (INVERTED.test(text)) { score -= 2; notes.push('inverted') }
 
   if (STATUS_REPORT.test(text)) { score -= 1.5; notes.push('status-report') }
+
+  // Sized like a curb: a register Sam has flagged this hard must not be
+  // winnable on arithmetic by a concrete noun and a tidy length.
+  if (SCENE.test(text)) { score -= 2; notes.push('scene') }
 
   // Sized to sink it on its own: "The dryer whirred; the sock stayed, I
   // noted" was scoring 2.3 and outranking every line he has ever praised.
