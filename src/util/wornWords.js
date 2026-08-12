@@ -81,6 +81,52 @@ export function wornWords(reasons, { minCount = 3, max = 6 } = {}) {
 }
 
 /**
+ * Phrases he keeps leaning on, whole.
+ *
+ * wornWords counts single stems, so "settle my legs" eleven times in an
+ * afternoon only ever registered as "settle" and "leg" creeping toward
+ * their separate thresholds, and usually not reaching them inside the
+ * window. A repeated PHRASE is a stronger tell than a repeated word, so
+ * the bar is lower: twice in the window is already a tic.
+ *
+ * Stemmed n-grams (2 and 3 words), one vote per reason, grams that are
+ * all stopwords skipped. Reports a real surface form, and drops a bigram
+ * that only exists inside a reported longer phrase.
+ */
+export function wornPhrases(reasons, { minCount = 2, max = 4 } = {}) {
+    const groups = new Map()
+    for (const r of reasons || []) {
+        if (!r) continue
+        const words = String(r).toLowerCase().split(/[^a-z']+/)
+            .map((w) => w.replace(/^'+|'+$/g, '')).filter((w) => w.length >= 2)
+        const stems = words.map(stem)
+        const seen = new Set()
+        for (const n of [2, 3]) {
+            for (let i = 0; i + n <= words.length; i++) {
+                const gram = stems.slice(i, i + n)
+                if (!gram.some((w) => !STOPWORDS.has(w) && w.length >= 3)) continue
+                const key = gram.join(' ')
+                if (seen.has(key)) continue
+                seen.add(key)
+                let g = groups.get(key)
+                if (!g) { g = { count: 0, surface: words.slice(i, i + n).join(' ') }; groups.set(key, g) }
+                g.count++
+            }
+        }
+    }
+    const hits = [...groups.entries()]
+        .filter(([, g]) => g.count >= minCount)
+        .sort((a, b) => b[1].count - a[1].count || b[0].length - a[0].length)
+    const out = []
+    for (const [key, g] of hits) {
+        if (out.some((o) => o.key.includes(key) || key.includes(o.key))) continue
+        out.push({ key, surface: g.surface })
+        if (out.length >= max) break
+    }
+    return out.map((o) => o.surface)
+}
+
+/**
  * Words he keeps STARTING with.
  *
  * wornWords only sees content words, so it never noticed that six of eight

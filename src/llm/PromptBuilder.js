@@ -226,6 +226,13 @@ ${actionCatalogue || '(nothing available)'}`
             parts.push(`WORN-OUT WORDS: ${extras.wornWords.map(w => `"${w}"`).join(', ')}. You've leaned on these lately, do NOT use them this turn, and don't just swap in a synonym for the same image. Notice something else, or say the plain thing without them.`)
         }
 
+        // same guard, a size up: a whole phrase coming back word for word
+        // ("settle my legs", eleven times in an afternoon) reads as a
+        // stuck record faster than any single word does.
+        if (extras.wornPhrases?.length > 0) {
+            parts.push(`WORN-OUT PHRASES: ${extras.wornPhrases.map(w => `"${w}"`).join(', ')}. You have said these word for word more than once lately. Do NOT use them or a near-rewording this turn; if the same thing is true again, find a different true thing to say about it.`)
+        }
+
         // His own best and worst, which beats any rule I can write. Until
         // he has enough of a record this stays quiet rather than guessing.
         if (extras.ownVoice?.best?.length > 0) {
