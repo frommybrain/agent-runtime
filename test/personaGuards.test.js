@@ -103,3 +103,20 @@ test('lines that were already fine are untouched', () => {
         'Feeling twitchy, want to rawdog it and loosen up at the bar',
     ]) assert.equal(sanitizeReason(good), good)
 })
+
+test('one quietly omitted authored quirk comes back', () => {
+    // The slow deletion: the model returns the full list minus one, the
+    // sanitizer never sees the omission, and the sheet loses the quirk
+    // that makes him fun. Authored entries are a floor, not a suggestion.
+    const persona = { quirks: BASELINE.slice(0, -1) }
+    enforceRichnessFloor(persona, { quirks: BASELINE })
+    assert.equal(persona.quirks.length, BASELINE.length)
+    assert.ok(persona.quirks.includes(BASELINE[BASELINE.length - 1]))
+})
+
+test('grown entries survive a canon restore', () => {
+    const persona = { quirks: [...BASELINE.slice(0, -1), 'collects bottle caps'] }
+    enforceRichnessFloor(persona, { quirks: BASELINE })
+    assert.ok(persona.quirks.includes('collects bottle caps'), 'evolution is kept')
+    assert.ok(persona.quirks.includes(BASELINE[BASELINE.length - 1]), 'canon is restored')
+})
