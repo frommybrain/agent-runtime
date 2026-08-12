@@ -33,9 +33,11 @@ export class DeltaDetector {
         this._diffSets(prevObjects, currObjects, 'object', deltas)
 
         // objects: property changes on existing objects.
-        // skip noise props that change every tick due to relative position
+        // skip noise props that change every tick due to relative position.
+        // 'away' is the felt-distance word ("a short walk away"), same
+        // churn as distance, just in words.
         const noiseProps = new Set([
-            'id', 'name', 'pos', 'distance',
+            'id', 'name', 'pos', 'distance', 'away',
             'direction', 'heading', 'facing', 'angle',
         ])
         const prevObjMap = this._objectMap(prev.nearbyObjects || prev.nearby_objects)

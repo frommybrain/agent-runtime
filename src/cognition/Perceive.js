@@ -44,13 +44,26 @@ export function perceive(observation, worldEvents) {
         lines.push('No other agents nearby.')
     }
 
-    // nearby objects/entities
+    // nearby objects/entities.
+    // lead with the name when the environment gives one. the old renderer
+    // led with the id and put 'name' on the skip list, which threw away
+    // everything the environment wrote about each thing and left distance
+    // as the only attribute that varied between entries. distance was also
+    // the sort order, so distance was doing the choosing, literally: the
+    // agent's decision log filled up with "X is close". the id stays
+    // visible in brackets because actions target by id.
     const nearbyObjects = observation.nearbyObjects || observation.nearby_objects || []
     if (nearbyObjects.length > 0) {
         const objects = nearbyObjects.map(o => {
-            const parts = [o.id || o.name || o.type]
-            if (o.type && o.id && o.type !== o.id) parts.push(`(${o.type})`)
-            if (o.distance !== undefined) {
+            const hasName = o.name && o.name !== o.id
+            const parts = [hasName ? `${o.name} [${o.id || o.type}]` : (o.id || o.name || o.type)]
+            if (!hasName && o.type && o.id && o.type !== o.id) parts.push(`(${o.type})`)
+            // a felt distance ("a short walk away") beats a number when the
+            // environment offers one; the raw number only teaches the agent
+            // to pick whatever is numerically smallest.
+            if (typeof o.away === 'string' && o.away) {
+                parts.push(o.away)
+            } else if (o.distance !== undefined) {
                 parts.push(`${typeof o.distance === 'number' ? o.distance.toFixed(1) : o.distance} away`)
             } else if (o.pos) {
                 const coords = Object.entries(o.pos)
@@ -59,16 +72,16 @@ export function perceive(observation, worldEvents) {
                 parts.push(`at (${coords})`)
             }
             if (o.interactive) parts.push('[interactive]')
-            // include extras (state, value, level, description, etc)
+            // include extras (state, value, level, etc)
             for (const [k, v] of Object.entries(o)) {
-                if (['id', 'name', 'type', 'pos', 'interactive', 'distance'].includes(k)) continue
+                if (['id', 'name', 'type', 'pos', 'interactive', 'distance', 'away'].includes(k)) continue
                 if (typeof v === 'object' && v !== null) {
                     parts.push(`${k}:${JSON.stringify(v)}`)
                 } else if (v !== undefined) {
                     parts.push(`${k}:${v}`)
                 }
             }
-            return parts.join(' ')
+            return parts.join(', ')
         })
         lines.push(`Nearby: ${objects.join('; ')}.`)
     }
