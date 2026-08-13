@@ -72,6 +72,22 @@ test('richness floor still stops the sheet hollowing out', () => {
     assert.ok(changes.traits.length > 1, 'nine traits must not collapse to one')
 })
 
+test('restoring onto a full sheet does not breach the cap', () => {
+    // the 08-12 shape: drift swapped spontaneous for focused, then added
+    // two more allies; the guard restored spontaneous by appending and
+    // shipped 12 traits against a cap of 11
+    const evolvedFull = [
+        ...BASELINE.filter((t) => t !== 'spontaneous'),
+        'focused', 'patient', 'methodical',
+    ]
+    const changes = { traits: [...evolvedFull] }
+    enforceRichnessFloor(changes, { traits: BASELINE }, { traits: BASELINE })
+    assert.equal(changes.traits.length, BASELINE.length + 2, 'cap holds after restore')
+    assert.ok(changes.traits.includes('spontaneous'), 'the authored trait is back')
+    for (const t of BASELINE) assert.ok(changes.traits.includes(t), `authored "${t}" survives the trim`)
+    assert.ok(!changes.traits.includes('methodical'), 'the newest evolved addition gives way')
+})
+
 test('a repeated sentence opener is caught even when the words vary', () => {
     const reasons = [
         'need a quick bite to silence the gnaw',

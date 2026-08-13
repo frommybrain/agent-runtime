@@ -70,3 +70,37 @@ test('sustained drift cannot outlast the cap however it is worded', () => {
     }
     assert.ok(traits.length <= AUTHORED.length + 2, `ended at ${traits.length}`)
 })
+
+// The fourth exit, added after the glow recurrence of 08-13: retirement
+// fired correctly and the replacement was the same fixation reworded
+// within the hour, because nothing barred the subject. These are the two
+// real pairs from the Pi's log.
+import { subjectTokens } from '../src/util/record.js'
+
+const circles = (a, b) => {
+    const bar = subjectTokens(a)
+    for (const t of subjectTokens(b)) if (bar.has(t)) return true
+    return false
+}
+
+test('a reworded rut shares stems with the thread it replaced', () => {
+    assert.ok(circles(
+        'follow the firefly glow thread to its source',
+        'discover where the mysterious glow is coming from',
+    ))
+    assert.ok(circles(
+        'I want to hear what the shrine whispers',
+        'listen again at the shrine for that whisper',
+    ))
+})
+
+test('a genuinely new want does not trip the subject bar', () => {
+    assert.ok(!circles(
+        'follow the firefly glow thread to its source',
+        'see the pond freeze over once, properly',
+    ))
+    assert.ok(!circles(
+        'follow the firefly glow thread to its source',
+        'learn what the arcade machine does when nobody feeds it',
+    ))
+})
