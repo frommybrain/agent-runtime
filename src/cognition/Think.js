@@ -45,10 +45,14 @@ export class Think {
         const recentMemory = this.workingMemory.recent(5)
 
         // The desire layer: surface the current thread (formed during
-        // sleep) so every decision feels the pull of a throughline.
+        // sleep) so decisions feel the pull of a throughline. On a
+        // FRACTION of ticks only: shown every tick, the prompt's own
+        // "you don't have to serve it every moment" hedge did nothing
+        // (46% of a day's decisions ran the same query), because presence
+        // reads as instruction. Most ticks he just lives.
         try {
             const thread = await this.memoryFiles.readCurrentThread()
-            if (thread?.text) extras.currentThread = thread.text
+            if (thread?.text && Math.random() < 0.3) extras.currentThread = thread.text
         } catch { /* threadless is fine */ }
 
         const systemPrompt = this.promptBuilder.buildSystemPrompt(memory, skills, tools, observation.available_actions)

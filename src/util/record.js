@@ -89,7 +89,9 @@ export function bannedIn(text, banned) {
 
 // content words of a line, folded to stems and counted once each, so a line
 // saying "glow" twice does not count double toward the subject cap.
-function subjectTokens(line) {
+// Exported for the desire layer: the subject of a retired thread is these
+// same tokens, and the replacement gets checked against them.
+export function subjectTokens(line) {
     const out = new Set()
     for (const raw of String(line).toLowerCase().split(/[^a-z']+/)) {
         const w = raw.replace(/^'+|'+$/g, '')

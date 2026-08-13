@@ -11,7 +11,7 @@
 
 import { sanitizeJson } from '../util/sanitizeJson.js'
 import { stem } from '../util/wornWords.js'
-import { bannedIn, bannedWords } from '../util/record.js'
+import { bannedIn, bannedWords, subjectTokens } from '../util/record.js'
 
 import { readFile, writeFile, copyFile } from 'node:fs/promises'
 
@@ -46,10 +46,27 @@ export function enforceRichnessFloor(persona, originalPersona, logger = null) {
         const have = new Set(current.map((s) => String(s).toLowerCase()))
         const missing = baseline.filter((item) => !have.has(String(item).toLowerCase()))
         if (missing.length === 0) continue
-        persona[field] = [...current, ...missing]
+        let merged = [...current, ...missing]
         for (const item of missing) {
             logger?.info?.(`Drift guard: restored authored ${field} entry "${String(item).slice(0, 70)}"`)
         }
+        // Restoring onto a full list must not breach the cap this guard
+        // exists to protect (12 traits shipped that way once, three of
+        // them arguing for the same fixation). Authored entries always
+        // stay; evolved ones are trimmed oldest-first-kept, so the newest
+        // additions, the ones drift just made, are what give way.
+        const cap = baseline.length + 2
+        if (merged.length > cap) {
+            const authoredSet = new Set(baseline.map((s) => String(s).toLowerCase()))
+            const authored = merged.filter((s) => authoredSet.has(String(s).toLowerCase()))
+            const evolved = merged.filter((s) => !authoredSet.has(String(s).toLowerCase()))
+            const keep = Math.max(0, cap - authored.length)
+            for (const item of evolved.slice(keep)) {
+                logger?.info?.(`Drift guard: trimmed evolved ${field} entry over cap "${String(item).slice(0, 70)}"`)
+            }
+            merged = [...authored, ...evolved.slice(0, keep)]
+        }
+        persona[field] = merged
     }
     return persona
 }
@@ -870,12 +887,39 @@ Should ${persona.name} evolve? Respond with JSON.`
     // formed) but because a want that has survived this many sleeps has
     // stopped being a want and become the whole personality.
     async _formDesire() {
-        const todayLog = await this.dailyLog.readForConsolidation(80)
-        if (!todayLog.trim()) return false
+        const rawTodayLog = await this.dailyLog.readForConsolidation(80)
+        if (!rawTodayLog.trim()) return false
 
         const existing = await this.memoryFiles.readCurrentThread()
         const memory = await this.memoryFiles.readMemory()
-        const memTail = memory.split('\n').filter(l => l.startsWith('- ')).slice(-8).join('\n')
+
+        // Subjects that were forced out recently are off the table. The
+        // failure mode this closes: retirement fired correctly, called the
+        // thread a rut in its own words, and the replacement came back as
+        // the same fixation reworded within the hour, because it was chosen
+        // from evidence the retired thread had written. Barring the subject
+        // (stems, not phrasings) is the exit the loop never had.
+        const RETIRED_BAR_DAYS = 6
+        const retired = (await this.memoryFiles.readRetiredThreads())
+            .filter((r) => (Date.now() - new Date(r.at).getTime()) / 86400000 < RETIRED_BAR_DAYS)
+        const barredStems = new Set()
+        for (const r of retired) for (const t of subjectTokens(r.text)) barredStems.add(t)
+        const circlesRetired = (line) => {
+            if (!barredStems.size) return false
+            for (const t of subjectTokens(line)) if (barredStems.has(t)) return true
+            return false
+        }
+
+        // The re-seeding channel: memory and day-log lines about the barred
+        // subject don't get shown to the chooser either, or "grounded in
+        // the day" keeps meaning "grounded in the rut".
+        const todayLog = barredStems.size
+            ? rawTodayLog.split('\n').filter((l) => !circlesRetired(l)).join('\n')
+            : rawTodayLog
+        const memTail = memory.split('\n')
+            .filter(l => l.startsWith('- '))
+            .filter((l) => !circlesRetired(l))
+            .slice(-8).join('\n')
 
         // Has this one run its course? Two independent limits, because they
         // fail differently: renewals catches a thread that is renewed hard
@@ -911,7 +955,7 @@ Rules:
 - It must be GROUNDED in the day's log or your memories, never invented from nothing.
 - If the current thread still pulls, KEEP it (don't churn).
 - If today resolved it or it's gone quiet, RETIRE it (thread: null) or REPLACE it.
-- A want you have carried for days without it ever moving is not a thread any more, it is a rut. Let it go and notice something else.
+- A want you have carried for days without it ever moving is not a thread any more, it is a rut. Let it go and notice something else.${retired.length ? `\n- You already let these go: ${retired.map((r) => `"${r.text}"`).join(', ')}. Those subjects are finished. A new want circling the same thing is the rut wearing new words; pick a different part of your life.` : ''}
 - Respond with JSON only: {"action": "keep" | "replace" | "retire", "thread": "<sentence or null>", "reason": "<short why>"}`
 
         const userPrompt = `CURRENT THREAD: ${existing?.text ? `"${existing.text}" (since ${existing.formedAt || 'recently'}, carried through ${renewals} sleeps)` : '(none, nothing has been pulling at you)'}${spent ? `\n\nYou have carried that one long enough and it has not moved. It cannot be kept tonight. REPLACE it with something else the day actually gave you, or RETIRE it.` : ''}
@@ -939,6 +983,7 @@ What pulls at ${pName} now? JSON only.`
             if (parsed.action === 'retire' || !parsed.thread) {
                 if (existing) {
                     await this.memoryFiles.writeCurrentThread(null)
+                    await this.memoryFiles.recordRetiredThread(existing.text)
                     await this.dailyLog.append(`Thread retired: ${parsed.reason || 'it let go'}`)
                     this.logger.info(`Desire retired: ${parsed.reason || ''}`)
                 }
@@ -961,6 +1006,25 @@ What pulls at ${pName} now? JSON only.`
                 return true
             }
 
+            // The prompt bar above is advisory; this is the gate. A model
+            // reading evidence the rut produced cannot be trusted to notice
+            // it is offering the rut back with fresh words.
+            if (circlesRetired(text)) {
+                this.logger.info(`Desire rejected, retired subject: "${text}"`)
+                await this.dailyLog.append('Thread rejected: that subject already ran its course')
+                if (existing?.text && !spent && !circlesRetired(existing.text)) {
+                    // the current thread is fine; a bad replacement offer
+                    // should not cost him what he already has
+                    await this.memoryFiles.writeCurrentThread({ ...existing, updatedAt: now, renewals: renewals + 1 })
+                } else if (existing) {
+                    // spent (or itself circling): it goes regardless of how
+                    // bad the offered replacement was
+                    await this.memoryFiles.writeCurrentThread(null)
+                    if (spent) await this.memoryFiles.recordRetiredThread(existing.text)
+                }
+                return true
+            }
+
             const sameAsBefore = existing?.text && text.toLowerCase() === existing.text.toLowerCase()
             if (spent && (parsed.action === 'keep' || sameAsBefore)) {
                 // It was told it could not keep this one and kept it anyway,
@@ -969,6 +1033,7 @@ What pulls at ${pName} now? JSON only.`
                 // model reading evidence the thread produced, so retire it
                 // here and let tomorrow start clean.
                 await this.memoryFiles.writeCurrentThread(null)
+                await this.memoryFiles.recordRetiredThread(existing.text)
                 await this.dailyLog.append(`Thread retired: carried ${renewals} sleeps without moving`)
                 this.logger.info(`Desire retired (spent): "${existing.text}"`)
                 return true
@@ -978,6 +1043,11 @@ What pulls at ${pName} now? JSON only.`
                 // is what eventually retires it
                 await this.memoryFiles.writeCurrentThread({ ...existing, updatedAt: now, renewals: renewals + 1 })
                 return true
+            }
+            // a spent thread displaced by a real replacement is still a
+            // forced exit: its subject joins the bar like any retirement
+            if (spent && existing?.text && existing.text !== text) {
+                await this.memoryFiles.recordRetiredThread(existing.text)
             }
             await this.memoryFiles.writeCurrentThread({
                 text,

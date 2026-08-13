@@ -437,6 +437,30 @@ export class MemoryFiles {
         await this._write('current-thread.json', JSON.stringify(thread, null, 2))
     }
 
+    // Threads that were forced out (spent, or retired as a rut). Kept so
+    // the next formation can be told "not that": without this, retirement
+    // was cosmetic, because the replacement is chosen from the memory and
+    // daily log the retired thread itself wrote, and it came straight back
+    // reworded (the stone loop, then the glow). Last few only.
+
+    async readRetiredThreads() {
+        const raw = await this._read('retired-threads.json')
+        if (!raw) return []
+        try {
+            const arr = JSON.parse(raw)
+            return Array.isArray(arr) ? arr.filter((r) => r && typeof r.text === 'string') : []
+        } catch {
+            return []
+        }
+    }
+
+    async recordRetiredThread(text) {
+        if (!text || !String(text).trim()) return
+        const prior = await this.readRetiredThreads()
+        prior.push({ text: String(text).trim().slice(0, 160), at: new Date().toISOString() })
+        await this._write('retired-threads.json', JSON.stringify(prior.slice(-4), null, 2))
+    }
+
     // helpers
 
     async _read(filename) {
