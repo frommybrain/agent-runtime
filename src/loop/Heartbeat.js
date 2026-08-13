@@ -376,7 +376,12 @@ export class Heartbeat {
                 message: this._lastActionResult.message,
             }, reflectSalience)
 
-            const logLine = `${decision.action}(${JSON.stringify(decision.params)}): ${cleanReason} [${decision.source}] → ${this._lastActionResult.success ? 'ok' : 'failed'}`
+            // failures carry their why into the log: a third of decisions
+            // were failing with nothing written down for the daily review
+            const why = !this._lastActionResult.success && this._lastActionResult.message
+                ? ` (${String(this._lastActionResult.message).slice(0, 90)})`
+                : ''
+            const logLine = `${decision.action}(${JSON.stringify(decision.params)}): ${cleanReason} [${decision.source}] → ${this._lastActionResult.success ? 'ok' : `failed${why}`}`
             await this.dailyLog.append(logLine)
 
             // log speech separately for clarity
