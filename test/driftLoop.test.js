@@ -104,3 +104,28 @@ test('a genuinely new want does not trip the subject bar', () => {
         'learn what the arcade machine does when nobody feeds it',
     ))
 })
+
+// The persona had its own door. On 13 Aug the glow was retired as a thread
+// and scrubbed from memory; the next morning the persona consolidator wrote
+// "occasionally seeks patterns in the glow thread online" as a quirk, and it
+// was steering decision reasons again by lunchtime. Letting go of a subject
+// has to mean both writers let go of it.
+test('a retired subject cannot come back as a disposition', () => {
+    const barred = new Set()
+    for (const t of subjectTokens('follow the firefly glow thread to its source')) barred.add(t)
+
+    const changes = { quirks: ['hums when exploring', 'occasionally seeks patterns in the glow thread online'] }
+    const dropped = sanitizeEvolvedArrays(changes, { quirks: [] }, { quirks: ['hums when exploring'] }, null, [], barred)
+
+    assert.ok(dropped >= 1, 'the glow quirk is dropped')
+    assert.ok(!changes.quirks.some((q) => /glow/i.test(q)), 'no glow entry survives')
+    assert.ok(changes.quirks.includes('hums when exploring'), 'unrelated entries are untouched')
+})
+
+test('the authored sheet is never judged against the bar', () => {
+    // baseline entries are canon even if they happen to share a stem
+    const barred = new Set(subjectTokens('follow the firefly glow thread to its source'))
+    const changes = { quirks: ['chases the glow'] }
+    sanitizeEvolvedArrays(changes, { quirks: [] }, { quirks: ['chases the glow'] }, null, [], barred)
+    assert.deepEqual(changes.quirks, ['chases the glow'], 'an authored quirk survives its own subject being retired')
+})
