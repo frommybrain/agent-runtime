@@ -140,8 +140,22 @@ export function perceive(observation, worldEvents) {
     const handled = new Set([
         'self', 'nearbyAgents', 'nearby_agents', 'nearbyObjects', 'nearby_objects',
         'available_actions', 'recentSpeech', 'signals', 'worldBounds',
-        'recent_events',
+        'recent_events', 'nearby_details', 'nearbyDetails',
     ])
+
+    // Things close enough to look at that are not places and not errands.
+    // They carry no id on purpose, so there is nothing here to target:
+    // the generic branch would have printed them as
+    // `nearby_details: ["spray cans someone dumped..."]`, which is a JSON
+    // array in a list of keys and reads as plumbing rather than as
+    // something he is standing next to.
+    const details = observation.nearby_details || observation.nearbyDetails
+    if (Array.isArray(details) && details.length) {
+        lines.push('')
+        lines.push('Close enough to look at (nothing to do with them, they are just there):')
+        for (const d of details.slice(0, 6)) lines.push(`  ${String(d)}`)
+        lines.push('')
+    }
 
     // What has already happened to him today, in order.
     //
