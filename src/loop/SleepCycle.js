@@ -187,7 +187,7 @@ const FRAME_CEILING = 2
  *   use of varied experiences to break flatness" got onto the sheet.
  * @returns {number} how many entries were dropped
  */
-export function sanitizeEvolvedArrays(changes, persona, originalPersona, logger = null, banned = []) {
+export function sanitizeEvolvedArrays(changes, persona, originalPersona, logger = null, banned = [], barredStems = null) {
     if (!changes || typeof changes !== 'object') return 0
     const fields = ['traits', 'values', 'fears', 'quirks']
     const wordCounts = new Map()  // content word -> entries kept containing it
@@ -197,6 +197,12 @@ export function sanitizeEvolvedArrays(changes, persona, originalPersona, logger 
     const drop = (field, entry, why) => {
         dropped++
         logger?.info?.(`Evolution sanitizer: dropped ${field} entry (${why}): "${String(entry).slice(0, 80)}"`)
+    }
+
+    const _retiredHit = (text, stems) => {
+        if (!stems?.size) return null
+        for (const t of subjectTokens(text)) if (stems.has(t)) return t
+        return null
     }
 
     for (const field of fields) {
@@ -246,6 +252,14 @@ export function sanitizeEvolvedArrays(changes, persona, originalPersona, logger 
                 if (entry.length > 90) { drop(field, entry, 'over 90 chars'); continue }
                 const hits = bannedIn(entry, banned)
                 if (hits.length > 0) { drop(field, entry, `banned word "${hits[0]}"`); continue }
+                // A subject he was forced to let go cannot come back as a
+                // disposition. The glow was retired as a thread and scrubbed
+                // from memory on 13 Aug, and the next morning this writer
+                // put it back as a quirk, from which it started steering
+                // decisions again. The thread bar was never going to hold
+                // while the persona had its own door.
+                const retired = _retiredHit(entry, barredStems)
+                if (retired) { drop(field, entry, `retired subject "${retired}"`); continue }
             }
 
             const tokens = motifTokens(entry)
@@ -785,7 +799,20 @@ Should ${persona.name} evolve? Respond with JSON.`
                 // scrub silt before the merge: observation-shaped entries,
                 // dupes, motif pile-ups, over-cap growth. the richness floor
                 // below guards the opposite failure (hollowing out).
-                const scrubbed = sanitizeEvolvedArrays(reflection.changes, persona, this._originalPersona, this.logger, bannedWords(persona))
+                // Subjects retired from the desire layer are barred here too,
+                // for the same window: the thread bar and the persona writer
+                // have to agree, or letting go of something only moves it.
+                let barredStems = null
+                try {
+                    const retired = (await this.memoryFiles.readRetiredThreads())
+                        .filter((r) => (Date.now() - new Date(r.at).getTime()) / 86400000 < 6)
+                    if (retired.length) {
+                        barredStems = new Set()
+                        for (const r of retired) for (const t of subjectTokens(r.text)) barredStems.add(t)
+                    }
+                } catch { /* no bar is the old behaviour */ }
+
+                const scrubbed = sanitizeEvolvedArrays(reflection.changes, persona, this._originalPersona, this.logger, bannedWords(persona), barredStems)
                 if (scrubbed > 0) {
                     await this.dailyLog.append(`Self-reflection: sanitizer dropped ${scrubbed} proposed entries (observations/dupes/motif ceiling/cap)`)
                 }
