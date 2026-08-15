@@ -524,15 +524,53 @@ export class SleepCycle {
         this.workingMemory.push({ type: 'sleep', message: 'SLEEP ENDED, feeling refreshed' })
     }
 
-    async _consolidateMemory() {
-        const memory = await this.memoryFiles.readMemory()
-        // capped log so we dont blow context (max 200 lines, not entire day)
-        const todayLog = await this.dailyLog.readForConsolidation(200)
+    // Subjects retired from the desire layer, as stems, for the 6-day bar.
+    // Shared by every writer that runs during sleep: the thread bar, the
+    // persona writer AND memory consolidation have to agree, or letting go
+    // of something only moves it. The glow proved this three times: barred
+    // as a thread, barred as a quirk, and it moved into memory.md as a
+    // Learned Fact that fed the decision prompt just the same.
+    async _barredStems() {
+        try {
+            const retired = (await this.memoryFiles.readRetiredThreads())
+                .filter((r) => (Date.now() - new Date(r.at).getTime()) / 86400000 < 6)
+            if (!retired.length) return { stems: null, texts: [] }
+            const stems = new Set()
+            for (const r of retired) for (const t of subjectTokens(r.text)) stems.add(t)
+            return { stems, texts: retired.map((r) => r.text) }
+        } catch {
+            return { stems: null, texts: [] }
+        }
+    }
 
-        if (!todayLog.trim()) return false
+    async _consolidateMemory() {
+        const rawMemory = await this.memoryFiles.readMemory()
+        // capped log so we dont blow context (max 200 lines, not entire day)
+        const rawTodayLog = await this.dailyLog.readForConsolidation(200)
+
+        if (!rawTodayLog.trim()) return false
+
+        // The rewrite loop that kept the glow alive: memory carries it, the
+        // day's log mentions it, so the rewrite keeps it, so tomorrow's
+        // inputs carry it. Barred subjects are cut from BOTH inputs, told
+        // to the model, and stripped from the output. Three fences because
+        // one model instruction is advisory and the inputs are the seed.
+        const bar = await this._barredStems()
+        const circlesBarred = (line) => {
+            if (!bar.stems?.size) return false
+            for (const t of subjectTokens(line)) if (bar.stems.has(t)) return true
+            return false
+        }
+        const memory = bar.stems
+            ? rawMemory.split('\n').filter((l) => !(l.trim().startsWith('- ') && circlesBarred(l))).join('\n')
+            : rawMemory
+        const todayLog = bar.stems
+            ? rawTodayLog.split('\n').filter((l) => !circlesBarred(l)).join('\n')
+            : rawTodayLog
 
         // include salient events — high-energy moments should be prioritised
         const salientEvents = this.workingMemory.salientEvents(0.6)
+            .filter((e) => !circlesBarred(`${e.action || ''} ${e.message || ''}`))
         const salientNote = salientEvents.length > 0
             ? `\n\nWHAT HIT HARDEST TODAY (these landed with real feeling, let them shape what you keep):\n${salientEvents.map(e => `- [${e.time}] ${e.type}: ${e.action || e.message || JSON.stringify(e)}`).join('\n')}`
             : ''
@@ -560,7 +598,7 @@ How to write it:
 - Keep the relationships / facts / important-memories you'd actually carry. A fact can still be honest ("the apple tree's fruit comes with a little melody, it's the closest thing to music when the world goes quiet") without being a stat line.
 - Prioritise what hit hardest today. Let routine fade.
 - If today added nothing genuinely new, the same routine you already remember, nothing that actually moved you, then don't churn this file rewriting what's already here. Reply with the single token NO_CHANGE (nothing else) and I'll keep my memory exactly as it is. Only do this when today truly held nothing worth keeping.
-- Keep the three markdown sections: ## Relationships, ## Learned Facts, ## Important Memories. Cap around 40 entries total. Keep procedural how-to OUT of here.
+- Keep the three markdown sections: ## Relationships, ## Learned Facts, ## Important Memories. Cap around 40 entries total. Keep procedural how-to OUT of here.${bar.texts.length ? `\n- Some wants have run their course and are FINISHED: ${bar.texts.map((t) => `"${t}"`).join(', ')}. Nothing about those subjects goes in this file, not as a fact, not as a memory, not reworded. Let them fade like anything else you were once briefly into.` : ''}
 
 Return ONLY the updated memory.md content (or the single token NO_CHANGE), nothing else.`
 
@@ -580,7 +618,12 @@ Return ONLY the updated memory.md content (or the single token NO_CHANGE), nothi
         }
 
         if (result && result.trim().length > 10) {
-            const written = await this.memoryFiles.safeWriteMemory(result.trim())
+            // the write is the choke point: whatever the model kept anyway
+            // gets cut here, bullets only, structure untouched
+            const cleaned = bar.stems
+                ? result.trim().split('\n').filter((l) => !(l.trim().startsWith('- ') && circlesBarred(l))).join('\n')
+                : result.trim()
+            const written = await this.memoryFiles.safeWriteMemory(cleaned)
             if (written) {
                 this.logger.info('Memory consolidated')
             } else {
