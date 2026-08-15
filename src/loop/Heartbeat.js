@@ -499,6 +499,12 @@ export class Heartbeat {
     // 'fast'    = Ollama/8B cloud (routine)
     // 'skip'    = FallbackBrain (nothing happening, no LLM)
     _classifyTick(deltas, worldEvents, context, observation) {
+        // Asleep is not a decision point. The env refuses everything but
+        // "wait" until he wakes, so any call made here buys a rejection:
+        // 46 of yesterday's 256 failures were "Asleep at the nest". The
+        // wake-up belongs to the sleep cycle, not to anything decided now.
+        if (observation?.self?.asleep === true) return 'skip'
+
         // decision tier: the env is flagging a moment where being wrong
         // costs money (trade dossier awaiting a verdict, etc). LLMClient
         // aliases this to quality when no anthropic key is configured.
