@@ -136,3 +136,25 @@ test('grown entries survive a canon restore', () => {
     assert.ok(persona.quirks.includes('collects bottle caps'), 'evolution is kept')
     assert.ok(persona.quirks.includes(BASELINE[BASELINE.length - 1]), 'canon is restored')
 })
+
+// The 16 Aug finding: the count guard held while the sheet degraded, because
+// jaccard punishes size difference. "private yet attuned to rhythmic cues"
+// vs "private" is 1 shared token over 4, so it walked in, and the sheet
+// carried three ways of saying private inside the cap. Containment asks the
+// question we mean. Fixtures are the real entries off the Pi.
+test('a padded restatement of an existing trait is dropped', () => {
+    const { kept, dropped } = run([...BASELINE, 'private yet attuned to rhythmic cues'])
+    assert.ok(!kept.includes('private yet attuned to rhythmic cues'), 'the private restatement is out')
+    assert.ok(dropped >= 1)
+})
+
+test('a padded restatement of an existing value is dropped', () => {
+    const quietBaseline = [...BASELINE, 'his own quiet']
+    const { kept } = run([...quietBaseline, 'appreciation for quiet, steady moments'], quietBaseline)
+    assert.ok(!kept.includes('appreciation for quiet, steady moments'), 'the quiet restatement is out')
+})
+
+test('a genuinely different entry still gets past the containment check', () => {
+    const { kept } = run([...BASELINE, 'keeps a running argument with the speaking clock'])
+    assert.ok(kept.includes('keeps a running argument with the speaking clock'))
+})

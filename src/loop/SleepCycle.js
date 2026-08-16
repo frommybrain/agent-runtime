@@ -12,6 +12,7 @@
 import { sanitizeJson } from '../util/sanitizeJson.js'
 import { stem } from '../util/wornWords.js'
 import { bannedIn, bannedWords, subjectTokens } from '../util/record.js'
+import { _patterns as voicePatterns } from '../util/voiceScore.js'
 
 import { readFile, writeFile, copyFile } from 'node:fs/promises'
 
@@ -138,11 +139,18 @@ function entryFrame(entry) {
     return FRAME_TAIL.test(e) ? 'sensory-affinity' : 'sensory-affinity-bare'
 }
 
-function tokenJaccard(a, b) {
+// Containment: intersection over the SMALLER set. Jaccard punishes size
+// difference, which is exactly how "private yet attuned to rhythmic cues"
+// walked past "private" (1 shared token / 4 total = 0.25) and the sheet
+// ended up holding three restatements of one authored trait, all inside
+// the count cap. Dividing by the smaller set asks the question we mean:
+// is one of these substantially inside the other. Same lesson the memory
+// ecology learned, same fix.
+function tokenContainment(a, b) {
     if (a.size === 0 || b.size === 0) return 0
     let inter = 0
     for (const t of a) if (b.has(t)) inter++
-    return inter / (a.size + b.size - inter)
+    return inter / Math.min(a.size, b.size)
 }
 
 // log-observation dressed as personality: "recognizes that X", "notes Y".
@@ -166,7 +174,7 @@ const FRAME_CEILING = 2
  *   1. baseline entries are canon — never dropped
  *   2. drop observation-shaped entries (see OBSERVATION_RE) and anything
  *      over 90 chars: traits are dispositions, short by nature
- *   3. drop exact and near duplicates (token jaccard >= 0.6 within field)
+ *   3. drop restatements (token containment >= 0.6 against anything kept)
  *   4. motif ceiling: one content word may appear in at most 3 entries
  *      across the whole sheet; later entries carrying it drop
  *   5. hard cap per field: baseline size + 2 (8 if no baseline), keeping
@@ -265,11 +273,16 @@ export function sanitizeEvolvedArrays(changes, persona, originalPersona, logger 
             const tokens = motifTokens(entry)
 
             if (!isCanon) {
+                // Containment, not jaccard: a proposed entry that is mostly
+                // INSIDE an existing one (or swallows one whole) is a
+                // restatement spending a cap slot, however much padding it
+                // arrives wrapped in. Extensions of an existing disposition
+                // belong as revisions of it, not as neighbours to it.
                 let nearDup = false
                 for (const kt of keptTokens) {
-                    if (tokenJaccard(tokens, kt) >= 0.6) { nearDup = true; break }
+                    if (tokenContainment(tokens, kt) >= 0.6) { nearDup = true; break }
                 }
-                if (nearDup) { drop(field, entry, 'near-duplicate'); continue }
+                if (nearDup) { drop(field, entry, 'restates an existing entry'); continue }
 
                 // Ceiling of 3 was too generous against a cap of +5: it let
                 // a single motif own most of everything he had grown.
@@ -543,10 +556,31 @@ export class SleepCycle {
         }
     }
 
+    // The reasons channel is saturated with the hollow register (one day:
+    // glint 166, pull 100, glow 94, hum 56) and nobody ever reads it, but
+    // it flows through the daily log into consolidation and out into
+    // memory.md and persona evolution. That pipe is what put the drum
+    // fixation into three persona slots. So the sleep pass reads a
+    // cleaned view: an action line whose REASON leans on the hollow
+    // vocabulary keeps its fact and loses its reason. The log file on
+    // disk stays complete, for debugging and for the daily review.
+    _stripHollowReasons(text) {
+        const HOLLOW = voicePatterns?.HOLLOW
+        if (!HOLLOW || !text) return text
+        return String(text).split('\n').map((line) => {
+            const m = /"reason":"([^"]*)"/.exec(line)
+            if (!m || !HOLLOW.test(m[1])) return line
+            return line
+                .replace(/"reason":"[^"]*"/, '"reason":""')
+                // the echoed copy between the call and the tier tag
+                .replace(/\):\s.*?\s\[([\w-]+)\]/, '): [$1]')
+        }).join('\n')
+    }
+
     async _consolidateMemory() {
         const rawMemory = await this.memoryFiles.readMemory()
         // capped log so we dont blow context (max 200 lines, not entire day)
-        const rawTodayLog = await this.dailyLog.readForConsolidation(200)
+        const rawTodayLog = this._stripHollowReasons(await this.dailyLog.readForConsolidation(200))
 
         if (!rawTodayLog.trim()) return false
 
@@ -637,7 +671,7 @@ Return ONLY the updated memory.md content (or the single token NO_CHANGE), nothi
 
     async _extractSkills() {
         const skills = await this.memoryFiles.readSkills()
-        const todayLog = await this.dailyLog.readForConsolidation(100)
+        const todayLog = this._stripHollowReasons(await this.dailyLog.readForConsolidation(100))
 
         if (!todayLog.trim()) return false
 
@@ -678,7 +712,7 @@ Return ONLY the updated skills.md content, nothing else.`
     // includes drift guard: blocks evolution if persona has diverged too far from original.
     async _selfReflect() {
         const memory = await this.memoryFiles.readMemory()
-        const todayLog = await this.dailyLog.readForConsolidation(150)
+        const todayLog = this._stripHollowReasons(await this.dailyLog.readForConsolidation(150))
         const stateHistory = this.internalState.historySummary()
 
         if (!todayLog.trim()) return false
@@ -746,6 +780,7 @@ Rules:
 - Core identity (name, backstory) must NOT change.
 - GROW, don't narrow, but the sheet does not get longer. You have room for about two entries beyond the ones you started with, so prefer MODIFYING the wording of an existing trait/quirk, or swapping one out, over piling another on. Do NOT prune the personality down to only what showed up today, a trait left unused is dormant, not gone. Only remove a trait if recent experience actively CONTRADICTS it, and never more than one per cycle.
 - When you change an array field (traits, quirks, values, fears), you MUST return the COMPLETE updated list, including every existing entry you are keeping. The list replaces the old one wholesale, so returning only the new item would ERASE everything else.
+- An entry that says an existing entry again in other words is not growth, it is the same disposition twice. If what changed is really a deepening of something already on the sheet, leave the sheet alone.
 - If nothing warrants change, respond with {"evolve": false}.
 - If change is warranted, respond with {"evolve": true, "changes": {...}, "reason": "why"}.
 
@@ -957,7 +992,7 @@ Should ${persona.name} evolve? Respond with JSON.`
     // formed) but because a want that has survived this many sleeps has
     // stopped being a want and become the whole personality.
     async _formDesire() {
-        const rawTodayLog = await this.dailyLog.readForConsolidation(80)
+        const rawTodayLog = this._stripHollowReasons(await this.dailyLog.readForConsolidation(80))
         if (!rawTodayLog.trim()) return false
 
         const existing = await this.memoryFiles.readCurrentThread()
