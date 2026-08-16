@@ -1,4 +1,4 @@
-// fingerprint: e8ee3f4cb74d6aa7
+// fingerprint: 4441c19ea900c7b6
 // What a good line is, as a number.
 //
 // Everything built so far to control his voice is a prohibition. wornWords
@@ -128,7 +128,13 @@ const PAIRED_ADVERB = /\b(\w+ly)\s+and\s+(\w+ly)\b/i
 // Speech does none of these; a script does all three. A comparative like
 // "twice as big as the last one" is collateral here and rare enough to
 // wear it; a scene is not.
-const SCENE = /\b(as|while)\s+(the|a|an|its|his|her|their)\s+[a-z']+\s+[a-z']+|,\s*(its|his|her|their)\s+[a-z' ]{0,24}[a-z]ing\b|\b(stood|sat|paused|lingered)\s+before\b/i
+// The first branch requires the clause to CONTINUE past its verb ("as the
+// heat made it dance"): a scene clause carries its own little drama, a
+// plain subordinate ends at the verb. Without that extra word it fired on
+// "I waited while the machine finished" and "she left while the kettle
+// boiled", which is ordinary speech, and since the scorer also picks his
+// exemplars it was training him away from exactly the register we want.
+const SCENE = /\b(as|while)\s+(the|a|an|its|his|her|their)\s+[a-z']+\s+[a-z']+\s+[a-z']|,\s*(its|his|her|their)\s+[a-z' ]{0,24}[a-z]ing\b|\b(stood|sat|paused|lingered)\s+before\b/i
 
 // Things a reader can see, hear or hold. Not exhaustive and not meant to be:
 // it rewards the SHAPE of naming an object, and any concrete noun outside
@@ -264,4 +270,4 @@ export function exemplars(history, { best = 4, worst = 3 } = {}) {
   }
 }
 
-export const _patterns = { HOLLOW, GAUGE, HEDGE, PAIRED_ADVERB, CONCRETE, INVERTED, STATUS_REPORT, SHRUG, NOTE_TO_SELF }
+export const _patterns = { HOLLOW, GAUGE, HEDGE, PAIRED_ADVERB, CONCRETE, INVERTED, STATUS_REPORT, SHRUG, NOTE_TO_SELF, SCENE }

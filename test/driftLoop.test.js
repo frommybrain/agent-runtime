@@ -129,3 +129,27 @@ test('the authored sheet is never judged against the bar', () => {
     sanitizeEvolvedArrays(changes, { quirks: [] }, { quirks: ['chases the glow'] }, null, [], barred)
     assert.deepEqual(changes.quirks, ['chases the glow'], 'an authored quirk survives its own subject being retired')
 })
+
+// The reasons funnel: hollow-register reasons flow through the daily log
+// into every sleep-pass reader, which is the pipe that put the drum
+// fixation into three persona slots. The cleaned view keeps the fact and
+// loses the reason; plain reasons pass untouched.
+import { SleepCycle } from '../src/loop/SleepCycle.js'
+const stripHollow = (t) => SleepCycle.prototype._stripHollowReasons.call(null, t)
+
+test('a hollow reason loses its words but keeps its fact', () => {
+    const line = '[12:30:13] scavenge({"target":"activity_junkheap","reason":"Saw a glint near the dumpster, chasing the pull"}): Saw a glint near the dumpster, chasing the pull [cloud] → ok'
+    const out = stripHollow(line)
+    assert.ok(!/glint|the pull/.test(out), 'hollow vocabulary gone')
+    assert.ok(/scavenge/.test(out) && /activity_junkheap/.test(out) && /→ ok/.test(out), 'the fact survives')
+})
+
+test('a plain reason is left exactly alone', () => {
+    const line = '[12:31:02] forage({"target":"food_apple_tree","reason":"Stomach growls, heading for a quick bite"}): Stomach growls, heading for a quick bite [cloud] → ok'
+    assert.equal(stripHollow(line), line)
+})
+
+test('non-action lines pass through whole', () => {
+    const felt = 'FELT: a faint heaviness from the junk food'
+    assert.equal(stripHollow(felt), felt)
+})
