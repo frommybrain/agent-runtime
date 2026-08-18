@@ -10,6 +10,14 @@
 // - flushes daily log buffer before consolidation
 
 import { sanitizeJson } from '../util/sanitizeJson.js'
+
+// The reason channel's own coinages. HOLLOW covers the mystery-noun family
+// ("a clue" is in it), but his internet epithets walk straight past it —
+// "the glow room" 24 times in one day, and "his search for the glow
+// thread" already written into the persona evolution text. Consolidation
+// view only: the diary scorer never reads this list, so the green stone's
+// real glow stays sayable in public lines.
+const REASON_TIC = /\b(glow|glint)\s+(room|thread|trail|hunt|chase)\b|\bthe\s+glow\b/i
 import { stem } from '../util/wornWords.js'
 import { bannedIn, bannedWords, subjectTokens } from '../util/record.js'
 import { _patterns as voicePatterns } from '../util/voiceScore.js'
@@ -314,6 +322,74 @@ export function sanitizeEvolvedArrays(changes, persona, originalPersona, logger 
     return dropped
 }
 
+/**
+ * Apply semantic-twin verdicts to a reflection's arrays. The containment
+ * dedup above catches restatements that share words; "private" and
+ * "selectively open" share none, and three of eleven trait slots ended up
+ * holding one idea — the drift-collapse failure wearing different
+ * clothes. Meaning needs a reader, so the sleep cycle asks the LLM
+ * (see _semanticTwinPass) and this applies what came back, with the
+ * authored sheet always winning:
+ *
+ *   - a PROPOSED entry that restates a current one REPLACES it — the
+ *     axis moves instead of accumulating. Unless the current one is
+ *     authored, in which case the proposal drops.
+ *   - at most ONE pair of existing entries per sleep may merge (the
+ *     non-authored, later one goes). One per night heals a stacked axis
+ *     in a few sleeps with no way to collapse a sheet wholesale — the
+ *     2026-06 drift wipe is why the cap is this tight.
+ *
+ * Anything malformed is ignored: no verdict, no change, same as before
+ * this existed.
+ */
+export function collapseSemanticTwins(changes, persona, originalPersona, result, logger = null) {
+    if (!result || typeof result !== 'object') return 0
+    const fields = ['traits', 'values', 'fears', 'quirks']
+    let applied = 0
+
+    const authored = (field, text) => Array.isArray(originalPersona?.[field]) && originalPersona[field].includes(text)
+    const fieldOf = (text) => fields.find((f) => Array.isArray(changes[f]) && changes[f].includes(text))
+
+    const proposals = Array.isArray(result.proposals) ? result.proposals.slice(0, 6) : []
+    for (const v of proposals) {
+        if (applied >= 3) break
+        const proposal = typeof v?.text === 'string' ? v.text : null
+        const restates = typeof v?.restates === 'string' ? v.restates : null
+        if (!proposal || !restates || proposal === restates) continue
+        const field = fieldOf(proposal)
+        if (!field || !changes[field].includes(restates)) continue
+        // proposals only: an entry already on the sheet is handled by the
+        // existing-pair path below, one per night
+        if (Array.isArray(persona[field]) && persona[field].includes(proposal)) continue
+        if (authored(field, restates)) {
+            changes[field] = changes[field].filter((x) => x !== proposal)
+            logger?.info?.(`Semantic twins: dropped proposed ${field} entry "${proposal.slice(0, 60)}" (restates authored "${restates.slice(0, 60)}")`)
+        } else {
+            changes[field] = changes[field].filter((x) => x !== restates)
+            logger?.info?.(`Semantic twins: "${proposal.slice(0, 60)}" replaces ${field} entry "${restates.slice(0, 60)}"`)
+        }
+        applied++
+    }
+
+    const pair = result.existingPair
+    if (pair && typeof pair.a === 'string' && typeof pair.b === 'string' && pair.a !== pair.b) {
+        const field = fieldOf(pair.a)
+        if (field && changes[field].includes(pair.b)) {
+            // drop the non-authored side; both authored means Sam wrote
+            // both on purpose and the machine keeps its hands off
+            const drop = authored(field, pair.a) ? (authored(field, pair.b) ? null : pair.b)
+                : pair.a === pair.b ? null : (authored(field, pair.b) ? pair.a : pair.b)
+            if (drop) {
+                changes[field] = changes[field].filter((x) => x !== drop)
+                logger?.info?.(`Semantic twins: merged existing ${field} pair, dropped "${drop.slice(0, 60)}"`)
+                applied++
+            }
+        }
+    }
+
+    return applied
+}
+
 export class SleepCycle {
     constructor(think, memoryFiles, dailyLog, workingMemory, internalState, repetitionGuard, speechLog, config, logger) {
         this.think = think
@@ -564,12 +640,42 @@ export class SleepCycle {
     // cleaned view: an action line whose REASON leans on the hollow
     // vocabulary keeps its fact and loses its reason. The log file on
     // disk stays complete, for debugging and for the daily review.
+    // The LLM half of the semantic twin pass; collapseSemanticTwins (top of
+    // file) applies whatever comes back. One small call per sleep, JSON
+    // mode, and every failure path leaves the proposal exactly as the
+    // word-level sanitizer left it.
+    async _semanticTwinPass(changes, persona) {
+        const fields = ['traits', 'values', 'fears', 'quirks']
+        const sections = []
+        let anyProposals = false
+        for (const field of fields) {
+            if (!Array.isArray(changes[field])) continue
+            const current = Array.isArray(persona[field]) ? persona[field] : []
+            const proposed = changes[field].filter((x) => typeof x === 'string' && !current.includes(x))
+            const kept = changes[field].filter((x) => typeof x === 'string' && current.includes(x))
+            if (!kept.length && !proposed.length) continue
+            if (proposed.length) anyProposals = true
+            sections.push(`${field.toUpperCase()}\ncurrent: ${JSON.stringify(kept)}\nproposed additions: ${JSON.stringify(proposed)}`)
+        }
+        if (!sections.length) return 0
+        // no additions and nothing stacked worth asking about: the
+        // existing-pair check still runs so a stacked axis heals over a
+        // few nights even when a sleep proposes nothing new
+        const sys = 'You check a character sheet for restatements. Two entries restate each other when they describe substantially the same disposition, even with no words in common ("private" and "selectively open" are one idea; so are two intensities of one leaning). Entries about genuinely different things are NOT restatements however similar the wording. When unsure, say null. Respond with valid JSON only: {"proposals":[{"text":"<a proposed addition>","restates":"<the current entry it restates, verbatim, or null>"}],"existingPair":{"a":"<current entry>","b":"<current entry>"}|null}. existingPair names at most ONE pair of CURRENT entries (same section) that restate one idea; null if none do.'
+        const user = sections.join('\n\n') + (anyProposals ? '' : '\n\n(no proposed additions this sleep; only check current entries for one restated pair)')
+        const result = await this.think.consolidate(sys, user, 20000)
+        if (!result) return 0
+        let parsed = null
+        try { parsed = typeof result === 'string' ? JSON.parse(sanitizeJson(result)) : result } catch { return 0 }
+        return collapseSemanticTwins(changes, persona, this._originalPersona, parsed, this.logger)
+    }
+
     _stripHollowReasons(text) {
         const HOLLOW = voicePatterns?.HOLLOW
         if (!HOLLOW || !text) return text
         return String(text).split('\n').map((line) => {
             const m = /"reason":"([^"]*)"/.exec(line)
-            if (!m || !HOLLOW.test(m[1])) return line
+            if (!m || !(HOLLOW.test(m[1]) || REASON_TIC.test(m[1]))) return line
             return line
                 .replace(/"reason":"[^"]*"/, '"reason":""')
                 // the echoed copy between the call and the tier tag
@@ -893,6 +999,16 @@ Should ${persona.name} evolve? Respond with JSON.`
                 const scrubbed = sanitizeEvolvedArrays(reflection.changes, persona, this._originalPersona, this.logger, bannedWords(persona), barredStems)
                 if (scrubbed > 0) {
                     await this.dailyLog.append(`Self-reflection: sanitizer dropped ${scrubbed} proposed entries (observations/dupes/motif ceiling/cap)`)
+                }
+
+                // meaning-level pass, after the word-level ones: fail-soft,
+                // and never more than a few moves a night
+                let twins = 0
+                try {
+                    twins = await this._semanticTwinPass(reflection.changes, persona)
+                } catch { /* the proposal stands, as it always did */ }
+                if (twins > 0) {
+                    await this.dailyLog.append(`Self-reflection: semantic twin pass collapsed ${twins} entries`)
                 }
 
                 // What the sheet looked like before, so we can tell an actual
