@@ -180,7 +180,19 @@ export class LLMClient {
         }
     }
 
-    // fast tier: 20B cloud first (fast + cheap), Ollama fallback.
+    // fast tier: cloud first, ONE retry, then Ollama.
+    //
+    // The retry is the same rung _generateQuality has had all along, and the
+    // fast tier was the only one without it. What it recovers from is the
+    // 400 json_validate_failed: gpt-oss spends a variable budget on internal
+    // reasoning and sometimes runs out mid-`reason`, so the JSON never closes
+    // and Groq rejects the whole completion. That is PROBABILISTIC, not a bad
+    // prompt, so simply asking again lands. Measured on the quality tier over
+    // the whole log: 1,419 of 1,420 recovered on the retry.
+    //
+    // Without it a fast tick fell through to Ollama, which on this Pi times
+    // out, trips its 3-strike breaker, and hands the decision to the
+    // heuristic. That path was 96% of every fallback that was not deliberate.
     async _generateFast(systemPrompt, userPrompt, timeoutMs, jsonMode) {
         if (this.cloudApiKey && this.cloudApiUrl && Date.now() >= this._cloudCooldownUntil) {
             try {
@@ -189,6 +201,13 @@ export class LLMClient {
             } catch (err) {
                 this.logger.warn(`Cloud fast failed: ${err.message}`)
                 this._noteCloudFailure(err)
+                try {
+                    const result = await this._cloudGenerate(systemPrompt, userPrompt, timeoutMs, this.cloudModelFast, jsonMode)
+                    this.logger.info('Fast tier recovered on retry')
+                    return { text: result, source: 'cloud-fast' }
+                } catch (err2) {
+                    this.logger.warn(`Cloud fast retry also failed: ${err2.message}`)
+                }
             }
         }
         return this._tryOllama(systemPrompt, userPrompt, 'fast tier')
