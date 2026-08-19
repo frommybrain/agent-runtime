@@ -17,6 +17,15 @@
 
 export function fallbackDecision(observation) {
     const self = observation.self || {}
+
+    // Asleep means the env refuses everything but wait, so acting here just
+    // buys a rejection. The tick classifier already skips the LLMs for
+    // asleep ticks, which routes them HERE, and this path then foraged at
+    // the nest all night: 120 of a day's failures were exactly that.
+    if (self.asleep === true) {
+        return { action: 'wait', params: {}, reason: 'asleep, staying put', source: 'fallback' }
+    }
+
     const needs = self.needs || {}
     const nearby = observation.nearbyObjects || observation.nearby_objects || []
     const nearbyAgents = observation.nearbyAgents || observation.nearby_agents || []
