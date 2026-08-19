@@ -1,7 +1,7 @@
 import { readFile, writeFile, copyFile, mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
 
-import { bannedIn, bannedWords, filterRecord } from '../util/record.js'
+import { bannedIn, bannedWords, filterRecord, isMessageFrame } from '../util/record.js'
 
 // manages the three persistent knowledge files: memory.md, skills.md, tools.md.
 // v0.3.1: backup + restore for consolidation safety (LLMs are liars)
@@ -33,6 +33,12 @@ export class MemoryFiles {
         // different nouns (glint 4, spark 4, glow 4, firefly 4); the pair is
         // the idea, and it cannot be respelled away from its anchors.
         this._ideaCeiling = config.memoryIdeaCeiling ?? 2
+        // and how many bullets may cast an object as carrying a message
+        // from elsewhere, whatever the object is. the fixation has now worn
+        // four different hosts (shrine token, glow, green stone, payphone)
+        // and both stem ceilings passed it every time, because each host
+        // brings fresh stems. the FRAME is the one thing it cannot change.
+        this._frameCeiling = config.memoryFrameCeiling ?? 2
         this._banned = []
     }
 
@@ -95,6 +101,7 @@ export class MemoryFiles {
             banned: this._banned,
             subjectCeiling: this._subjectCeiling,
             ideaCeiling: this._ideaCeiling,
+            frameCeiling: this._frameCeiling,
             logger: this.logger,
             what: 'Memory guard',
         })
@@ -162,6 +169,19 @@ export class MemoryFiles {
                     this.logger.debug(`Memory dedup — skipping "${content}" (similar to "${line.slice(2).trim()}")`)
                     return
                 }
+            }
+        }
+
+        // Frame cap, checked BEFORE insertion. Appends land at the top of
+        // their section, so leaving this to writeMemory's filter would keep
+        // the new frame line and rotate an old one out: the fixation would
+        // hold its two slots forever with fresh wording. Refusing here means
+        // the slots fill once and every later restatement bounces.
+        if (this._frameCeiling > 0 && isMessageFrame(content)) {
+            const held = current.split('\n').filter(l => /^\s*[-*] /.test(l) && isMessageFrame(l)).length
+            if (held >= this._frameCeiling) {
+                this.logger.info(`Memory guard: refused a message-frame line, ${held} already held ("${content.slice(0, 60)}")`)
+                return
             }
         }
 

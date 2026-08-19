@@ -265,13 +265,44 @@ export class Heartbeat {
             }
 
             // 4c. VALIDATE SPEECH PARAMS
-            // LLMs sometimes return speak with no valid message string
+            // The env advertises speak(text) and its executor accepts text
+            // OR message, but this check demanded message alone, so a model
+            // following the advertised schema had every line it tried to
+            // say thrown away: 21 of 21 speaks in one day died right here.
+            // Normalize the aliases into message first, THEN judge.
             if (decision.action === 'speak') {
-                if (!decision.params?.message || typeof decision.params.message !== 'string' || !decision.params.message.trim()) {
+                const p = decision.params || {}
+                const said = [p.message, p.text, p.say, p.content, p.words]
+                    .find(v => typeof v === 'string' && v.trim())
+                if (said) {
+                    decision.params = { ...p, message: said.trim() }
+                } else {
                     this.logger.warn('Speak action with empty/invalid message — converting to wait')
                     decision.action = 'wait'
                     decision.params = {}
                     decision.reason = '(corrected: speak had no valid message)'
+                }
+            }
+
+            // 4c2. VALIDATE ACTIVITY TARGETS
+            // Three actions (browse_internet, use_phone, watch_tattoos) kept
+            // arriving with no target and dying in the env as "Unknown
+            // activity: undefined". Their hosts are singletons he can see in
+            // nearby_objects, so fill the target in; only wait if the host
+            // genuinely is not there.
+            const hostFor = { browse_internet: /internet|cafe/i, use_phone: /phone/i, watch_tattoos: /tattoo/i }
+            if (hostFor[decision.action] && !decision.params?.target) {
+                const pool = observation.nearby_objects || observation.nearbyObjects || []
+                const host = pool.find(o => o?.type === 'ACTIVITY' && hostFor[decision.action].test(o.name || ''))
+                if (host) {
+                    this.logger.debug(`${decision.action} had no target — resolved to ${host.id}`)
+                    decision.params = { ...(decision.params || {}), target: host.id }
+                } else {
+                    const wanted = decision.action
+                    this.logger.warn(`${wanted} with no target and no host in sight — converting to wait`)
+                    decision.action = 'wait'
+                    decision.params = {}
+                    decision.reason = `(corrected: ${wanted} had no target)`
                 }
             }
 

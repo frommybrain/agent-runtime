@@ -106,6 +106,23 @@ export function isBanned(text, banned) {
     return bannedIn(text, banned).length > 0
 }
 
+// The message-frame detector. The fixation stopped being a subject months
+// ago: it survived a full wipe, a stem bar and a semantic twin pass by
+// changing hosts (shrine token, glow, green stone, payphone) while keeping
+// its SHAPE, "some object holds a message from elsewhere". Stems can never
+// catch that because every host has fresh stems. The shape itself is what
+// repeats, and its two halves are stable: a carrier noun (voice, message,
+// sign...) and an elsewhere marker (beyond, hidden, meant for me...). A
+// line needs BOTH to count, so "the stone counts visitors" and "left a
+// message for the walker" both pass while "a voice from beyond the
+// streets" and "a message hidden in the dryer, meant for me" do not.
+const FRAME_CARRIER = /\b(voice|voices|message|messages|signal|signals|whisper|whispers|secret|secrets|meaning|meanings|sign|signs|word|words|call|calls|calling)\b/i
+const FRAME_ELSEWHERE = /\b(beyond|elsewhere|another (?:place|world|side)|the other side|far away|from (?:outside|beneath|under|underneath|behind|below|somewhere)|not from here|hidden (?:in|inside|under|within|behind)|meant for me|for me to find|trying to (?:tell|reach|speak)|speaking to me|talking to me|waiting for me)\b/i
+export function isMessageFrame(text) {
+    const t = String(text || '')
+    return FRAME_CARRIER.test(t) && FRAME_ELSEWHERE.test(t)
+}
+
 /**
  * Filter the bullets of a markdown record.
  *
@@ -128,6 +145,14 @@ export function isBanned(text, banned) {
  * the shiny noun is spelled today. Ported from the sim's MemoryEcology,
  * which learned this against the shrine-pulse spiral.
  *
+ * A third rule for the frame, because both stem rules watch WORDS and the
+ * live fixation is a RELATION that changes its words per host (see
+ * isMessageFrame above). The frame ceiling caps how many bullets may cast
+ * any object as carrying a message from elsewhere, whatever the object is
+ * this week. First N in file order keep their places, so the append path
+ * (which inserts at section top) cannot rotate old frame lines out with
+ * fresh ones.
+ *
  * @param {string} markdown
  * @param {object} opts
  * @param {string[]} [opts.banned]          words the persona has ruled out
@@ -135,17 +160,20 @@ export function isBanned(text, banned) {
  *                                          word; 0 or absent disables it
  * @param {number}   [opts.ideaCeiling]     max bullets sharing one PAIR of
  *                                          content words; 0 disables it
+ * @param {number}   [opts.frameCeiling]    max bullets carrying the
+ *                                          message-frame; 0 disables it
  * @param {object}   [opts.logger]
  * @param {string}   [opts.what]            label for the log line
  * @returns {{ text: string, banned: number, crowded: number }}
  */
-export function filterRecord(markdown, { banned = [], subjectCeiling = 0, ideaCeiling = 0, logger = null, what = 'record' } = {}) {
+export function filterRecord(markdown, { banned = [], subjectCeiling = 0, ideaCeiling = 0, frameCeiling = 0, logger = null, what = 'record' } = {}) {
     const lines = String(markdown ?? '').split('\n')
     const counts = new Map()
     const pairCounts = new Map()
     const out = []
     let bannedDropped = 0
     let crowdedDropped = 0
+    let frameKept = 0
 
     const pairKey = (a, b) => (a < b ? `${a} ${b}` : `${b} ${a}`)
 
@@ -156,6 +184,15 @@ export function filterRecord(markdown, { banned = [], subjectCeiling = 0, ideaCe
         if (hits.length > 0) {
             bannedDropped++
             logger?.info?.(`${what}: dropped a line for "${hits[0]}" (${line.trim().slice(0, 70)})`)
+            continue
+        }
+
+        // Judged here, counted only when the line survives the other rules,
+        // so a frame line the subject cap eats does not spend a frame slot.
+        const framey = frameCeiling > 0 && isMessageFrame(line)
+        if (framey && frameKept >= frameCeiling) {
+            crowdedDropped++
+            logger?.info?.(`${what}: dropped a line, the message-frame already holds ${frameCeiling} (${line.trim().slice(0, 70)})`)
             continue
         }
 
@@ -203,6 +240,7 @@ export function filterRecord(markdown, { banned = [], subjectCeiling = 0, ideaCe
                 }
             }
         }
+        if (framey) frameKept++
 
         out.push(line)
     }
