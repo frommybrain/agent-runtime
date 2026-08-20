@@ -1,4 +1,4 @@
-// fingerprint: 4441c19ea900c7b6
+// fingerprint: 8501243ce5103635
 // What a good line is, as a number.
 //
 // Everything built so far to control his voice is a prohibition. wornWords
@@ -136,6 +136,53 @@ const PAIRED_ADVERB = /\b(\w+ly)\s+and\s+(\w+ly)\b/i
 // exemplars it was training him away from exactly the register we want.
 const SCENE = /\b(as|while)\s+(the|a|an|its|his|her|their)\s+[a-z']+\s+[a-z']+\s+[a-z']|,\s*(its|his|her|their)\s+[a-z' ]{0,24}[a-z]ing\b|\b(stood|sat|paused|lingered)\s+before\b/i
 
+// The emanation, put to work on a feeling.
+//
+// Four of the BAD examples in the Pi's own prompt are one shape: a place's
+// sound or light named as a thing ("the laundry hum", "the pond's ripple",
+// "the drums hum", "the apple tree's fruit is a bright chord") and then set
+// to work on a mood. Sam found the newest one on the live feed, "the
+// cinema's flicker could break the thin silence and give me a fresh view",
+// and his note was "it's like riddles that have no context".
+//
+// It scored 0.8. So did his own plain speech, and so did every other line
+// measured that day, because nothing in here could see this: the words are
+// not in HOLLOW and the sentence dutifully names no abstraction outright.
+// The prompt has banned the shape for months and it still ships, which is
+// the argument for scoring rather than prohibiting, made again.
+//
+// Fitted, not guessed, against 6 known-bad and 19 known-good lines. The
+// instrumental frame is REQUIRED (a modal reaching through it, or needing
+// it in order to do something) because without that it fired on "the
+// machine hum was loud enough to feel in my feet", which is just a dryer
+// honestly humming.
+const QUALITY = 'flicker|hum|ripple|chord|glow|glint|shimmer|buzz|beat|pulse|drift|murmur|thrum|breath|song|rhythm|note'
+const EMANATION = new RegExp(
+  `\\b(?:[a-z]+'s|the\\s+[a-z]+)\\s+(?:${QUALITY})\\b[^.]{0,40}?\\b(could|would|might)\\b`
+  + `|\\bneed\\b[^.]{0,30}?\\b(?:[a-z]+'s|the\\s+[a-z]+)\\s+(?:${QUALITY})\\b`
+  + `|\\b(is|are|was|were|feels?|felt|sounds?)\\s+(a|an|the)\\s+(?:[a-z]+\\s+){0,2}(?:${QUALITY})\\b`
+  // The same move with an ordinary noun in the slot, which the quality list
+  // above cannot see. Measured on 48 live decision reasons pulled from
+  // production: "Need a caffeine lift, the coffee shop's flat white could
+  // cut the hunger bite" is the cinema line exactly, and a flat white is a
+  // drink, not a sound. So the third branch keys on the STRUCTURE (a
+  // possessive reaching through a modal at something) rather than on the
+  // vocabulary, and the vocabulary branches stay for the forms that carry
+  // no modal at all.
+  + `|\\b(?:the\\s+)?[a-z]+(?:\\s+[a-z]+)?'s\\s+[a-z]+(?:\\s+[a-z]+)?\\b[^.]{0,24}?\\b(could|would|might)\\b`,
+  'i',
+)
+
+// The fable ending: stepping out of the moment to explain what it meant.
+//
+// "It reminded me that a shiny new coat doesn't magically fix the feeling of
+// being a fledgling" is the highest-scoring line in everything Sam has ever
+// objected to. It scored 2.0, above every line he has ever praised, because
+// "coat" is in CONCRETE and the arithmetic did the rest. A moral is a
+// narrator explaining the episode to the audience, and he is not a narrator,
+// he is a bird who was there.
+const MORAL = /\b(remind(s|ed)?\s+me\s+that|a\s+reminder\s+that|turns?\s+out\s+(that\s+)?|goes?\s+to\s+show|which\s+is\s+what\s+happens\s+when)\b/i
+
 // Things a reader can see, hear or hold. Not exhaustive and not meant to be:
 // it rewards the SHAPE of naming an object, and any concrete noun outside
 // this list still earns through the proper-noun and number checks below.
@@ -241,6 +288,14 @@ export function scoreLine(line, recent = [], opts = {}) {
 
   if (NOTE_TO_SELF.test(text)) { score -= 2; notes.push('note-to-self') }
 
+  // Both sized to sink the line on their own, for the same reason SCENE is:
+  // a register Sam has flagged this hard must not be winnable on arithmetic
+  // by one concrete noun and a tidy length. The moral above was riding
+  // "coat" to 2.0 and would otherwise land at 0.5, still published.
+  if (EMANATION.test(text)) { score -= 2; notes.push('emanation') }
+
+  if (MORAL.test(text)) { score -= 2; notes.push('moral') }
+
   // Saying it again. Compared against the shorter line so a long paraphrase
   // cannot hide behind its own extra words.
   let worst = 0
@@ -270,4 +325,4 @@ export function exemplars(history, { best = 4, worst = 3 } = {}) {
   }
 }
 
-export const _patterns = { HOLLOW, GAUGE, HEDGE, PAIRED_ADVERB, CONCRETE, INVERTED, STATUS_REPORT, SHRUG, NOTE_TO_SELF, SCENE }
+export const _patterns = { HOLLOW, GAUGE, HEDGE, PAIRED_ADVERB, CONCRETE, INVERTED, STATUS_REPORT, SHRUG, NOTE_TO_SELF, SCENE, EMANATION, MORAL }

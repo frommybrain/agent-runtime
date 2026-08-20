@@ -298,11 +298,23 @@ export class MemoryFiles {
         // rebuild discovered objects from current observation. only show whats
         // actually nearby RIGHT NOW. stale objects = hallucination.
         const nearbyObjects = observation.nearbyObjects || observation.nearby_objects || []
+        // the name leads and the id is marked as a handle. this line used to
+        // be `- ${obj.id}: ${obj.type}` and dropped the name the bridge
+        // sends, so under a heading that says GROUND TRUTH the only word he
+        // had for the rock by the pond was artifact_greenstone. it came out
+        // of his mouth as "Greenstone glints, want to see the cut number",
+        // which is a bird reading a database key aloud.
+        //
+        // the position was always (?, ?) too: the bridge sends distance and
+        // a felt distance, never pos, so every object in here has been
+        // reporting unknown coordinates for as long as this has run.
         const objectsSection = '# Nearby Objects (GROUND TRUTH, if something is not listed here, it is not present)\n' + (
             nearbyObjects.length > 0
-                ? nearbyObjects.map(obj =>
-                    `- ${obj.id}: ${obj.type}${obj.interactive ? ', interactive' : ''}, at (${obj.pos?.x?.toFixed(0) ?? '?'}, ${obj.pos?.z?.toFixed(0) ?? '?'})`
-                ).join('\n') + '\n'
+                ? nearbyObjects.map(obj => {
+                    const where = obj.away || (Number.isFinite(obj.distance) ? `${Math.round(obj.distance)}m away` : '')
+                    const what = obj.name || obj.id
+                    return `- ${what}${where ? `, ${where}` : ''}${obj.interactive ? ', interactive' : ''} [id ${obj.id}]`
+                }).join('\n') + '\n'
                 : '(nothing nearby, the area is empty)\n'
         )
         // replace or append the objects section
