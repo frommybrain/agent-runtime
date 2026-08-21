@@ -71,3 +71,34 @@ test('ceiling 0 disables the frame rule', () => {
     assert.equal(crowded, 0)
     assert.ok(text.includes('voice from beyond'))
 })
+
+// ── 21 Aug: the third re-keying, pinned to the corpus that forced it ──
+// The fixation dropped both noun halves and moved into verbs; the detector
+// returned false for all 28 live bullets while at least four were the
+// frame. These are the real lines, not imagined ones.
+
+test('the verb forms are caught (21 Aug live corpus)', () => {
+    for (const line of [
+        "The pond's green glow sometimes hints at something I haven't seen yet.",
+        "The octopus may mirror the lake's flicker, as if it knows what the glow hides.",
+        'I paddled on the lake when my legs itched, chasing that elusive hint.',
+        "I want to see if the lake's glow reveals something new.",
+        "The junkheap's spray cans glint and promise something odd.",
+    ]) {
+        assert.ok(isMessageFrame(line), `should catch: ${line}`)
+    }
+})
+
+test('the 21 Aug ordinary lines still pass', () => {
+    for (const line of [
+        'The glowing pond clears my head at night.',
+        'The shrine sits quiet; I never know when a new offering appears.',
+        'The phone line feels like a thin thread to reach out.',
+        'Trades tick along on it by themselves and the balance moves.',
+        'a hidden path behind the dumpsters',
+        // literal museum glass is an exhibition, not a hidden meaning
+        "I want to see what's under the glass in the Small Gods exhibit.",
+    ]) {
+        assert.ok(!isMessageFrame(line), `should pass: ${line}`)
+    }
+})

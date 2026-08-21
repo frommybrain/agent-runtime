@@ -116,8 +116,23 @@ export function isBanned(text, banned) {
 // line needs BOTH to count, so "the stone counts visitors" and "left a
 // message for the walker" both pass while "a voice from beyond the
 // streets" and "a message hidden in the dryer, meant for me" do not.
-const FRAME_CARRIER = /\b(voice|voices|message|messages|signal|signals|whisper|whispers|secret|secrets|meaning|meanings|sign|signs|word|words|call|calls|calling)\b/i
-const FRAME_ELSEWHERE = /\b(beyond|elsewhere|another (?:place|world|side)|the other side|far away|from (?:outside|beneath|under|underneath|behind|below|somewhere)|not from here|hidden (?:in|inside|under|within|behind)|meant for me|for me to find|trying to (?:tell|reach|speak)|speaking to me|talking to me|waiting for me)\b/i
+// THIRD re-keying, 21 Aug review, and worth saying plainly: that this
+// keeps needing re-keying is itself evidence that word-matching has a
+// ceiling here. The fixation dropped both noun halves and moved into
+// verbs ("hints at", "what the glow hides", "reveals something new",
+// "promise something odd"), and the detector returned false for all 28
+// bullets in the live memory while at least four of them were the frame.
+// The carrier is now the concealment ACT, noun or verb; "hidden" stays
+// out of the carrier (it lives in the second half) so "a hidden path
+// behind the dumpsters" does not trip on physical hiddenness alone, and
+// bare "know" stays out so "I never know when an offering appears"
+// survives. Validated against the live memory.md, the retired threads
+// and the current thread of 21 Aug, positives and negatives both.
+// Success is measured on the decision-layer rate, not on this regex's
+// own hit count; if a fourth re-keying is ever needed, the answer is a
+// different kind of guard, not a longer word list.
+const FRAME_CARRIER = /\b(voices?|messages?|signals?|whispers?|secrets?|meanings?|signs?|words?|calls?|calling|hints?|hinted|hinting|hides?|hiding|conceal\w*|reveal\w*|promis\w*)\b/i
+const FRAME_ELSEWHERE = /\b(beyond|elsewhere|another (?:place|world|side)|the other side|far away|from (?:outside|beneath|under|underneath|behind|below|somewhere)|not from here|hidden (?:in|inside|under|within|behind)|meant for me|for me to find|trying to (?:tell|reach|speak)|speaking to me|talking to me|waiting for me|something (?:new|odd|strange|more|else|hidden|unseen)|something (?:i|he|you) haven'?t (?:seen|found)|haven'?t (?:seen|found) (?:it )?yet|elusive|as if (?:it|they) knows?|what (?:it|they|the \w+) (?:hides?|holds?|knows?|means?)|waiting to be (?:seen|found)|yet to (?:see|find))\b/i
 export function isMessageFrame(text) {
     const t = String(text || '')
     return FRAME_CARRIER.test(t) && FRAME_ELSEWHERE.test(t)
