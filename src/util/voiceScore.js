@@ -1,4 +1,4 @@
-// fingerprint: 8bd3d34d4e0846b9
+// fingerprint: 4048769ae685bfdf
 // What a good line is, as a number.
 //
 // Everything built so far to control his voice is a prohibition. wornWords
@@ -291,6 +291,18 @@ export function scoreLine(line, recent = [], opts = {}) {
   if (SHRUG.test(text)) { score -= 2; notes.push('shrug') }
 
   if (NOTE_TO_SELF.test(text)) { score -= 2; notes.push('note-to-self') }
+
+  // The ", and the" joint. Measured on 368 prod diary lines: 37 carried
+  // it, always as the same clause-weld ("watching shopfronts drift by,
+  // and the torn corner..."). One is fine, a run is the tic a reader
+  // notices, so the penalty scales with how recently the shape was used
+  // rather than banning it: variety enforced on structure, not words.
+  const joint = /,\s*and the\b/i
+  if (joint.test(text)) {
+    const runs = (recent || []).filter((r) => joint.test(r)).length
+    if (runs >= 2) { score -= 1.6; notes.push('same-joint-again') }
+    else if (runs === 1) { score -= 0.6; notes.push('joint-repeat') }
+  }
 
   // Both sized to sink the line on their own, for the same reason SCENE is:
   // a register Sam has flagged this hard must not be winnable on arithmetic
