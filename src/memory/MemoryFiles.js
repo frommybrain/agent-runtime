@@ -466,6 +466,17 @@ export class MemoryFiles {
             await this._write('current-thread.json', 'null')
             return
         }
+        // The frame does not get to BE the thread. The 21 Aug review found
+        // "I want to see if the lake's glow reveals something new" formed
+        // at 06:17 and renewed six times while every guard watched other
+        // doors; three of four retired threads were the same shape wearing
+        // different hosts. Same detector as the memory choke point, so the
+        // two doors cannot disagree.
+        if (isMessageFrame(thread.text)) {
+            this.logger?.info?.(`Thread refused (message-frame shaped): "${String(thread.text).slice(0, 70)}"`)
+            await this._write('current-thread.json', 'null')
+            return
+        }
         await this._write('current-thread.json', JSON.stringify(thread, null, 2))
     }
 

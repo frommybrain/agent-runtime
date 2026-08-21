@@ -17,9 +17,15 @@ import { sanitizeJson } from '../util/sanitizeJson.js'
 // thread" already written into the persona evolution text. Consolidation
 // view only: the diary scorer never reads this list, so the green stone's
 // real glow stays sayable in public lines.
-const REASON_TIC = /\b(glow|glint)\s+(room|thread|trail|hunt|chase)\b|\bthe\s+glow\b/i
+// Broadened 21 Aug: "the glowing pond" and "subtle light cues" walked
+// straight past \bthe\s+glow\b, and a consolidation that ingests those
+// reasons is the fixation's food supply. Still consolidation-view only.
+// The fixation's whole sensory family, for the one surface where a single
+// entry is worth more than a hundred diary lines: an evolved disposition.
+const LIGHT_MOTIF = /\b(glow\w*|glint\w*|shimmer\w*|lumin\w*|light|lights|lit|flicker\w*|gleam\w*|glimmer\w*|radian\w*|puls(?:e|es|ing)|beacon\w*|neon)\b/i
+const REASON_TIC = /\b(glow\w*|glint\w*)\s+(room|thread|trail|hunt|chase)\b|\bthe\s+glow\w*\b|\b(subtle )?light cues\b|\bvisual rhythms?\b/i
 import { stem } from '../util/wornWords.js'
-import { bannedIn, bannedWords, subjectTokens } from '../util/record.js'
+import { bannedIn, bannedWords, subjectTokens, isMessageFrame } from '../util/record.js'
 import { _patterns as voicePatterns } from '../util/voiceScore.js'
 
 import { readFile, writeFile, copyFile } from 'node:fs/promises'
@@ -268,6 +274,20 @@ export function sanitizeEvolvedArrays(changes, persona, originalPersona, logger 
                 if (entry.length > 90) { drop(field, entry, 'over 90 chars'); continue }
                 const hits = bannedIn(entry, banned)
                 if (hits.length > 0) { drop(field, entry, `banned word "${hits[0]}"`); continue }
+                // Content, not just count. At 08:19 on 21 Aug the fixation
+                // wrote itself in as the trait "attuned to subtle light
+                // cues" (reason: "Repeated focus on the glowing pond,
+                // lanterns, and visual rhythms"). The count guard held and
+                // nothing looked at what the words SAID, and a trait is
+                // the worst possible landing spot: it enters every
+                // subsequent prompt and manufactures the evidence for the
+                // next one. The frame detector and the light family both
+                // stand here now. "light" bare is deliberately in the
+                // family for this one surface: the corpus of evolved
+                // dispositions is tiny and high-stakes, and losing an
+                // occasional "light-hearted" is the right price.
+                if (isMessageFrame(entry)) { drop(field, entry, 'message-frame shaped'); continue }
+                if (LIGHT_MOTIF.test(entry)) { drop(field, entry, 'light-fixation motif'); continue }
                 // A subject he was forced to let go cannot come back as a
                 // disposition. The glow was retired as a thread and scrubbed
                 // from memory on 13 Aug, and the next morning this writer

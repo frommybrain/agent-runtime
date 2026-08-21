@@ -158,3 +158,36 @@ test('a genuinely different entry still gets past the containment check', () => 
     const { kept } = run([...BASELINE, 'keeps a running argument with the speaking clock'])
     assert.ok(kept.includes('keeps a running argument with the speaking clock'))
 })
+
+// ── The evolver's content gate, 21 Aug ──
+// At 08:19 the fixation wrote itself in as a trait. The count guard held
+// and nothing looked at what the words said; a trait is the worst landing
+// spot because it enters every subsequent prompt.
+
+import { sanitizeEvolvedArrays as _sanitize21 } from '../src/loop/SleepCycle.js'
+
+test('the light-cue trait of 08:19 can never land again', () => {
+    const persona = { traits: ['thoughtful', 'private'] }
+    const original = { traits: ['thoughtful', 'private'] }
+    const changes = { traits: ['thoughtful', 'private', 'attuned to subtle light cues'] }
+    const dropped = _sanitize21(changes, persona, original, null, [], null)
+    assert.ok(dropped >= 1, 'the trait walked in again')
+    assert.ok(!changes.traits.includes('attuned to subtle light cues'))
+})
+
+test('a frame-shaped disposition is refused on content', () => {
+    const persona = { quirks: [] }
+    const original = { quirks: [] }
+    const changes = { quirks: ['listens for messages meant for me in machine noise'] }
+    const dropped = _sanitize21(changes, persona, original, null, [], null)
+    assert.ok(dropped >= 1)
+    assert.equal(changes.quirks.length, 0)
+})
+
+test('an ordinary new trait still lands', () => {
+    const persona = { traits: ['thoughtful'] }
+    const original = { traits: ['thoughtful'] }
+    const changes = { traits: ['thoughtful', 'patient with slow mornings'] }
+    _sanitize21(changes, persona, original, null, [], null)
+    assert.ok(changes.traits.includes('patient with slow mornings'), 'the gate is eating ordinary growth')
+})
