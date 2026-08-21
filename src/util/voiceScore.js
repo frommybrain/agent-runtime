@@ -1,4 +1,4 @@
-// fingerprint: 8501243ce5103635
+// fingerprint: 8bd3d34d4e0846b9
 // What a good line is, as a number.
 //
 // Everything built so far to control his voice is a prohibition. wornWords
@@ -28,6 +28,7 @@
 //
 // Deliberately mechanical, no model call. A fitness function that needs an
 // LLM to run is a fitness function nobody runs on every line.
+
 
 // Standing in for a real thing rather than being one. This list is a
 // starting point and the SCORE is what matters: a new one of these will be
@@ -200,6 +201,9 @@ const IDEAL_WORDS = 14
 
 function words(s) { return String(s).trim().split(/\s+/).filter(Boolean) }
 
+// Same crude chop as util/text.js crudeStems, kept INLINE on purpose:
+// sync-voice-score.mjs copies this file verbatim into agent-runtime, so
+// it must not import anything the Pi's tree does not have.
 function stems(s) {
   return new Set(
     String(s).toLowerCase().split(/[^a-z']+/)
