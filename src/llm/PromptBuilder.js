@@ -59,6 +59,15 @@ export class PromptBuilder {
         // not brave enough yet"), so they are worth keeping in full, but
         // they never change, and repeating them inside the live percept made
         // half of what he read each tick a menu he had already memorised.
+        //
+        // When the catalogue exists, tools.md stays OUT of the prompt: the
+        // file's actions section is built from these same available_actions
+        // every tick, and its nearby-objects section is the same list the
+        // situation renders, so sending the file too put ~7KB in every
+        // prompt twice, and the budget chop was paying for the duplicate
+        // with his memory. The file itself stays for the API panel and
+        // consolidation; only a bare-names environment (no descriptions)
+        // still leans on it here.
         const actionCatalogue = (availableActions || [])
             .filter((a) => typeof a !== 'string' && a.description)
             .map((a) => `- ${a.name}(${a.params || ''}): ${a.description}`)
@@ -155,10 +164,10 @@ MY MEMORIES:
 ${memoryContent || '(none yet)'}
 
 MY SKILLS:
-${skillsContent || '(none yet)'}
+${skillsContent || '(none yet)'}${actionCatalogue ? '' : `
 
 THINGS I CAN DO:
-${toolsContent || '(none yet)'}
+${toolsContent || '(none yet)'}`}
 
 WHAT EACH ACTION IS:
 ${actionCatalogue || '(nothing available)'}`
