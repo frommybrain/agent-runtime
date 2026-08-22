@@ -1,4 +1,4 @@
-// fingerprint: 4048769ae685bfdf
+// fingerprint: 264a493c66450130
 // What a good line is, as a number.
 //
 // Everything built so far to control his voice is a prohibition. wornWords
@@ -73,7 +73,17 @@ const INVERTED = /\b(lay|lays|lies)\s+(beside|by|near|against|across|among|amid|
 // "cracked bottle cap still cracked, I left it" and "tin can still flat,
 // I'll leave it" it sailed through. Two forms now: "<thing> still <state>",
 // and the shrug that closes it ("I left it", "I noted it", "it stayed").
-const STATUS_REPORT = /;\s*(it|they)\s+(still|was|were|had)\b|\bstill\s+\w+,\s*(i|it|they)\b|\b(i'?(ll)? ?(left|leave|noted|note) it|it stayed)\b/i
+//
+// EIGHTH form of the wider tic: the persistence close. "the napkin on the
+// tray was still damp", "the nail in the reed was still there, glinting",
+// "still stuck to the rim, just as it was earlier". No pronoun tail, no
+// semicolon, no verb of noticing; the line just ends on the object still
+// being what it was. 43 of 370 lines and zero caught, because every
+// earlier guard keyed on the tail and this one has none. So: was/were
+// still, closing the sentence, with no first-person clause after it (a
+// line that goes on to "so I went in" ends on him, not on the object,
+// and stays legal).
+const STATUS_REPORT = /;\s*(it|they)\s+(still|was|were|had)\b|\bstill\s+\w+,\s*(i|it|they)\b|\b(i'?(ll)? ?(left|leave|noted|note) it|it stayed)\b|\b(was|were)\s+still\b(?![^.;!?]*\bi\b)[^.;!?]*[.!?]?\s*$/i
 
 // The shrug. A bare first-person reaction closing the line, or the flat
 // report verbs "I noted" and "I stared" anywhere in it.
