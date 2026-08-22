@@ -15,8 +15,15 @@ export class Think {
         this.workingMemory = workingMemory
         this.logger = logger
 
-        // token budget: ~4 chars per token, 8k context with 200 reserved for output
-        this._maxInputChars = 7800 * 4  // ~7800 tokens of input
+        // token budget: ~4 chars per token. 7800 dated from an 8k-context
+        // model; the chain is gpt-oss-120b (131k) and qwen3:4b (262k) now,
+        // so the number is a cost dial, not a wall. Measured 22 Aug with
+        // the tools.md duplication gone: honest peaks sit ~8050 tokens
+        // (situation 7.8k chars at a busy corner), so the old ceiling had
+        // the chop firing on real content for a ~250-token overage. Sized
+        // to clear that with a little room; the breakdown warn names the
+        // fat if it ever creeps past this one.
+        this._maxInputChars = 8400 * 4
         this._lastPromptChars = 0       // tracked for metrics
     }
 
