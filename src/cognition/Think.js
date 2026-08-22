@@ -66,9 +66,18 @@ export class Think {
         this._lastPromptChars = totalChars
         if (totalChars > this._maxInputChars) {
             const overBy = totalChars - this._maxInputChars
-            this.logger.warn(`Prompt over budget by ~${Math.round(overBy / 4)} tokens, truncating Learned Facts`)
+            // name the actual fat, not just the overage: this warn spent a
+            // day saying "truncating Learned Facts" while that section held
+            // 717 chars of an 8700-char overage. the chop is a backstop, and
+            // if the prompt is still over afterwards the numbers here are
+            // what to read before touching anything.
+            this.logger.warn(`Prompt over budget by ~${Math.round(overBy / 4)} tokens (system ${systemPrompt.length}, user ${userPrompt.length}; memory ${memory.length}, skills ${skills.length}, tools ${tools.length}, situation ${situation.length}), truncating Learned Facts`)
             const truncatedMemory = this._truncateLearnedFacts(memory, overBy)
             finalSystemPrompt = this.promptBuilder.buildSystemPrompt(truncatedMemory, skills, tools, observation.available_actions)
+            const stillOver = finalSystemPrompt.length + userPrompt.length - this._maxInputChars
+            if (stillOver > 0) {
+                this.logger.warn(`Still over by ~${Math.round(stillOver / 4)} tokens after the chop; the fat is not in Learned Facts`)
+            }
         }
 
         // 3. call LLM with tier routing
