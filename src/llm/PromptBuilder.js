@@ -170,7 +170,9 @@ THINGS I CAN DO:
 ${toolsContent || '(none yet)'}`}
 
 WHAT EACH ACTION IS:
-${actionCatalogue || '(nothing available)'}`
+${actionCatalogue || '(nothing available)'}${actionCatalogue ? `
+
+The "because" param on these is optional and usually left out. Use it only when one specific recent experience, something you read, saw, were given, or did, is genuinely what put the action in your head; name that thing in a short plain phrase. Never invent one to fill the slot, and never restate the reason in it.` : ''}`
     }
 
     // extras: { internalState, deltaNarrative, lastActionResult, repetitionWarnings, tickCount, uptimeMinutes }

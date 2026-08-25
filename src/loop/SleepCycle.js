@@ -1329,7 +1329,15 @@ What pulls at ${pName} now? JSON only.`
         let totalDrift = 0
         let fieldCount = 0
 
-        // array fields: what fraction of original items are still there?
+        // array fields: jaccard distance against the baseline, so losses
+        // AND additions both move the dial. the old measure only counted
+        // surviving originals, which meant a sheet could grow two traits
+        // it was never authored with and read 0% drift: the 25 aug review
+        // caught exactly that, twenty evolution entries all stamped
+        // driftScore 0 while traits went 9 to 11 and a member swapped out
+        // and back. a dial that cannot see additive drift is no dial, and
+        // additive drift is the kind a fixation actually produces, it
+        // writes traits that justify itself rather than deleting old ones.
         for (const field of ['traits', 'values', 'fears', 'quirks']) {
             const orig = new Set(original[field].map(s => s.toLowerCase()))
             const curr = new Set(current[field].map(s => s.toLowerCase()))
@@ -1337,13 +1345,12 @@ What pulls at ${pName} now? JSON only.`
             if (orig.size === 0) continue
             fieldCount++
 
-            // how many original items survived?
-            let surviving = 0
+            let shared = 0
             for (const item of orig) {
-                if (curr.has(item)) surviving++
+                if (curr.has(item)) shared++
             }
-            const retention = surviving / orig.size
-            totalDrift += (1 - retention)
+            const union = orig.size + curr.size - shared
+            totalDrift += union > 0 ? 1 - shared / union : 0
         }
 
         // voice style (simple string equality)
