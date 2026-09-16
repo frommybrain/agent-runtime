@@ -1,0 +1,11 @@
+/home/pi/agent-runtime-victor/victor.log {
+    daily
+    size 10M
+    rotate 7
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+    su pi pi
+}

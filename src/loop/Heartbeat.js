@@ -18,6 +18,22 @@ import { sanitizeReason } from '../util/sanitizeReason.js'
 import { wornWords, wornOpeners, wornPhrases } from '../util/wornWords.js'
 import { scoreLine, exemplars } from '../util/voiceScore.js'
 
+export function activeWork(observation) {
+    const self = observation?.self || {}
+    if (self.journey?.active === true) {
+        return { kind: 'journey', target: self.journey.target || null }
+    }
+    if (self.busy === true) {
+        return { kind: 'action', target: self.action || null }
+    }
+    // Compatibility with environments that have not yet adopted the
+    // structured execution fields.
+    if (/^move toward /i.test(String(self.action || ''))) {
+        return { kind: 'journey', target: null }
+    }
+    return null
+}
+
 export class Heartbeat {
     constructor(socket, think, workingMemory, memoryFiles, dailyLog, sleepCycle, internalState, deltaDetector, repetitionGuard, speechLog, config, logger) {
         this.socket = socket
@@ -40,7 +56,10 @@ export class Heartbeat {
         this.currentIntervalMs = this.baseIntervalMs
 
         this._timer = null
+        this._watchdog = null
         this._ticking = false
+        this._lastTickSettledAt = Date.now()
+        this._stuckTickMs = Math.max(120000, (config.maxThinkTimeMs || 30000) * 3)
         this.tickCount = 0
         this._startedAt = null
         this._lastActionResult = null   // feedback from previous tick
@@ -61,6 +80,14 @@ export class Heartbeat {
         this._startedAt = Date.now()
         this.logger.info(`Heartbeat started (${this.baseIntervalMs}ms base, adaptive ${this.minIntervalMs}-${this.maxIntervalMs}ms)`)
         this._scheduleNext()
+        this._watchdog = setInterval(() => {
+            if (!this._ticking || !this.socket.isConnected() || this.sleepCycle?.isSleeping()) return
+            const stalledFor = Date.now() - this._lastTickSettledAt
+            if (stalledFor < this._stuckTickMs) return
+            this.logger.error(`Heartbeat stalled for ${Math.round(stalledFor / 1000)}s, exiting for service restart`)
+            process.exit(1)
+        }, 30000)
+        this._watchdog.unref?.()
         // first tick immediately
         this._tick()
     }
@@ -69,6 +96,10 @@ export class Heartbeat {
         if (this._timer) {
             clearTimeout(this._timer)
             this._timer = null
+        }
+        if (this._watchdog) {
+            clearInterval(this._watchdog)
+            this._watchdog = null
         }
         this.logger.info('Heartbeat stopped')
     }
@@ -84,6 +115,7 @@ export class Heartbeat {
         if (!this.socket.isConnected()) return
 
         this._ticking = true
+        this._lastTickSettledAt = Date.now()
         this.tickCount++
 
         try {
@@ -115,12 +147,16 @@ export class Heartbeat {
             // tracked...)" when it wants a fresh decision. Walk, don't
             // deliberate. It also saves an LLM call every tick of a journey.
             const doing = String(observation.self?.action || '')
-            if (/^move toward /i.test(doing)) {
+            const work = activeWork(observation)
+            if (work) {
                 // info, not debug: "he is on his way somewhere" is the
                 // behaviour we spent a long time not having, and a silent
                 // skip is indistinguishable from a dead tick in the log.
                 const eta = doing.match(/~(\d+)u away/)
-                this.logger.info(`[tick ${this.tickCount}] walking${eta ? ` (${eta[1]}u to go)` : ''}, not deciding`)
+                const label = work.kind === 'journey'
+                    ? `walking${work.target ? ` to ${work.target}` : ''}${eta ? ` (${eta[1]}u to go)` : ''}`
+                    : `finishing ${work.target || 'the current action'}`
+                this.logger.info(`[tick ${this.tickCount}] ${label}, not deciding`)
                 return
             }
 
@@ -494,6 +530,7 @@ export class Heartbeat {
             this.api?.emit('error', { tick: this.tickCount, message: err.message })
         } finally {
             this._ticking = false
+            this._lastTickSettledAt = Date.now()
         }
     }
 
