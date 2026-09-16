@@ -5,6 +5,9 @@
 // this perceiver narrates whatever it finds without assuming (x, z) coords,
 // 3D worlds, or any specific structure.
 
+const MAX_SITUATION_CHARS = 12000
+const MAX_GENERIC_FIELD_CHARS = 2400
+
 export function perceive(observation, worldEvents) {
     const lines = []
 
@@ -81,7 +84,7 @@ export function perceive(observation, worldEvents) {
                     parts.push(`${k}:${v}`)
                 }
             }
-            return parts.join(', ')
+            return _clip(parts.join(', '), 700)
         })
         lines.push(`Nearby: ${objects.join('; ')}.`)
     }
@@ -175,13 +178,30 @@ export function perceive(observation, worldEvents) {
     for (const [key, val] of Object.entries(observation)) {
         if (handled.has(key)) continue
         if (typeof val === 'object' && val !== null) {
-            lines.push(`${key}: ${JSON.stringify(val)}`)
+            lines.push(`${key}: ${_clip(JSON.stringify(val), MAX_GENERIC_FIELD_CHARS)}`)
         } else if (val !== undefined) {
             lines.push(`${key}: ${val}`)
         }
     }
 
-    return lines.join('\n')
+    return _fitSituation(lines.join('\n'))
+}
+
+function _clip(value, maxChars) {
+    const text = String(value ?? '')
+    if (text.length <= maxChars) return text
+    return `${text.slice(0, maxChars - 24)} [older detail omitted]`
+}
+
+function _fitSituation(text) {
+    if (text.length <= MAX_SITUATION_CHARS) return text
+    // State and immediate surroundings are at the front; narrative context,
+    // recent actions and drives are at the back. Keep both instead of cutting
+    // the story layer off whenever the town is busy.
+    const marker = '\n[less relevant detail omitted]\n'
+    const available = MAX_SITUATION_CHARS - marker.length
+    const head = Math.floor(available * 0.68)
+    return text.slice(0, head) + marker + text.slice(text.length - (available - head))
 }
 
 // narrate a self property. handles primitives, nested objects, arrays.

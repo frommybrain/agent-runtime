@@ -4,6 +4,24 @@ Reverse chronological. Versions follow the boot-string in `src/index.js`.
 Earlier entries reconstructed from commit history; later entries from
 contemporaneous version commits.
 
+## [Unreleased] — 2026-09-16
+
+- Added structured execution-state handling. `self.busy` and
+  `self.journey.active` now pause new decisions until the environment reports
+  that an accepted journey or timed action has finished. The old movement-text
+  check remains as protocol compatibility for older environments.
+- Bounded live observation rendering at 12,000 characters. Oversized entity
+  state and generic observation fields are clipped while immediate state and
+  the narrative tail are retained.
+- The prompt budget now trims oversized live situation text before removing
+  durable memory. Prompt metrics record the final payload that was sent.
+- Added a stalled-heartbeat watchdog. A tick that remains in flight for at
+  least 120 seconds exits the process so the system service can restart it.
+- Added `ops/victor-agent.logrotate` for daily or 10 MB rotation of the Pi log,
+  retaining seven compressed generations.
+- Added regression coverage for structured work state, older protocol
+  compatibility, observation bounds, narrative retention, and watchdog wiring.
+
 ## [Unreleased] — 2026-07
 
 - New `decision` LLM tier: Anthropic-backed routing for money/high-stakes

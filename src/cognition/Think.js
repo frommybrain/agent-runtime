@@ -38,7 +38,7 @@ export class Think {
         }
 
         // 1. perceive. raw observation → natural language
-        const situation = perceive(observation, worldEvents)
+        let situation = perceive(observation, worldEvents)
         this.logger.debug(`Perceived: ${situation.split('\n')[0]}...`)
 
         // 2. build prompts
@@ -63,14 +63,23 @@ export class Think {
         } catch { /* threadless is fine */ }
 
         const systemPrompt = this.promptBuilder.buildSystemPrompt(memory, skills, tools, observation.available_actions)
-        const userPrompt = this.promptBuilder.buildUserPrompt(situation, recentLog, recentMemory, extras)
+        let userPrompt = this.promptBuilder.buildUserPrompt(situation, recentLog, recentMemory, extras)
 
         // 2b. token budget check. truncate memory if over.
         // v0.3.1: truncate "Learned Facts" (middle section, largest) rather than
         // slicing from the end which would cut "Important Memories" first
         let finalSystemPrompt = systemPrompt
-        const totalChars = systemPrompt.length + userPrompt.length
-        this._lastPromptChars = totalChars
+        let totalChars = systemPrompt.length + userPrompt.length
+        if (totalChars > this._maxInputChars && situation.length > 3500) {
+            const overBy = totalChars - this._maxInputChars
+            const keep = Math.max(3500, situation.length - overBy - 200)
+            if (keep < situation.length) {
+                this.logger.warn(`Live situation is ${situation.length} chars; trimming it to ${keep} before touching memory`)
+                situation = this._trimSituation(situation, keep)
+                userPrompt = this.promptBuilder.buildUserPrompt(situation, recentLog, recentMemory, extras)
+                totalChars = systemPrompt.length + userPrompt.length
+            }
+        }
         if (totalChars > this._maxInputChars) {
             const overBy = totalChars - this._maxInputChars
             // name the actual fat, not just the overage: this warn spent a
@@ -86,6 +95,7 @@ export class Think {
                 this.logger.warn(`Still over by ~${Math.round(stillOver / 4)} tokens after the chop; the fat is not in Learned Facts`)
             }
         }
+        this._lastPromptChars = finalSystemPrompt.length + userPrompt.length
 
         // 3. call LLM with tier routing
         const { text, source } = await this.llm.generate(finalSystemPrompt, userPrompt, 30000, tier)
@@ -214,6 +224,14 @@ export class Think {
         const omitted = totalFacts - kept.filter(isFact).length
         const truncNote = omitted > 0 ? `\n(${omitted} older facts omitted for context budget)\n` : ''
         return before + truncNote + kept.join('\n') + after
+    }
+
+    _trimSituation(situation, maxChars) {
+        if (situation.length <= maxChars) return situation
+        const marker = '\n[less relevant live detail omitted]\n'
+        const available = Math.max(0, maxChars - marker.length)
+        const head = Math.floor(available * 0.68)
+        return situation.slice(0, head) + marker + situation.slice(situation.length - (available - head))
     }
 
     _wrapFallback(observation) {
