@@ -17,8 +17,9 @@ contemporaneous version commits.
   durable memory. Prompt metrics record the final payload that was sent.
 - Added a stalled-heartbeat watchdog. A tick that remains in flight for at
   least 120 seconds exits the process so the system service can restart it.
-- Added `ops/victor-agent.logrotate` for daily or 10 MB rotation of the Pi log,
-  retaining seven compressed generations.
+- Added `ops/victor-agent.logrotate` for daily rotation, with an earlier
+  rotation at 10 MB, retaining seven compressed generations. The policy uses
+  the root ownership applied when systemd opens `StandardOutput`.
 - Added regression coverage for structured work state, older protocol
   compatibility, observation bounds, narrative retention, and watchdog wiring.
 
