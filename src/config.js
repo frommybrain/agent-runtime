@@ -73,6 +73,10 @@ export function loadConfig() {
         // sleep cycle
         activeHoursBeforeSleep: parseFloat(process.env.ACTIVE_HOURS_BEFORE_SLEEP || '0.83'),
         sleepDurationMinutes: parseInt(process.env.SLEEP_DURATION_MINUTES || '10'),
+        // A process restart is not a new waking day. If the service comes
+        // back during the night, keep it awake long enough for that night to
+        // pass instead of starting another full sleep after one minute.
+        worldSleepRestartGuardMinutes: parseInt(process.env.WORLD_SLEEP_RESTART_GUARD_MINUTES || '30'),
 
         // How often self-reflection may actually rewrite the persona.
         //
