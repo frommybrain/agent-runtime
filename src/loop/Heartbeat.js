@@ -299,11 +299,13 @@ export class Heartbeat {
                 this._offeringAttentionMaxMinutes,
             )
             if (visitorAttention) {
-                const noun = visitorAttention.count === 1 ? 'offering' : 'offerings'
+                const reason = visitorAttention.count === 1
+                    ? 'I have left that note sitting long enough. Time to read it.'
+                    : 'I have left those notes sitting long enough. Time to read one.'
                 decision.action = 'inspect'
                 decision.params = {
                     target: visitorAttention.target,
-                    reason: `${visitorAttention.count} ${noun} have been waiting; I am making time to read one`,
+                    reason,
                 }
                 decision.reason = decision.params.reason
                 decision.source = 'visitor-attention'
