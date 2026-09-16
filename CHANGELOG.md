@@ -14,7 +14,9 @@ contemporaneous version commits.
   state and generic observation fields are clipped while immediate state and
   the narrative tail are retained.
 - The prompt budget now trims oversized live situation text before removing
-  durable memory. Prompt metrics record the final payload that was sent.
+  durable memory, then fits the assembled user prompt to the remaining space.
+  This covers large delta, exploration, and voice-history blocks outside the
+  situation. Prompt metrics record the final payload that was sent.
 - Added a stalled-heartbeat watchdog. A tick that remains in flight for at
   least 120 seconds exits the process so the system service can restart it.
 - Added `ops/victor-agent.logrotate` for daily rotation, with an earlier
