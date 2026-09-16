@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 
 import { activeWork } from '../src/loop/Heartbeat.js'
 import { perceive } from '../src/cognition/Perceive.js'
+import { Think } from '../src/cognition/Think.js'
 import { readFileSync } from 'node:fs'
 
 test('structured execution state blocks a new decision', () => {
@@ -47,4 +48,14 @@ test('a genuinely stuck heartbeat exits so systemd can recover it', () => {
     const source = readFileSync(new URL('../src/loop/Heartbeat.js', import.meta.url), 'utf8')
     assert.match(source, /Heartbeat stalled[\s\S]*process\.exit\(1\)/)
     assert.match(source, /clearInterval\(this\._watchdog\)/)
+})
+
+test('the final user-prompt fitter preserves current state and the response instruction', () => {
+    const think = Object.create(Think.prototype)
+    const prompt = `TIME AND STATE\n${'old context '.repeat(2000)}\nCURRENT SITUATION: shrine\nWhat do you do? Respond with JSON only.`
+    const fitted = think._trimUserPrompt(prompt, 1200)
+    assert.equal(fitted.length, 1200)
+    assert.match(fitted, /^TIME AND STATE/)
+    assert.match(fitted, /CURRENT SITUATION: shrine/)
+    assert.match(fitted, /Respond with JSON only\.$/)
 })

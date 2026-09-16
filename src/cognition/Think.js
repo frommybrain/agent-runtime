@@ -80,6 +80,18 @@ export class Think {
                 totalChars = systemPrompt.length + userPrompt.length
             }
         }
+        // The live situation is only one part of the user prompt. Delta
+        // narration, exploration history and voice examples can together be
+        // larger than it, so fitting situation alone cannot guarantee the
+        // request fits. Keep the opening state and the closing current-world
+        // block, and compact the middle to the space left by the system
+        // prompt. This makes the configured ceiling an actual ceiling.
+        const maxUserChars = Math.max(6000, this._maxInputChars - systemPrompt.length - 200)
+        if (userPrompt.length > maxUserChars) {
+            this.logger.warn(`Assembled user prompt is ${userPrompt.length} chars; fitting it to ${maxUserChars}`)
+            userPrompt = this._trimUserPrompt(userPrompt, maxUserChars)
+            totalChars = systemPrompt.length + userPrompt.length
+        }
         if (totalChars > this._maxInputChars) {
             const overBy = totalChars - this._maxInputChars
             // name the actual fat, not just the overage: this warn spent a
@@ -232,6 +244,14 @@ export class Think {
         const available = Math.max(0, maxChars - marker.length)
         const head = Math.floor(available * 0.68)
         return situation.slice(0, head) + marker + situation.slice(situation.length - (available - head))
+    }
+
+    _trimUserPrompt(prompt, maxChars) {
+        if (prompt.length <= maxChars) return prompt
+        const marker = '\n\n[older decision context omitted]\n\n'
+        const available = Math.max(0, maxChars - marker.length)
+        const head = Math.floor(available * 0.35)
+        return prompt.slice(0, head) + marker + prompt.slice(prompt.length - (available - head))
     }
 
     _wrapFallback(observation) {
