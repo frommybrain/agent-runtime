@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { activeWork } from '../src/loop/Heartbeat.js'
+import { activeWork, dueOfferingAttention } from '../src/loop/Heartbeat.js'
 import { perceive } from '../src/cognition/Perceive.js'
 import { Think } from '../src/cognition/Think.js'
 import { readFileSync } from 'node:fs'
@@ -23,6 +23,35 @@ test('legacy movement prose remains compatible', () => {
         activeWork({ self: { action: 'move toward the shrine for inspect' } }),
         { kind: 'journey', target: null },
     )
+})
+
+test('an overdue offering receives a bounded inspection slot', () => {
+    const observation = {
+        pending_sacrifices: 12,
+        self: { needs: { hunger: { level: 40 }, rest: { level: 20 }, safety: { level: 10 } } },
+        available_actions: [{ name: 'inspect' }, { name: 'forage' }],
+        nearby_objects: [
+            { id: 'artifact_shrine', type: 'ARTIFACT' },
+            { id: 'sacrifice_oldest', type: 'SACRIFICE' },
+        ],
+    }
+    const due = dueOfferingAttention(observation, 0, 1_000_000, 15)
+    assert.equal(due.target, 'sacrifice_oldest')
+    assert.equal(due.intervalMinutes, 2.5)
+})
+
+test('critical needs and recent attention keep their priority', () => {
+    const observation = {
+        pending_sacrifices: 1,
+        self: { needs: { hunger: { level: 95 } } },
+        available_actions: [{ name: 'inspect' }, { name: 'forage' }],
+        nearby_objects: [{ id: 'artifact_shrine', type: 'ARTIFACT' }],
+    }
+    assert.equal(dueOfferingAttention(observation, 0, 1_000_000, 15), null)
+
+    observation.self.needs.hunger.level = 20
+    assert.equal(dueOfferingAttention(observation, 200_000, 1_000_000, 15), null)
+    assert.equal(dueOfferingAttention(observation, 0, 1_000_000, 15)?.target, 'artifact_shrine')
 })
 
 test('large observations keep immediate state and narrative within a fixed bound', () => {
