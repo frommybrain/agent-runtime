@@ -1,11 +1,13 @@
 /home/pi/agent-runtime-victor/victor.log {
     daily
-    size 10M
+    maxsize 10M
     rotate 7
     compress
     delaycompress
     missingok
     notifempty
     copytruncate
-    su pi pi
+    # systemd opens StandardOutput before dropping to User=pi, so this file
+    # is owned by root even though the Node process itself runs as pi.
+    su root root
 }
