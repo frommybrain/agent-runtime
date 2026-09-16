@@ -434,6 +434,10 @@ export class SleepCycle {
 
         this.activeHours = config.activeHoursBeforeSleep
         this.sleepMinutes = config.sleepDurationMinutes
+        this.worldSleepRestartGuardMinutes = Math.max(
+            1,
+            Number(config.worldSleepRestartGuardMinutes ?? 30),
+        )
         this.personaPath = config.personaPath
         this.dataDir = config.dataDir
         this.sleeping = false
@@ -513,9 +517,14 @@ export class SleepCycle {
             // that straddles midnight still counts as the one night.
             const nightId = worldClock.hour < 12 ? worldClock.day - 1 : worldClock.day
             if (this._lastNightSlept === nightId) return
-            // Don't consolidate thirty seconds after waking from the last
-            // one: a restart mid-night would otherwise fire immediately.
-            if (Date.now() - this._wakeTime < 60_000) return
+            // A process restart is not a new waking day. Before this guard,
+            // every deploy made a fresh in-memory `_lastNightSlept`, then a
+            // restart during the night began another whole sleep after only
+            // one minute awake. The world's night is shorter than this
+            // window, while an ordinary morning-to-night stretch is longer,
+            // so a restart skips only the night already in progress.
+            const restartGuardMs = this.worldSleepRestartGuardMinutes * 60_000
+            if (Date.now() - this._wakeTime < restartGuardMs) return
             this._lastNightSlept = nightId
             this._startSleep(false)
             return
