@@ -77,6 +77,11 @@ export function loadConfig() {
         // back during the night, keep it awake long enough for that night to
         // pass instead of starting another full sleep after one minute.
         worldSleepRestartGuardMinutes: parseInt(process.env.WORLD_SLEEP_RESTART_GUARD_MINUTES || '30'),
+        // Visitor offerings remain voluntary moments, but they cannot sit
+        // behind unrelated choices forever. This is the longest a single
+        // waiting offering goes before the runtime reserves one look. A
+        // backlog shortens the interval automatically.
+        offeringAttentionMaxMinutes: parseInt(process.env.OFFERING_ATTENTION_MAX_MINUTES || '15'),
 
         // How often self-reflection may actually rewrite the persona.
         //

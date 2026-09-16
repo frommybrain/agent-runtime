@@ -34,6 +34,41 @@ export function activeWork(observation) {
     return null
 }
 
+function levelOf(need) {
+    if (typeof need === 'number') return need <= 1 ? need * 100 : need
+    return Number(need?.level || 0)
+}
+
+/**
+ * Reserve one look for overdue visitor work without turning the life loop
+ * into a queue worker. Critical hunger, rest, or safety still wins. One
+ * offering waits at most the configured interval; a backlog shortens that
+ * interval, with a two-minute floor so Pino still has a life between notes.
+ */
+export function dueOfferingAttention(observation, lastAt = 0, now = Date.now(), maxMinutes = 15) {
+    const count = Number(observation?.pending_sacrifices || 0)
+    if (count <= 0) return null
+
+    const actionNames = new Set(
+        (observation.available_actions || []).map((action) =>
+            typeof action === 'string' ? action : action?.name),
+    )
+    if (!actionNames.has('inspect')) return null
+
+    const needs = observation.self?.needs || {}
+    if (['hunger', 'rest', 'safety'].some((name) => levelOf(needs[name]) >= 90)) return null
+
+    const intervalMinutes = Math.max(2, Number(maxMinutes || 15) / Math.min(count, 6))
+    if (lastAt > 0 && now - lastAt < intervalMinutes * 60_000) return null
+
+    const objects = observation.nearby_objects || observation.nearbyObjects || []
+    const target = objects.find((object) => object?.type === 'SACRIFICE')
+        || objects.find((object) => object?.id === 'artifact_shrine')
+    if (!target?.id) return null
+
+    return { target: target.id, count, intervalMinutes }
+}
+
 export class Heartbeat {
     constructor(socket, think, workingMemory, memoryFiles, dailyLog, sleepCycle, internalState, deltaDetector, repetitionGuard, speechLog, config, logger) {
         this.socket = socket
@@ -69,6 +104,11 @@ export class Heartbeat {
         this._lastGCCheckAt = Date.now()
         this._gcCheckIntervalMs = 60 * 60 * 1000  // check GC every hour
         this._recentlyDisappeared = []  // objects gone in the last few ticks
+        // Give the ordinary decision loop one natural interval after boot.
+        // Starting at zero would turn every deployment with a fresh note
+        // into an immediate doorbell.
+        this._lastOfferingAttentionAt = Date.now()
+        this._offeringAttentionMaxMinutes = Math.max(2, Number(config.offeringAttentionMaxMinutes || 15))
     }
 
     uptimeSeconds() {
@@ -248,6 +288,27 @@ export class Heartbeat {
                 tier,
             })
 
+            // Visitor attention has an SLA, not a script. The model keeps
+            // choosing freely until a note has waited through the bounded
+            // interval. Then one inspect slot is reserved, after critical
+            // physical needs and any in-flight commitment have cleared.
+            const visitorAttention = dueOfferingAttention(
+                observation,
+                this._lastOfferingAttentionAt,
+                Date.now(),
+                this._offeringAttentionMaxMinutes,
+            )
+            if (visitorAttention) {
+                const noun = visitorAttention.count === 1 ? 'offering' : 'offerings'
+                decision.action = 'inspect'
+                decision.params = {
+                    target: visitorAttention.target,
+                    reason: `${visitorAttention.count} ${noun} have been waiting; I am making time to read one`,
+                }
+                decision.reason = decision.params.reason
+                decision.source = 'visitor-attention'
+            }
+
             // 4b. VALIDATE ACTION
             // hard constraint: if env specifies available_actions, the agent
             // MUST use one of them. LLMs sometimes hallucinate actions from
@@ -382,6 +443,11 @@ export class Heartbeat {
 
             // 5. ACT
             const result = await this.socket.act(decision.action, decision.params)
+
+            if (decision.action === 'inspect' &&
+                (/^sacrifice_/.test(String(decision.params?.target || '')) || decision.params?.target === 'artifact_shrine')) {
+                this._lastOfferingAttentionAt = Date.now()
+            }
 
             // Send what he chose to REMEMBER to the world too.
             //
