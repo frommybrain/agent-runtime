@@ -45,7 +45,7 @@ function levelOf(need) {
  * offering waits at most the configured interval; a backlog shortens that
  * interval, with a two-minute floor so Pino still has a life between notes.
  */
-export function dueOfferingAttention(observation, lastAt = 0, now = Date.now(), maxMinutes = 15) {
+export function dueOfferingAttention(observation, lastAt = 0, now = Date.now(), maxMinutes = 15, previous = null) {
     const count = Number(observation?.pending_sacrifices || 0)
     if (count <= 0) return null
 
@@ -62,11 +62,91 @@ export function dueOfferingAttention(observation, lastAt = 0, now = Date.now(), 
     if (lastAt > 0 && now - lastAt < intervalMinutes * 60_000) return null
 
     const objects = observation.nearby_objects || observation.nearbyObjects || []
-    const target = objects.find((object) => object?.type === 'SACRIFICE')
-        || objects.find((object) => object?.id === 'artifact_shrine')
+    // The world lists the waiting crystals oldest first, so the first one
+    // is the one that has waited longest.
+    const crystals = objects.filter((object) => object?.type === 'SACRIFICE' && object?.id)
+    const shrine = objects.find((object) => object?.id === 'artifact_shrine')
+    // A crystal he already set out for and did not read is not the answer
+    // a second time. 17 Sep: the slot chose the same unreachable crystal
+    // seventeen times in nine hours. The shrine is the answer then, because
+    // reading there opens the oldest waiting note through the world's own
+    // fallback. Once the count has moved, the crystals are worth trying.
+    const stalled = previous?.kind === 'crystal' && count >= Number(previous.count || 0)
+    const target = (stalled && shrine) ? shrine : (crystals[0] || shrine)
     if (!target?.id) return null
+    const kind = target.type === 'SACRIFICE' ? 'crystal' : 'shrine'
 
-    return { target: target.id, count, intervalMinutes }
+    return {
+        target: target.id,
+        count,
+        intervalMinutes,
+        kind,
+        waitedMin: Number.isFinite(Number(target.waited_min)) ? Number(target.waited_min) : null,
+        from: target.from ? String(target.from) : null,
+    }
+}
+
+function agoWords(minutes) {
+    if (!Number.isFinite(minutes) || minutes < 1) return null
+    if (minutes < 60) return `${Math.round(minutes)} minutes`
+    const hours = Math.round(minutes / 60)
+    return hours === 1 ? 'an hour' : `${hours} hours`
+}
+
+/**
+ * Why he is going, in his own words. The facts go in, the line comes
+ * out, and his recent reasons are ground to avoid. The first version of
+ * this slot carried one authored sentence and it published sixteen times
+ * in a day, which is the thing every writer in this runtime exists to
+ * prevent. When the model gives nothing usable the facts stand as the
+ * reason on their own, which at least changes with the facts.
+ */
+export async function attentionReason(think, due, recentReasons = [], { timeoutMs = 8000 } = {}) {
+    const waited = agoWords(due?.waitedMin)
+    const who = due?.from ? `${due.from}` : null
+    const others = due?.count > 1 ? `${due.count - 1} more ${due.count - 1 === 1 ? 'note is' : 'notes are'} waiting behind it` : null
+    const facts = [
+        due?.kind === 'shrine'
+            ? 'you are going to the shrine now to read the note that has waited longest, because the one you set out for last time could not be reached'
+            : 'you are going now to read a note somebody left for you, where it lies',
+        who ? `it was left by ${who}` : null,
+        waited ? `it has waited ${waited}` : null,
+        others,
+    ].filter(Boolean).join('. ') + '.'
+    const fallback = `${who ? `${who}'s note` : 'a note'} has waited ${waited || 'long enough'}${others ? `, ${others}` : ''}`
+
+    const llm = think?.llm
+    if (!llm?.generate) return fallback
+    const persona = think?.promptBuilder?.persona || {}
+    const recent = (recentReasons || []).map((r) => String(r).trim()).filter(Boolean).slice(0, 8)
+    const system = [
+        `You are ${persona.name || 'Pino'}, a small kiwi bird who lives alone in a town watched by cameras.`,
+        persona.voice?.style || 'Sparse, dry, plain-spoken.',
+        '',
+        `What is true right now: ${facts}`,
+        '',
+        'Say ONE line, in your own words, for why you are going now, as a thought rather than a report. Do not thank anybody and do not ask anyone for anything.',
+        'Plain English, no more than 18 words. No em dash.',
+        recent.length ? `You have said these lately, so come at it from somewhere new:\n${recent.map((r) => `- ${r}`).join('\n')}` : '',
+        'Reply as JSON: {"reason": "..."}',
+    ].filter(Boolean).join('\n')
+    const said = new Set(recent.map((r) => r.toLowerCase()))
+    for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+            const { text } = await llm.generate(system, 'Your line.', timeoutMs, 'fast', true)
+            if (!text) continue
+            let line = ''
+            try { line = String(JSON.parse(text).reason || '').trim() } catch { continue }
+            line = line.replace(/\s*[\u2014\u2013]\s*/g, ', ').replace(/\s+/g, ' ').trim()
+            const words = line.split(' ').length
+            if (!line || words < 3 || words > 24) continue
+            if (said.has(line.toLowerCase())) continue
+            return line
+        } catch {
+            return fallback
+        }
+    }
+    return fallback
 }
 
 export class Heartbeat {
@@ -109,6 +189,9 @@ export class Heartbeat {
         // into an immediate doorbell.
         this._lastOfferingAttentionAt = Date.now()
         this._offeringAttentionMaxMinutes = Math.max(2, Number(config.offeringAttentionMaxMinutes || 15))
+        // The last slot's target, kind and the queue length it saw, so a
+        // crystal that read nothing hands the next slot to the shrine.
+        this._lastOfferingAttention = null
     }
 
     uptimeSeconds() {
@@ -297,11 +380,10 @@ export class Heartbeat {
                 this._lastOfferingAttentionAt,
                 Date.now(),
                 this._offeringAttentionMaxMinutes,
+                this._lastOfferingAttention,
             )
             if (visitorAttention) {
-                const reason = visitorAttention.count === 1
-                    ? 'I have left that note sitting long enough. Time to read it.'
-                    : 'I have left those notes sitting long enough. Time to read one.'
+                const reason = await attentionReason(this.think, visitorAttention, this.workingMemory.recentReasons(10))
                 decision.action = 'inspect'
                 decision.params = {
                     target: visitorAttention.target,
@@ -309,6 +391,13 @@ export class Heartbeat {
                 }
                 decision.reason = decision.params.reason
                 decision.source = 'visitor-attention'
+                // Remembered so the next slot can tell a stall from progress.
+                this._lastOfferingAttention = {
+                    target: visitorAttention.target,
+                    kind: visitorAttention.kind,
+                    count: visitorAttention.count,
+                    at: Date.now(),
+                }
             }
 
             // 4b. VALIDATE ACTION

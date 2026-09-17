@@ -4,6 +4,21 @@ Reverse chronological. Versions follow the boot-string in `src/index.js`.
 Earlier entries reconstructed from commit history; later entries from
 contemporaneous version commits.
 
+## [Unreleased] — 2026-09-17
+
+- The visitor-attention slot no longer chooses a crystal it already set out
+  for and did not read: when the pending count has not moved since the last
+  slot, the shrine takes the next one (the world's shrine fallback reads the
+  oldest waiting note from there), and a moving count hands it back to the
+  crystals. Live on 17 September the slot had chosen one unreachable crystal
+  seventeen times in nine hours.
+- The reason it carries is written by the fast tier from facts (who left the
+  note, how long it has waited, how many wait behind it), with his recent
+  reasons as ground to avoid and the facts alone as the fallback. The single
+  authored sentence it used to carry published sixteen times in a day.
+- `dueOfferingAttention` reads `waited_min` and `from` off each waiting
+  crystal when the world sends them.
+
 ## [Unreleased] — 2026-09-16
 
 - Added structured execution-state handling. `self.busy` and
