@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { activeWork, dueOfferingAttention } from '../src/loop/Heartbeat.js'
+import { activeWork, dueOfferingAttention, attentionReason } from '../src/loop/Heartbeat.js'
 import { perceive } from '../src/cognition/Perceive.js'
 import { Think } from '../src/cognition/Think.js'
 import { readFileSync } from 'node:fs'
@@ -87,4 +87,67 @@ test('the final user-prompt fitter preserves current state and the response inst
     assert.match(fitted, /^TIME AND STATE/)
     assert.match(fitted, /CURRENT SITUATION: shrine/)
     assert.match(fitted, /Respond with JSON only\.$/)
+})
+
+
+test('a crystal that read nothing hands the next slot to the shrine, and a moving queue hands it back', () => {
+    const observation = {
+        pending_sacrifices: 8,
+        self: { needs: { hunger: { level: 30 } } },
+        available_actions: [{ name: 'inspect' }, { name: 'forage' }],
+        nearby_objects: [
+            { id: 'artifact_shrine', type: 'ARTIFACT' },
+            { id: 'sacrifice_oldest', type: 'SACRIFICE', waited_min: 720, from: 'Cocoepi' },
+            { id: 'sacrifice_newer', type: 'SACRIFICE', waited_min: 40, from: 'J' },
+        ],
+    }
+    const first = dueOfferingAttention(observation, 0, 1_000_000, 15, null)
+    assert.equal(first.target, 'sacrifice_oldest', 'the world lists the oldest first and it goes first')
+    assert.equal(first.kind, 'crystal')
+    assert.equal(first.waitedMin, 720)
+    assert.equal(first.from, 'Cocoepi')
+    // Nothing was read: same count, so the shrine takes the slot.
+    const second = dueOfferingAttention(observation, 0, 1_000_000, 15, { kind: 'crystal', target: 'sacrifice_oldest', count: 8 })
+    assert.equal(second.target, 'artifact_shrine')
+    assert.equal(second.kind, 'shrine')
+    // The queue moved after that: back to the crystals.
+    observation.pending_sacrifices = 7
+    const third = dueOfferingAttention(observation, 0, 1_000_000, 15, { kind: 'crystal', target: 'sacrifice_oldest', count: 8 })
+    assert.equal(third.target, 'sacrifice_oldest')
+    // A shrine attempt that read nothing is not repeated either.
+    observation.pending_sacrifices = 8
+    const fourth = dueOfferingAttention(observation, 0, 1_000_000, 15, { kind: 'shrine', target: 'artifact_shrine', count: 8 })
+    assert.equal(fourth.target, 'sacrifice_oldest')
+})
+
+test('the reason is his own line from the facts, never the same one twice, and the facts stand when the model is silent', async () => {
+    const seen = []
+    const think = {
+        promptBuilder: { persona: { name: 'Pino', voice: { style: 'Sparse, dry.' } } },
+        llm: {
+            async generate(system, user, timeoutMs, tier, jsonMode) {
+                seen.push({ system, tier, jsonMode })
+                return { text: JSON.stringify({ reason: 'Cocoepi left something twelve hours ago and I keep walking past it.' }) }
+            },
+        },
+    }
+    const due = { kind: 'crystal', target: 'sacrifice_oldest', count: 8, waitedMin: 720, from: 'Cocoepi' }
+    const line = await attentionReason(think, due, ['Starving', 'Need a bite to calm the twitch'])
+    assert.equal(line, 'Cocoepi left something twelve hours ago and I keep walking past it.')
+    assert.equal(seen[0].tier, 'fast', 'a line, not a decision: the fast tier')
+    assert.match(seen[0].system, /it was left by Cocoepi/, 'the facts go in')
+    assert.match(seen[0].system, /it has waited 12 hours/, 'in words a bird would use')
+    assert.match(seen[0].system, /7 more notes are waiting behind it/)
+    assert.match(seen[0].system, /Starving/, 'and his recent reasons are ground to avoid')
+    assert.ok(!/sitting long enough/.test(seen[0].system), 'no authored sentence anywhere in the prompt')
+
+    // The model repeating a recent reason word for word is refused, and the facts stand.
+    const echo = { ...think, llm: { async generate() { return { text: JSON.stringify({ reason: 'Starving' }) } } } }
+    const held = await attentionReason(echo, due, ['Starving'])
+    assert.equal(held, "Cocoepi's note has waited 12 hours, 7 more notes are waiting behind it")
+
+    // Silence from the model: the facts, which at least change with the facts.
+    const quiet = { ...think, llm: { async generate() { return { text: null } } } }
+    assert.equal(await attentionReason(quiet, { kind: 'shrine', count: 1, waitedMin: 50, from: null }, []), 'a note has waited 50 minutes')
+    assert.equal(await attentionReason(null, { kind: 'crystal', count: 2, waitedMin: 3, from: 'J' }, []), "J's note has waited 3 minutes, 1 more note is waiting behind it")
 })
