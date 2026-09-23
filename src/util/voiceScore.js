@@ -1,4 +1,4 @@
-// fingerprint: 264a493c66450130
+// fingerprint: 3f51405a403fd111
 // What a good line is, as a number.
 //
 // Everything built so far to control his voice is a prohibition. wornWords
@@ -40,6 +40,21 @@ const HOLLOW = /\b(the|a|an|any|some|that|this)\s+(\w+\s+){0,2}(edge|gnaw|flatne
 
 // Reading his own dials.
 const GAUGE = /\b(curiosity|hunger|rest|social|safety|energy)\b[^.,]{0,18}\b(spike|pull|gnaw|scream|surge|climb|desperate|rising|is (high|low))/i
+
+// A dial he invented for himself. "Apple fruit steadies my tilt" was
+// four of forty-nine decisions in a measured ten hours on 23 Sep, and
+// four of his eight public beliefs were about his tilt. Nobody has a
+// tilt. It is the gauge register wearing a new word, so it costs what
+// the gauge costs.
+const DIAL = /\b(?:my|his|the)\s+(?:tilt|levels?|gauge|meter|readings?)\b/i
+
+// A number nobody reading can check. The visitor count carved on the
+// green stone reached the diary as "a green stone in the bakery's window,
+// the tag read 4591" and "a poster of a green stone, number 4592": the
+// narrator was handed the number in the reason he came with and did the
+// obvious thing. Four digits and up; a year in a film title is the
+// cinema's business and the cinema is exempt from the narrator's bar.
+const NUMBERED = /\b\d{4,}\b/
 
 // Formal where a plain word exists. 3eyes has now flagged "curb" three
 // times, most recently in "Apple bites curb hunger, and music drifts".
@@ -278,6 +293,11 @@ export function scoreLine(line, recent = [], opts = {}) {
 
   // Reporting his own state as a measurement.
   if (GAUGE.test(text)) { score -= 2; notes.push('gauge') }
+  if (DIAL.test(text)) { score -= 2; notes.push('dial') }
+
+  // A figure a reader cannot check, sized so the stone's count cannot
+  // ride a concrete noun onto the feed.
+  if (NUMBERED.test(text)) { score -= 1.5; notes.push('numbered') }
 
   // Hedging about something that already happened.
   if (HEDGE.test(text)) { score -= 0.8; notes.push('hedged') }
@@ -351,4 +371,4 @@ export function exemplars(history, { best = 4, worst = 3 } = {}) {
   }
 }
 
-export const _patterns = { HOLLOW, GAUGE, HEDGE, PAIRED_ADVERB, CONCRETE, INVERTED, STATUS_REPORT, SHRUG, NOTE_TO_SELF, SCENE, EMANATION, MORAL }
+export const _patterns = { HOLLOW, GAUGE, DIAL, NUMBERED, HEDGE, PAIRED_ADVERB, CONCRETE, INVERTED, STATUS_REPORT, SHRUG, NOTE_TO_SELF, SCENE, EMANATION, MORAL }
