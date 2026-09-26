@@ -103,7 +103,10 @@ export class LLMClient {
 
     // generate a response with tier-aware routing.
     // tier: 'quality' (default) | 'fast' | 'decision'
-    // returns: { text: string, source: 'decision'|'cloud'|'cloud-fast'|'ollama'|null }
+    // returns: { text: string, source: 'decision'|'cloud'|'cloud-fast'|'ollama'|null,
+    //            model, usage: { in, out, reasoning } | null, ms }
+    // model is the one that actually answered, which after a demotion is not
+    // the one the tier asked for; ms covers every rung that was tried.
     // jsonMode (default true) controls whether response_format:json_object
     // is sent — markdown-output prompts (sleep consolidation) MUST pass
     // false or Groq 400s the request.
@@ -116,6 +119,7 @@ export class LLMClient {
         // track tier usage
         this.tierCounts[tier] = (this.tierCounts[tier] || 0) + 1
 
+        const startedAt = Date.now()
         const result = tier === 'fast'
             ? await this._generateFast(systemPrompt, userPrompt, timeoutMs, jsonMode)
             : tier === 'decision'
@@ -123,7 +127,7 @@ export class LLMClient {
                 : await this._generateQuality(systemPrompt, userPrompt, timeoutMs, jsonMode)
 
         this._recordOutcome(!!result.text)
-        return result
+        return { ...result, ms: Date.now() - startedAt }
     }
 
     // decision tier: anthropic first, then the whole quality chain. an env
@@ -132,8 +136,8 @@ export class LLMClient {
     async _generateDecision(systemPrompt, userPrompt, timeoutMs, jsonMode) {
         if (this.anthropicApiKey) {
             try {
-                const result = await this._anthropicGenerate(systemPrompt, userPrompt, timeoutMs)
-                return { text: result, source: 'decision' }
+                const { content, usage } = await this._anthropicGenerate(systemPrompt, userPrompt, timeoutMs)
+                return { text: content, source: 'decision', model: this.decisionModel, usage }
             } catch (err) {
                 this.logger.warn(`Anthropic decision failed: ${err.message} — demoting to quality chain`)
             }
@@ -174,7 +178,10 @@ export class LLMClient {
             }
 
             const data = await response.json()
-            return data.content?.[0]?.text || ''
+            const usage = data.usage
+                ? { in: data.usage.input_tokens ?? null, out: data.usage.output_tokens ?? null, reasoning: null }
+                : null
+            return { content: data.content?.[0]?.text || '', usage }
         } finally {
             clearTimeout(timeout)
         }
@@ -196,15 +203,15 @@ export class LLMClient {
     async _generateFast(systemPrompt, userPrompt, timeoutMs, jsonMode) {
         if (this.cloudApiKey && this.cloudApiUrl && Date.now() >= this._cloudCooldownUntil) {
             try {
-                const result = await this._cloudGenerate(systemPrompt, userPrompt, timeoutMs, this.cloudModelFast, jsonMode)
-                return { text: result, source: 'cloud-fast' }
+                const { content, usage } = await this._cloudGenerate(systemPrompt, userPrompt, timeoutMs, this.cloudModelFast, jsonMode)
+                return { text: content, source: 'cloud-fast', model: this.cloudModelFast, usage }
             } catch (err) {
                 this.logger.warn(`Cloud fast failed: ${err.message}`)
                 this._noteCloudFailure(err)
                 try {
-                    const result = await this._cloudGenerate(systemPrompt, userPrompt, timeoutMs, this.cloudModelFast, jsonMode)
+                    const { content, usage } = await this._cloudGenerate(systemPrompt, userPrompt, timeoutMs, this.cloudModelFast, jsonMode)
                     this.logger.info('Fast tier recovered on retry')
-                    return { text: result, source: 'cloud-fast' }
+                    return { text: content, source: 'cloud-fast', model: this.cloudModelFast, usage }
                 } catch (err2) {
                     this.logger.warn(`Cloud fast retry also failed: ${err2.message}`)
                 }
@@ -221,16 +228,16 @@ export class LLMClient {
     async _generateQuality(systemPrompt, userPrompt, timeoutMs, jsonMode) {
         if (this.cloudApiKey && this.cloudApiUrl && Date.now() >= this._cloudCooldownUntil) {
             try {
-                const result = await this._cloudGenerate(systemPrompt, userPrompt, timeoutMs, this.cloudModel, jsonMode)
-                return { text: result, source: 'cloud' }
+                const { content, usage } = await this._cloudGenerate(systemPrompt, userPrompt, timeoutMs, this.cloudModel, jsonMode)
+                return { text: content, source: 'cloud', model: this.cloudModel, usage }
             } catch (err) {
                 this.logger.warn(`Cloud LLM failed: ${err.message}`)
                 this._noteCloudFailure(err)
                 // Demote to the fast model before giving up on the cloud.
                 try {
-                    const result = await this._cloudGenerate(systemPrompt, userPrompt, timeoutMs, this.cloudModelFast, jsonMode)
+                    const { content, usage } = await this._cloudGenerate(systemPrompt, userPrompt, timeoutMs, this.cloudModelFast, jsonMode)
                     this.logger.info(`Quality demoted to ${this.cloudModelFast} after 120B failure`)
-                    return { text: result, source: 'cloud-fast' }
+                    return { text: content, source: 'cloud-fast', model: this.cloudModelFast, usage }
                 } catch (err2) {
                     this.logger.warn(`Cloud demote also failed: ${err2.message}`)
                 }
@@ -245,12 +252,12 @@ export class LLMClient {
     // Shared Ollama path with circuit breaker. Returns {text, source}.
     async _tryOllama(systemPrompt, userPrompt, label) {
         if (!this._ollamaUsable()) {
-            return { text: null, source: null }
+            return { text: null, source: null, model: null, usage: null }
         }
         try {
-            const result = await this._ollamaGenerate(systemPrompt, userPrompt)
+            const { content, usage } = await this._ollamaGenerate(systemPrompt, userPrompt)
             this._ollamaTimeoutStreak = 0   // recovered
-            return { text: result, source: 'ollama' }
+            return { text: content, source: 'ollama', model: this.ollamaModel, usage }
         } catch (err) {
             this.logger.warn(`Ollama failed (${label}): ${err.message}`)
             if (/timeout/i.test(err.message)) {
@@ -261,7 +268,7 @@ export class LLMClient {
                     this._ollamaTimeoutStreak = 0
                 }
             }
-            return { text: null, source: null }
+            return { text: null, source: null, model: null, usage: null }
         }
     }
 
@@ -293,7 +300,10 @@ export class LLMClient {
             setTimeout(() => reject(new Error('Ollama timeout')), timeoutMs)
         )
         const response = await Promise.race([chatPromise, timeoutPromise])
-        return response.message.content
+        const usage = Number.isFinite(response.prompt_eval_count)
+            ? { in: response.prompt_eval_count, out: response.eval_count ?? null, reasoning: null }
+            : null
+        return { content: response.message.content, usage }
     }
 
     async _cloudGenerate(systemPrompt, userPrompt, timeoutMs, model, jsonMode = true) {
@@ -343,7 +353,16 @@ export class LLMClient {
             }
 
             const data = await response.json()
-            return data.choices?.[0]?.message?.content || ''
+            // gpt-oss bills its hidden reasoning as completion tokens, so
+            // out includes it; reasoning is the part that never showed.
+            const usage = data.usage
+                ? {
+                    in: data.usage.prompt_tokens ?? null,
+                    out: data.usage.completion_tokens ?? null,
+                    reasoning: data.usage.completion_tokens_details?.reasoning_tokens ?? null,
+                }
+                : null
+            return { content: data.choices?.[0]?.message?.content || '', usage }
         } finally {
             clearTimeout(timeout)
         }

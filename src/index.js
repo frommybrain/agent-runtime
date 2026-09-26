@@ -1,8 +1,12 @@
 import 'dotenv/config'
 import { readFile } from 'node:fs/promises'
+import { execFileSync } from 'node:child_process'
+import { dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 import { loadConfig } from './config.js'
 import { Logger } from './logging/Logger.js'
+import { DecisionLog } from './logging/DecisionLog.js'
 import { EnvironmentSocket } from './connection/EnvironmentSocket.js'
 import { WorkingMemory } from './memory/WorkingMemory.js'
 import { MemoryFiles } from './memory/MemoryFiles.js'
@@ -17,6 +21,22 @@ import { RepetitionGuard } from './cognition/RepetitionGuard.js'
 import { Heartbeat } from './loop/Heartbeat.js'
 import { SleepCycle } from './loop/SleepCycle.js'
 import { ApiServer } from './api/ApiServer.js'
+
+// The commit this process is running, for the decision log. The prompts
+// live in the code, so it is the prompt version too. Local edits to
+// tracked files are marked, so a hand-patched Pi cannot pass for a commit.
+function codeVersion() {
+    const cwd = dirname(fileURLToPath(import.meta.url))
+    const run = (args) => execFileSync('git', args, { cwd, encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'] }).trim()
+    try {
+        const sha = run(['rev-parse', '--short', 'HEAD'])
+        let dirty = false
+        try { run(['diff', '--quiet', 'HEAD']) } catch { dirty = true }
+        return dirty ? `${sha}+dirty` : sha
+    } catch {
+        return null
+    }
+}
 
 async function main() {
     const config = loadConfig()
@@ -62,6 +82,9 @@ async function main() {
     const memoryFiles = new MemoryFiles(config, logger)
     memoryFiles.setPersona(persona)  // the ban list is the persona's, not the runtime's
     const dailyLog = new DailyLog(config, logger)
+    const code = codeVersion()
+    logger.info(`Code: ${code || 'unknown (not a git checkout)'}`)
+    const decisionLog = new DecisionLog(config, logger, { code })
     const llmClient = new LLMClient(config, logger)
     const promptBuilder = new PromptBuilder(persona)
 
@@ -74,6 +97,7 @@ async function main() {
 
     await memoryFiles.init()
     await dailyLog.init()
+    await decisionLog.init()
     await llmClient.init()
     await speechLog.init()
     const checkpoint = await internalState.restore()  // crash recovery: reload last emotional state
@@ -107,6 +131,7 @@ async function main() {
 
     // wire API emitter into heartbeat so tick/sleep events flow to SSE clients
     heartbeat.api = api
+    heartbeat.decisionLog = decisionLog
 
     // also emit sleep/wake events from sleepCycle
     const origStart = sleepCycle._startSleep.bind(sleepCycle)
@@ -153,6 +178,7 @@ async function main() {
         await dailyLog.append('=== AGENT STOPPED ===')
         await speechLog.save()
         await dailyLog.stop()  // flush buffer to disk
+        await decisionLog.stop()
         clearInterval(personaPush)
         socket.close()
         process.exit(0)

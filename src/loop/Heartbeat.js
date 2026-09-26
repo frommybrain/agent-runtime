@@ -17,6 +17,11 @@
 import { sanitizeReason } from '../util/sanitizeReason.js'
 import { wornWords, wornOpeners, wornPhrases } from '../util/wornWords.js'
 import { scoreLine, exemplars } from '../util/voiceScore.js'
+import { evidenceKeys, shortHash } from '../logging/DecisionLog.js'
+
+function targetOf(params) {
+    return params?.target ?? params?.entityId ?? null
+}
 
 export function activeWork(observation) {
     const self = observation?.self || {}
@@ -179,6 +184,7 @@ export class Heartbeat {
         this._startedAt = null
         this._lastActionResult = null   // feedback from previous tick
         this.api = null  // set by index.js after ApiServer is created
+        this.decisionLog = null  // set by index.js, one line per decision
         this._lastCheckpointAt = 0      // periodic state checkpoint
         this._checkpointIntervalMs = config.checkpointIntervalMs || 5 * 60 * 1000  // 5 min
         this._lastGCCheckAt = Date.now()
@@ -240,6 +246,10 @@ export class Heartbeat {
         this._ticking = true
         this._lastTickSettledAt = Date.now()
         this.tickCount++
+        // This tick's line in the decision log. Filled in as the tick runs
+        // and written in finally, so a tick that throws half way still says
+        // how far it got. Stays null on ticks that decide nothing.
+        let receipt = null
 
         try {
             // 1. SENSE
@@ -337,44 +347,41 @@ export class Heartbeat {
             // quality (70B) for important moments, fast (Ollama/8B) for
             // routine, skip (no LLM) when nothing is happening.
             const stateDesc = this.internalState.describe()
-            const repetitionWarnings = this.repetitionGuard.check()
-            const tier = this._classifyTick(deltas, worldEvents, {
+            const repetition = this.repetitionGuard.checkDetailed()
+            const repetitionWarnings = repetition ? repetition.map(w => w.text) : null
+            const { tier, why: tierWhy } = this._classifyTick(deltas, worldEvents, {
                 internalState: stateDesc,
                 lastActionResult: this._lastActionResult,
                 recentlyDisappeared: this._recentlyDisappeared,
                 repetitionWarnings,
+                repetitionKinds: repetition ? repetition.map(w => w.kind) : null,
             }, observation)
+            receipt = {
+                tick: this.tickCount,
+                tier,
+                why: tierWhy,
+                ...evidenceKeys(observation, worldEvents, this._lastActionResult),
+                menu: (observation.available_actions || []).length,
+                // Which persona the prompt is really built from. Hashed every
+                // tick rather than cached, so an edit in place still shows.
+                persona: this.think?.promptBuilder?.persona ? shortHash(this.think.promptBuilder.persona) : null,
+            }
 
             // 3c. EXPLORATION CONTEXT
             const explorationHint = this.repetitionGuard.explorationContext(nearbyIds)
 
-            // 4. THINK
-            const decision = await this.think.decide(observation, worldEvents, {
-                internalState: stateDesc,
-                deltaNarrative: deltaNarrative || undefined,
-                lastActionResult: this._lastActionResult,
-                repetitionWarnings: repetitionWarnings || undefined,
-                explorationHint: explorationHint || undefined,
-                recentlyDisappeared: this._recentlyDisappeared.length > 0
-                    ? this._recentlyDisappeared.map(d => d.id) : undefined,
-                recentSpeeches: this.speechLog?.recentForPrompt() || undefined,
-                // words he's leaned on across his last ~10 reasons — banned for
-                // this turn so a motif ("scream", "beat") can't self-feed. the
-                // action-fixation guard above doesn't watch reason wording.
-                wornWords: wornWords(this.workingMemory.recentReasons(10)),
-                wornOpeners: wornOpeners(this.workingMemory.recentReasons(10)),
-                wornPhrases: wornPhrases(this.workingMemory.recentReasons(10)),
-                ownVoice: exemplars(this._voiceHistory),
-                tickCount: this.tickCount,
-                uptimeMinutes: Math.floor(this.uptimeSeconds() / 60),
-                salience,
-                tier,
-            })
-
+            // 4. THINK, unless a visitor's note is owed a look.
+            //
             // Visitor attention has an SLA, not a script. The model keeps
             // choosing freely until a note has waited through the bounded
             // interval. Then one inspect slot is reserved, after critical
             // physical needs and any in-flight commitment have cleared.
+            //
+            // Checked before the model is asked, not after. It used to run on
+            // the model's answer and replace it, which paid for a decision it
+            // then threw away, and that decision's remember still reached
+            // memory.md and the world: he kept a memory from a choice he
+            // never made.
             const visitorAttention = dueOfferingAttention(
                 observation,
                 this._lastOfferingAttentionAt,
@@ -382,15 +389,15 @@ export class Heartbeat {
                 this._offeringAttentionMaxMinutes,
                 this._lastOfferingAttention,
             )
+            let decision
             if (visitorAttention) {
                 const reason = await attentionReason(this.think, visitorAttention, this.workingMemory.recentReasons(10))
-                decision.action = 'inspect'
-                decision.params = {
-                    target: visitorAttention.target,
+                decision = {
+                    action: 'inspect',
+                    params: { target: visitorAttention.target, reason },
                     reason,
+                    source: 'visitor-attention',
                 }
-                decision.reason = decision.params.reason
-                decision.source = 'visitor-attention'
                 // Remembered so the next slot can tell a stall from progress.
                 this._lastOfferingAttention = {
                     target: visitorAttention.target,
@@ -398,7 +405,44 @@ export class Heartbeat {
                     count: visitorAttention.count,
                     at: Date.now(),
                 }
+            } else {
+                decision = await this.think.decide(observation, worldEvents, {
+                    internalState: stateDesc,
+                    deltaNarrative: deltaNarrative || undefined,
+                    lastActionResult: this._lastActionResult,
+                    repetitionWarnings: repetitionWarnings || undefined,
+                    explorationHint: explorationHint || undefined,
+                    recentlyDisappeared: this._recentlyDisappeared.length > 0
+                        ? this._recentlyDisappeared.map(d => d.id) : undefined,
+                    recentSpeeches: this.speechLog?.recentForPrompt() || undefined,
+                    // words he's leaned on across his last ~10 reasons, banned for
+                    // this turn so a motif ("scream", "beat") can't self-feed. the
+                    // action-fixation guard above doesn't watch reason wording.
+                    wornWords: wornWords(this.workingMemory.recentReasons(10)),
+                    wornOpeners: wornOpeners(this.workingMemory.recentReasons(10)),
+                    wornPhrases: wornPhrases(this.workingMemory.recentReasons(10)),
+                    ownVoice: exemplars(this._voiceHistory),
+                    tickCount: this.tickCount,
+                    uptimeMinutes: Math.floor(this.uptimeSeconds() / 60),
+                    salience,
+                    tier,
+                })
             }
+
+            receipt.source = decision.source
+            receipt.model = decision.llm?.model ?? null
+            receipt.ms = decision.llm?.ms ?? null
+            receipt.tokens = decision.llm?.usage ?? null
+            receipt.promptChars = decision.promptChars ?? null
+            if (decision.fallback) receipt.fallback = decision.fallback
+            if (decision.raw) receipt.raw = decision.raw
+            // What the brain asked for, before any guard below touches it.
+            // Null when no brain was asked.
+            receipt.asked = decision.source === 'visitor-attention'
+                ? null
+                : { action: decision.action ?? null, target: targetOf(decision.params) }
+            const overrides = []
+            receipt.overrides = overrides
 
             // 4b. VALIDATE ACTION
             // hard constraint: if env specifies available_actions, the agent
@@ -413,6 +457,7 @@ export class Heartbeat {
                         : validActions.has('hold') ? 'hold'
                         : (typeof observation.available_actions[0] === 'string' ? observation.available_actions[0] : observation.available_actions[0].name)
                     this.logger.warn(`Action "${decision.action}" not available — correcting to ${fallback}`)
+                    overrides.push('not_on_menu')
                     decision.action = fallback
                     decision.params = { reason: '(corrected: original action not in available_actions)' }
                     decision.reason = `(corrected: original action not in available_actions)`
@@ -430,6 +475,7 @@ export class Heartbeat {
                 const redirect = this._fixationRedirect(observation)
                 if (redirect) {
                     this.logger.warn(`Hard block: ${blocked}("${fixationTarget}") fixated (${count}x) — forcing ${redirect.action}`)
+                    overrides.push('fixation')
                     decision.action = redirect.action
                     decision.params = { ...redirect.params, reason: `(blocked: ${blocked} ${fixationTarget} fixated after ${count}x)` }
                     decision.reason = `(blocked: fixation on ${fixationTarget})`
@@ -446,6 +492,7 @@ export class Heartbeat {
                 const redirect = this._fixationRedirect(observation)
                 if (redirect) {
                     this.logger.warn(`Hard block: target "${fixationTarget}" fixated (${count}x across actions) — forcing ${redirect.action}`)
+                    overrides.push('target_fixation')
                     decision.action = redirect.action
                     decision.params = { ...redirect.params, reason: `(blocked: target ${fixationTarget} fixated ${count}x across actions)` }
                     decision.reason = `(blocked: target fixation on ${fixationTarget})`
@@ -466,6 +513,7 @@ export class Heartbeat {
                     decision.params = { ...p, message: said.trim() }
                 } else {
                     this.logger.warn('Speak action with empty/invalid message — converting to wait')
+                    overrides.push('speak_empty')
                     decision.action = 'wait'
                     decision.params = {}
                     decision.reason = '(corrected: speak had no valid message)'
@@ -484,10 +532,12 @@ export class Heartbeat {
                 const host = pool.find(o => o?.type === 'ACTIVITY' && hostFor[decision.action].test(o.name || ''))
                 if (host) {
                     this.logger.debug(`${decision.action} had no target — resolved to ${host.id}`)
+                    overrides.push('target_filled')
                     decision.params = { ...(decision.params || {}), target: host.id }
                 } else {
                     const wanted = decision.action
                     this.logger.warn(`${wanted} with no target and no host in sight — converting to wait`)
+                    overrides.push('no_host')
                     decision.action = 'wait'
                     decision.params = {}
                     decision.reason = `(corrected: ${wanted} had no target)`
@@ -503,6 +553,7 @@ export class Heartbeat {
             const beforeScrub = decision.reason || decision.params?.reason || ''
             if (decision.reason) decision.reason = sanitizeReason(decision.reason, { need })
             if (decision.params?.reason) decision.params.reason = sanitizeReason(decision.params.reason, { need })
+            if ((decision.reason || decision.params?.reason || '') !== beforeScrub) overrides.push('reason_scrubbed')
 
             // The env only ever receives `params` — act(action, params) — and
             // 3eyes drops any decision with no reason from the journal. So a
@@ -529,6 +580,10 @@ export class Heartbeat {
                         : `No reason returned (${decision.source}/${tier}) for ${decision.action}`
                 )
             }
+
+            receipt.took = { action: decision.action, target: targetOf(decision.params) }
+            receipt.reason = String(decision.reason || '').slice(0, 200)
+            if (decision.remember?.content) receipt.remember = true
 
             this.logger.info(`[tick ${this.tickCount}] ${decision.action} (${decision.source}/${tier}) — ${decision.reason} [v=${stateDesc.mood.toFixed(2)} a=${stateDesc.energy.toFixed(2)}]`)
 
@@ -573,6 +628,10 @@ export class Heartbeat {
                 params: decision.params,
                 success: result?.success !== false,
                 message: result?.message || result?.error || result?.result?.effect || '',
+            }
+            receipt.result = {
+                ok: this._lastActionResult.success,
+                msg: String(this._lastActionResult.message || '').slice(0, 160),
             }
 
             // 6. REFLECT (log with salience)
@@ -683,9 +742,17 @@ export class Heartbeat {
             }
 
         } catch (err) {
+            if (receipt) receipt.error = String(err.message || err).slice(0, 200)
             this.logger.error(`Tick ${this.tickCount} failed: ${err.message}`)
             this.api?.emit('error', { tick: this.tickCount, message: err.message })
         } finally {
+            if (receipt) {
+                try {
+                    this.decisionLog?.record(receipt)
+                } catch (err) {
+                    this.logger.warn(`Decision log record failed: ${err.message}`)
+                }
+            }
             this._ticking = false
             this._lastTickSettledAt = Date.now()
         }
@@ -723,24 +790,34 @@ export class Heartbeat {
     // 'quality' = 70B cloud (expensive, high stakes)
     // 'fast'    = Ollama/8B cloud (routine)
     // 'skip'    = FallbackBrain (nothing happening, no LLM)
+    //
+    // Returns { tier, why }: why names the rule that decided, for the
+    // decision log, because the tier alone could not say why two thirds of
+    // a day's decisions went to the 120B.
     _classifyTick(deltas, worldEvents, context, observation) {
         // Asleep is not a decision point. The env refuses everything but
         // "wait" until he wakes, so any call made here buys a rejection:
         // 46 of yesterday's 256 failures were "Asleep at the nest". The
         // wake-up belongs to the sleep cycle, not to anything decided now.
-        if (observation?.self?.asleep === true) return 'skip'
+        if (observation?.self?.asleep === true) return { tier: 'skip', why: 'asleep' }
 
         // decision tier: the env is flagging a moment where being wrong
         // costs money (trade dossier awaiting a verdict, etc). LLMClient
         // aliases this to quality when no anthropic key is configured.
-        if ((observation?.signals?.decision_pending || 0) >= 0.5) return 'decision'
+        if ((observation?.signals?.decision_pending || 0) >= 0.5) return { tier: 'decision', why: 'decision_pending' }
 
         // quality tier: genuinely high-stakes ticks that need the big model.
         // Kept DELIBERATELY narrow — the quality (120B) path is the slowest
         // and most failure-prone, so over-routing to it (a) maximises
         // exposure to transient cloud failures and (b) wastes latency/cost.
-        if (worldEvents.length > 0) return 'quality'                  // someone spoke to us
-        if (context.repetitionWarnings?.length > 0) return 'quality'  // needs a creative escape
+        if (worldEvents.length > 0) {                                 // someone spoke to us
+            const kinds = [...new Set(worldEvents.map(e => (e?.data || e)?.event || 'event'))].sort()
+            return { tier: 'quality', why: `world_event:${kinds.join('+')}` }
+        }
+        if (context.repetitionWarnings?.length > 0) {                 // needs a creative escape
+            const kinds = [...new Set(context.repetitionKinds || ['unknown'])].sort()
+            return { tier: 'quality', why: `repetition:${kinds.join('+')}` }
+        }
 
         // fast tier: routine activity — appeared/disappeared deltas, the
         // post-disappearance hallucination window, heightened arousal, and
@@ -748,14 +825,14 @@ export class Heartbeat {
         // these fine and is far more reliable per call. (Previously these
         // all forced quality; a single object disappearance pinned ~6min of
         // ticks to the failing model via the recentlyDisappeared window.)
-        if (deltas.some(d => d.type === 'appeared' || d.type === 'disappeared')) return 'fast'
-        if (context.recentlyDisappeared?.length > 0) return 'fast'
-        if (Math.abs(context.internalState?.energy || 0) > 0.5) return 'fast'
+        if (deltas.some(d => d.type === 'appeared' || d.type === 'disappeared')) return { tier: 'fast', why: 'appeared_or_gone' }
+        if (context.recentlyDisappeared?.length > 0) return { tier: 'fast', why: 'recently_gone' }
+        if (Math.abs(context.internalState?.energy || 0) > 0.5) return { tier: 'fast', why: 'energy' }
 
         // skip tier: nothing happening at all → no LLM call, heuristic only.
-        if (deltas.length === 0 && !context.lastActionResult?.message) return 'skip'
+        if (deltas.length === 0 && !context.lastActionResult?.message) return { tier: 'skip', why: 'nothing_new' }
 
-        return 'fast'
+        return { tier: 'fast', why: 'default' }
     }
 
     // normalize env signals from alternative formats.

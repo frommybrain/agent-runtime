@@ -74,14 +74,24 @@ export class RepetitionGuard {
 
     // check for repetition patterns. returns array of warnings or null
     check() {
+        const found = this.checkDetailed()
+        return found ? found.map(w => w.text) : null
+    }
+
+    // The same warnings with a kind on each. Any warning sends the tick to
+    // the quality tier, and on 25 Sep that was two thirds of his decisions,
+    // so the decision log needs to say which ones: the checks on what he
+    // did, or the four at the end that read his own reasons.
+    checkDetailed() {
         if (this.history.length < 3) return null
 
         const warnings = []
+        const warn = (kind, text) => warnings.push({ kind, text })
 
         // 1. same action 3+ times consecutively
         const last3 = this.history.slice(-3)
         if (last3.every(h => h.action === last3[0].action)) {
-            warnings.push(`You have done "${last3[0].action}" three times in a row. Try something different.`)
+            warn('same_action_x3', `You have done "${last3[0].action}" three times in a row. Try something different.`)
         }
 
         // 2. one action dominates (>60% of recent history)
@@ -92,7 +102,7 @@ export class RepetitionGuard {
         const total = this.history.length
         for (const [action, count] of Object.entries(counts)) {
             if (count / total > 0.6 && total >= 5) {
-                warnings.push(
+                warn('action_dominates',
                     `You have been doing "${action}" ${Math.round(count / total * 100)}% of the time recently. Explore other options.`
                 )
             }
@@ -111,7 +121,7 @@ export class RepetitionGuard {
             if (count / total > 0.3 && total >= 8) {
                 const pct = Math.round(count / total * 100)
                 const [action, target] = combo.split(':')
-                warnings.push(
+                warn('combo_dominates',
                     `You have done ${action}("${target}") ${count} times (${pct}% of recent actions). Try a different approach or target.`
                 )
             }
@@ -123,7 +133,7 @@ export class RepetitionGuard {
         for (const t of last5targets) target5counts[t] = (target5counts[t] || 0) + 1
         for (const [target, count] of Object.entries(target5counts)) {
             if (count >= 3) {
-                warnings.push(`You targeted "${target}" ${count} out of your last 5 actions. Try something different.`)
+                warn('target_3_of_5', `You targeted "${target}" ${count} out of your last 5 actions. Try something different.`)
                 break
             }
         }
@@ -136,24 +146,24 @@ export class RepetitionGuard {
         }
         for (const [key, count] of Object.entries(keyCounts)) {
             if (count >= 3) {
-                warnings.push('You keep doing exactly the same thing with the same parameters. Break the pattern.')
+                warn('same_params', 'You keep doing exactly the same thing with the same parameters. Break the pattern.')
                 break
             }
         }
 
         // 4. alternating pattern (A→B→A→B or A→B→C→A→B→C)
         const altWarning = this._checkAlternating()
-        if (altWarning) warnings.push(altWarning)
+        if (altWarning) warn('cycle', altWarning)
 
         // 4b. target-level cycling. catches "shiny→food→shiny→food" regardless of action
         const targetAltWarning = this._checkTargetCycling()
-        if (targetAltWarning) warnings.push(targetAltWarning)
+        if (targetAltWarning) warn('target_cycling', targetAltWarning)
 
         // 5. speech frequency — cap around 30% of recent actions
         if (total >= 5 && counts['speak']) {
             const speechPct = counts['speak'] / total
             if (speechPct > 0.35) {
-                warnings.push(`You're talking too much (${Math.round(speechPct * 100)}% of actions are speech). Act more, talk less.`)
+                warn('talking_too_much', `You're talking too much (${Math.round(speechPct * 100)}% of actions are speech). Act more, talk less.`)
             }
         }
 
@@ -165,7 +175,7 @@ export class RepetitionGuard {
             // exact match
             const exactRepeats = this._recentSpeech.filter(s => s === last).length
             if (exactRepeats >= 2) {
-                warnings.push(`You already said "${last}" recently. Say something completely different.`)
+                warn('said_before', `You already said "${last}" recently. Say something completely different.`)
             }
 
             // fuzzy — 60% keyword overlap = "same idea"
@@ -177,7 +187,7 @@ export class RepetitionGuard {
                     return overlap / Math.min(lastKw.size, kw.size) >= 0.6
                 }).length
                 if (fuzzyRepeats >= 1 && exactRepeats < 2) {
-                    warnings.push('Your recent speech sounds very similar to something you already said. Say something with a completely different idea and different words.')
+                    warn('said_similar', 'Your recent speech sounds very similar to something you already said. Say something with a completely different idea and different words.')
                 }
             }
 
@@ -186,7 +196,7 @@ export class RepetitionGuard {
             if (lastWords.length > 5) {
                 const similar = this._recentSpeech.filter(s => s.startsWith(lastWords)).length
                 if (similar >= 3) {
-                    warnings.push(`Your recent lines keep starting with "${lastWords}..." Start somewhere else entirely.`)
+                    warn('same_opening', `Your recent lines keep starting with "${lastWords}..." Start somewhere else entirely.`)
                 }
             }
         }
@@ -213,7 +223,7 @@ export class RepetitionGuard {
                 .slice(0, 4)
                 .map(([w, c]) => `"${w}" (${c}×)`)
             if (overused.length > 0) {
-                warnings.push(`Your wording is narrowing. You keep reaching for ${overused.join(', ')}. Drop those words and find fresh ones.`)
+                warn('wording_rut', `Your wording is narrowing. You keep reaching for ${overused.join(', ')}. Drop those words and find fresh ones.`)
             }
         }
 

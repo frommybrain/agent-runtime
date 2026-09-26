@@ -6,6 +6,25 @@ contemporaneous version commits.
 
 ## [Unreleased] — 2026-09-17
 
+- Every decision now leaves one JSON line in `data/decisions/YYYY-MM-DD.jsonl`
+  (kept `DECISION_LOG_DAYS`, 14 by default): the tier and the rule that chose
+  it, the model that actually answered with its latency and tokens, what the
+  brain asked for next to what was sent, each guard that stepped in, the
+  fallback kind, the act result, the running commit, a hash of the persona
+  the prompt is built from, and two evidence keys (`scene`, `detail`) so a
+  situation asked about again unchanged can be counted. On 25 September 836
+  of 1,384 decisions ran on the 120B and victor.log could not say why, and
+  19 were turned into wait with no record of what the model had asked for.
+- `scripts/decisions.mjs` reads a day of it (or `--days N`): tiers and why,
+  models with latency and tokens, guards, repeated evidence, failures and
+  repeated reasons.
+- `_classifyTick` returns `{ tier, why }`. `RepetitionGuard.checkDetailed()`
+  gives each warning a kind, and `check()` is unchanged. `LLMClient.generate()`
+  also returns `model`, `usage` and `ms`.
+- The visitor-attention slot is checked before the model is asked. It used to
+  replace the model's answer after the call, which paid for a decision it
+  threw away, and that decision's `remember` still reached memory.md and the
+  world.
 - The visitor-attention slot no longer chooses a crystal it already set out
   for and did not read: when the pending count has not moved since the last
   slot, the shrine takes the next one (the world's shrine fallback reads the

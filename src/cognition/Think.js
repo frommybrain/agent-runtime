@@ -34,7 +34,7 @@ export class Think {
         // skip tier: no LLM, fallback brain directly
         if (tier === 'skip') {
             this.logger.debug('Tick classified as skip, using fallback brain')
-            return this._wrapFallback(observation)
+            return { ...this._wrapFallback(observation), fallback: 'skip' }
         }
 
         // 1. perceive. raw observation → natural language
@@ -110,11 +110,14 @@ export class Think {
         this._lastPromptChars = finalSystemPrompt.length + userPrompt.length
 
         // 3. call LLM with tier routing
-        const { text, source } = await this.llm.generate(finalSystemPrompt, userPrompt, 30000, tier)
+        const { text, source, model, usage, ms } = await this.llm.generate(finalSystemPrompt, userPrompt, 30000, tier)
+        // For the decision log: which model answered, how long the whole
+        // chain took, and what the prompt cost, fallback or not.
+        const receipt = { llm: { model: model || null, ms: ms ?? null, usage: usage || null }, promptChars: this._lastPromptChars }
 
         if (!text) {
             this.logger.warn('LLM returned nothing, using fallback')
-            return this._wrapFallback(observation)
+            return { ...this._wrapFallback(observation), ...receipt, fallback: 'no_answer' }
         }
 
         this.logger.debug(`LLM response (${source}): ${text.slice(0, 120)}`)
@@ -123,7 +126,7 @@ export class Think {
         const parsed = this._parseResponse(text)
         if (!parsed) {
             this.logger.warn('Failed to parse LLM response, using fallback')
-            return this._wrapFallback(observation)
+            return { ...this._wrapFallback(observation), ...receipt, fallback: 'unparseable', raw: text.slice(0, 300) }
         }
 
         // 5. memory write if present — use salience for encoding strength.
@@ -149,6 +152,7 @@ export class Think {
             // now it never heard about any of this: he remembered things
             // into a file on the Pi and the world showed nothing.
             remember: parsed.remember?.content ? parsed.remember : undefined,
+            ...receipt,
         }
     }
 

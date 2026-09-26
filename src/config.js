@@ -62,6 +62,9 @@ export function loadConfig() {
         dataDir: process.env.DATA_DIR || './data',
         workingMemorySize: 20,
         maxDailyLogAgeDays: 7,
+        // data/decisions: one JSON line per decision, about 1MB a day.
+        // Two weeks, so a week of it can be read against the week before.
+        decisionLogDays: parseInt(process.env.DECISION_LOG_DAYS || '14'),
 
         // internal state
         stateDecayRate: parseFloat(process.env.STATE_DECAY_RATE || '0.1'),
