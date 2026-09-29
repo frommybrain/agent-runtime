@@ -1,7 +1,6 @@
-// The character sheet was meant to change about twice a day and was being
-// reconsidered every sleep. Fixtures are the real evolution log off the Pi
-// on 11 Aug: thirteen runs in twenty-one hours, nine of them proposing the
-// same trait with a byte-identical list because nothing ever landed.
+// sheet is meant to evolve ~twice a day, it was going every sleep.
+// fixtures from the pi evolution log, 11 Aug: 13 runs in 21h, nine proposing
+// the same trait with an identical list since nothing ever landed
 
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
@@ -12,7 +11,7 @@ import { MemoryFiles } from '../src/memory/MemoryFiles.js'
 const quiet = { info() {}, warn() {}, error() {}, debug() {} }
 
 test('the gap check can read the timestamp it actually writes', () => {
-    // written as `date` by _selfReflect, and read as `at` for months
+    // _selfReflect writes `date`, we were reading `at` for months
     const persona = { evolution: [{ date: '2026-08-11T11:14:39.467Z', reason: 'x' }] }
     assert.equal(lastEvolutionAt(persona), Date.parse('2026-08-11T11:14:39.467Z'))
 })
@@ -42,8 +41,8 @@ test('a sheet that has never evolved reports null, not NaN', () => {
 })
 
 test('a headerless bullet list is repaired rather than thrown away', () => {
-    // twelve extractions on 11 Aug, twelve rejections: the prompt asked for
-    // "a simple markdown bullet list" and the validator demanded a header
+    // 12 extractions on 11 Aug, 12 rejected. prompt asks for a plain bullet
+    // list, validator wanted a header
     const files = new MemoryFiles({ dataDir: '/tmp', agentId: 'victor' }, quiet)
     const raw = '- I can forage apples from the apple tree.\n- I can rest in a nest.'
 

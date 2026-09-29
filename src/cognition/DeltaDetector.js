@@ -1,9 +1,6 @@
-// diffs current observation against previous tick, surfaces what changed.
-// env-agnostic. works with any observation shape (spatial, audio, data, whatever).
-//
-// the agent shouldnt just see "here is the world", it should notice
-// "here is whats different". this is how it detects that someone placed
-// a terminal in the world, or added a chord to the pool, or changed the light.
+// diff this tick's observation against the last one. any shape of observation.
+// the point is he notices "whats different" (someone put a terminal down,
+// a chord got added, the light changed) not just "here is the world"
 
 export class DeltaDetector {
     constructor(logger) {
@@ -11,7 +8,6 @@ export class DeltaDetector {
         this.previousObservation = null
     }
 
-    // returns array of structured delta objects
     detect(observation) {
         const deltas = []
 
@@ -22,20 +18,16 @@ export class DeltaDetector {
 
         const prev = this.previousObservation
 
-        // agents: appeared / disappeared
         const prevAgents = this._idSet(prev.nearbyAgents || prev.nearby_agents)
         const currAgents = this._idSet(observation.nearbyAgents || observation.nearby_agents)
         this._diffSets(prevAgents, currAgents, 'agent', deltas)
 
-        // objects: appeared / disappeared
         const prevObjects = this._idSet(prev.nearbyObjects || prev.nearby_objects)
         const currObjects = this._idSet(observation.nearbyObjects || observation.nearby_objects)
         this._diffSets(prevObjects, currObjects, 'object', deltas)
 
-        // objects: property changes on existing objects.
-        // skip noise props that change every tick due to relative position.
-        // 'away' is the felt-distance word ("a short walk away"), same
-        // churn as distance, just in words.
+        // property changes. skip the ones that churn every tick just from him
+        // moving, 'away' is the felt distance word so same thing
         const noiseProps = new Set([
             'id', 'name', 'pos', 'distance', 'away',
             'direction', 'heading', 'facing', 'angle',
@@ -44,7 +36,7 @@ export class DeltaDetector {
         const currObjMap = this._objectMap(observation.nearbyObjects || observation.nearby_objects)
         for (const [id, currObj] of currObjMap) {
             const prevObj = prevObjMap.get(id)
-            if (!prevObj) continue  // new object, already handled by appeared
+            if (!prevObj) continue  // already an 'appeared'
             for (const [key, val] of Object.entries(currObj)) {
                 if (noiseProps.has(key)) continue
                 if (JSON.stringify(val) !== JSON.stringify(prevObj[key])) {
@@ -56,12 +48,9 @@ export class DeltaDetector {
             }
         }
 
-        // own action state changed — compare only the leading verb token.
-        // The world now sends rich MOVE descriptions ("move toward X (~30u
-        // away, ETA ~20s…)") whose distance/ETA churn every tick; diffing
-        // the raw string fired a self_action delta constantly and denied
-        // the skip tier. The verb ("move"/"inspect"/"forage") is the part
-        // that actually represents a state change.
+        // verb only. the world sends "move toward X (~30u away, ETA ~20s)" and the
+        // numbers change every tick, so diffing the whole string meant a delta
+        // every tick and the skip tier never happened
         const verb = (s) => String(s || '').trim().split(/[\s(]/)[0].toLowerCase()
         if (verb(observation.self?.action) !== verb(prev.self?.action)) {
             deltas.push({
@@ -70,12 +59,11 @@ export class DeltaDetector {
             })
         }
 
-        // available actions changed
         const prevActions = this._actionSet(prev.available_actions)
         const currActions = this._actionSet(observation.available_actions)
         this._diffSets(prevActions, currActions, 'available_action', deltas)
 
-        // environment signals changed enough to matter
+        // signals, only if they moved more than 0.1
         if (observation.signals && prev.signals) {
             for (const [key, val] of Object.entries(observation.signals)) {
                 const prevVal = prev.signals[key]
@@ -88,13 +76,11 @@ export class DeltaDetector {
                     }
                 }
             }
-            // signals that disappeared
             for (const key of Object.keys(prev.signals)) {
                 if (observation.signals[key] === undefined) {
                     deltas.push({ type: 'disappeared', category: 'signal', id: key })
                 }
             }
-            // signals that appeared
             for (const key of Object.keys(observation.signals)) {
                 if (prev.signals[key] === undefined) {
                     deltas.push({ type: 'appeared', category: 'signal', id: key })
@@ -106,15 +92,12 @@ export class DeltaDetector {
             }
         }
 
-        // arbitrary top-level keys changed
+        // anything else top level
         const skip = new Set([
             'self', 'nearbyAgents', 'nearby_agents', 'nearbyObjects', 'nearby_objects',
             'available_actions', 'recentSpeech', 'signals', 'worldBounds',
-            // Volatile bookkeeping the world recomputes every observation
-            // (seconds_ago / minutes_ago tick up constantly). Without these
-            // in the skip set, every quiet tick registered a 'changed' delta,
-            // so the loop NEVER reached the `skip` tier and burned an LLM
-            // call even when nothing actually happened.
+            // these have seconds_ago etc in them so they change every tick,
+            // which meant no tick was ever quiet enough to skip the LLM
             'recent_actions', 'recentActions', 'recent_tweets', 'pending_sacrifices',
         ])
         for (const key of Object.keys(observation)) {
@@ -127,7 +110,6 @@ export class DeltaDetector {
             }
         }
 
-        // snapshot for next tick
         this.previousObservation = this._snapshot(observation)
 
         if (deltas.length > 0) {
@@ -137,7 +119,7 @@ export class DeltaDetector {
         return deltas
     }
 
-    // narrate deltas as natural language for the LLM
+    // plain text for the prompt
     narrate(deltas) {
         if (!deltas || deltas.length === 0) return ''
 
@@ -170,8 +152,6 @@ export class DeltaDetector {
     reset() {
         this.previousObservation = null
     }
-
-    // helpers
 
     _snapshot(observation) {
         return JSON.parse(JSON.stringify(observation))

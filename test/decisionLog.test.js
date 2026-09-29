@@ -183,7 +183,7 @@ test('Think hands up the model, the prompt size, and why it fell back when it di
     assert.equal(skipped.fallback, 'skip')
 })
 
-// A Heartbeat with every collaborator stubbed, so a whole tick can run.
+// heartbeat with everything stubbed out, enough for one whole _tick()
 function harness({ observation, decide, act }) {
     const acts = []
     const recorded = []

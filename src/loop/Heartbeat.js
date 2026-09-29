@@ -1,18 +1,5 @@
-// core cognitive loop: SENSE → FEEL → THINK → ACT → REFLECT.
-//
-// adaptive heartbeat: interval adjusts based on energy and env activity.
-// high energy / lots of changes → faster ticking (more engaged).
-// low energy / nothing happening → slower ticking (saving compute).
-//
-// each tick:
-// 1. observe the environment
-// 2. detect whats changed (delta detection)
-// 3. update internal state (mood/energy from env + action results)
-// 4. think (with full cognitive context: state, deltas, repetition, feedback)
-// 5. act and capture the result
-// 6. log with salience weighting (important moments hit harder)
-// 7. record action for repetition detection
-// 8. adapt heartbeat interval
+// the main loop. observe, diff, update mood, decide, act, log.
+// interval speeds up with energy and slows down when nothing is happening
 
 import { sanitizeReason } from '../util/sanitizeReason.js'
 import { wornWords, wornOpeners, wornPhrases } from '../util/wornWords.js'
@@ -31,8 +18,7 @@ export function activeWork(observation) {
     if (self.busy === true) {
         return { kind: 'action', target: self.action || null }
     }
-    // Compatibility with environments that have not yet adopted the
-    // structured execution fields.
+    // older envs without journey/busy, sniff the action string
     if (/^move toward /i.test(String(self.action || ''))) {
         return { kind: 'journey', target: null }
     }
@@ -44,12 +30,8 @@ function levelOf(need) {
     return Number(need?.level || 0)
 }
 
-/**
- * Reserve one look for overdue visitor work without turning the life loop
- * into a queue worker. Critical hunger, rest, or safety still wins. One
- * offering waits at most the configured interval; a backlog shortens that
- * interval, with a two-minute floor so Pino still has a life between notes.
- */
+// is a visitor's note overdue a look? critical needs still win. backlog
+// shortens the wait, floor of 2 min so he isnt just a queue worker
 export function dueOfferingAttention(observation, lastAt = 0, now = Date.now(), maxMinutes = 15, previous = null) {
     const count = Number(observation?.pending_sacrifices || 0)
     if (count <= 0) return null
@@ -67,15 +49,12 @@ export function dueOfferingAttention(observation, lastAt = 0, now = Date.now(), 
     if (lastAt > 0 && now - lastAt < intervalMinutes * 60_000) return null
 
     const objects = observation.nearby_objects || observation.nearbyObjects || []
-    // The world lists the waiting crystals oldest first, so the first one
-    // is the one that has waited longest.
+    // world sends these oldest first
     const crystals = objects.filter((object) => object?.type === 'SACRIFICE' && object?.id)
     const shrine = objects.find((object) => object?.id === 'artifact_shrine')
-    // A crystal he already set out for and did not read is not the answer
-    // a second time. 17 Sep: the slot chose the same unreachable crystal
-    // seventeen times in nine hours. The shrine is the answer then, because
-    // reading there opens the oldest waiting note through the world's own
-    // fallback. Once the count has moved, the crystals are worth trying.
+    // if last time's crystal didnt get read, go to the shrine instead (world
+    // opens the oldest note from there). it picked the same unreachable
+    // crystal 17 times in 9 hours before this
     const stalled = previous?.kind === 'crystal' && count >= Number(previous.count || 0)
     const target = (stalled && shrine) ? shrine : (crystals[0] || shrine)
     if (!target?.id) return null
@@ -98,14 +77,9 @@ function agoWords(minutes) {
     return hours === 1 ? 'an hour' : `${hours} hours`
 }
 
-/**
- * Why he is going, in his own words. The facts go in, the line comes
- * out, and his recent reasons are ground to avoid. The first version of
- * this slot carried one authored sentence and it published sixteen times
- * in a day, which is the thing every writer in this runtime exists to
- * prevent. When the model gives nothing usable the facts stand as the
- * reason on their own, which at least changes with the facts.
- */
+// his line for why he's off to read a note. was one fixed sentence at first
+// and it went out 16 times in a day. falls back to the bare facts, which at
+// least vary
 export async function attentionReason(think, due, recentReasons = [], { timeoutMs = 8000 } = {}) {
     const waited = agoWords(due?.waitedMin)
     const who = due?.from ? `${due.from}` : null
@@ -166,8 +140,7 @@ export class Heartbeat {
         this.deltaDetector = deltaDetector
         this.repetitionGuard = repetitionGuard
         this.speechLog = speechLog
-        // His own scored lines, best and worst, fed back as examples.
-        this._voiceHistory = []
+        this._voiceHistory = []  // scored lines, best/worst go back in as examples
         this.logger = logger
 
         this.baseIntervalMs = config.heartbeatIntervalMs
@@ -182,21 +155,18 @@ export class Heartbeat {
         this._stuckTickMs = Math.max(120000, (config.maxThinkTimeMs || 30000) * 3)
         this.tickCount = 0
         this._startedAt = null
-        this._lastActionResult = null   // feedback from previous tick
-        this.api = null  // set by index.js after ApiServer is created
-        this.decisionLog = null  // set by index.js, one line per decision
-        this._lastCheckpointAt = 0      // periodic state checkpoint
-        this._checkpointIntervalMs = config.checkpointIntervalMs || 5 * 60 * 1000  // 5 min
+        this._lastActionResult = null
+        this.api = null  // index.js sets these two
+        this.decisionLog = null
+        this._lastCheckpointAt = 0
+        this._checkpointIntervalMs = config.checkpointIntervalMs || 5 * 60 * 1000
         this._lastGCCheckAt = Date.now()
-        this._gcCheckIntervalMs = 60 * 60 * 1000  // check GC every hour
-        this._recentlyDisappeared = []  // objects gone in the last few ticks
-        // Give the ordinary decision loop one natural interval after boot.
-        // Starting at zero would turn every deployment with a fresh note
-        // into an immediate doorbell.
+        this._gcCheckIntervalMs = 60 * 60 * 1000
+        this._recentlyDisappeared = []
+        // not 0, or every boot with a note waiting goes straight to it
         this._lastOfferingAttentionAt = Date.now()
         this._offeringAttentionMaxMinutes = Math.max(2, Number(config.offeringAttentionMaxMinutes || 15))
-        // The last slot's target, kind and the queue length it saw, so a
-        // crystal that read nothing hands the next slot to the shrine.
+        // so a crystal that read nothing hands the next go to the shrine
         this._lastOfferingAttention = null
     }
 
@@ -217,7 +187,6 @@ export class Heartbeat {
             process.exit(1)
         }, 30000)
         this._watchdog.unref?.()
-        // first tick immediately
         this._tick()
     }
 
@@ -234,57 +203,34 @@ export class Heartbeat {
     }
 
     async _tick() {
-        // guard against overlapping ticks
         if (this._ticking) return
 
-        // sleeping?
         if (this.sleepCycle?.isSleeping()) return
 
-        // connected?
         if (!this.socket.isConnected()) return
 
         this._ticking = true
         this._lastTickSettledAt = Date.now()
         this.tickCount++
-        // This tick's line in the decision log. Filled in as the tick runs
-        // and written in finally, so a tick that throws half way still says
-        // how far it got. Stays null on ticks that decide nothing.
+        // decision log line, filled as we go and written in finally so a
+        // throw halfway still shows how far it got. null if nothing decided
         let receipt = null
 
         try {
-            // 1. SENSE
             const observation = await this.socket.observe()
             if (!observation) {
                 this.logger.warn('Empty observation')
                 return
             }
 
-            // Don't think while you are walking somewhere.
-            //
-            // This is how sim-server's own brain has always behaved: in
-            // LLMBrain, if the bird is MOVE-ing toward a live goal it moves
-            // and RETURNS, before the think cooldown is even checked. No
-            // decision is requested, so none can contradict the last one.
-            //
-            // The Pi thought on a fixed heartbeat instead, about every 20
-            // seconds, and it moves at 1.5 u/s across a patch 290 units
-            // wide. So anywhere further than one decision cycle could not be
-            // reached: he would set off for the museum and pick somewhere
-            // else before arriving. Over 120 production entries he announced
-            // 6 trips to the museum, 3 to the cinema, 3 to the rave, and
-            // arrived at none of them. The only places he ever reached were
-            // the two closest to him.
-            //
-            // The environment tells us plainly: "move toward X for Y (~Nu
-            // away)" while a journey is live, versus "move (no destination
-            // tracked...)" when it wants a fresh decision. Walk, don't
-            // deliberate. It also saves an LLM call every tick of a journey.
+            // dont decide while walking somewhere, same as the sim's own
+            // LLMBrain. at 1.5u/s on a 290u map he'd change his mind before
+            // getting anywhere, 12 trips announced in 120 entries and he
+            // arrived at none. saves an llm call per tick of the walk too
             const doing = String(observation.self?.action || '')
             const work = activeWork(observation)
             if (work) {
-                // info, not debug: "he is on his way somewhere" is the
-                // behaviour we spent a long time not having, and a silent
-                // skip is indistinguishable from a dead tick in the log.
+                // info not debug, a silent skip looks like a dead tick in the log
                 const eta = doing.match(/~(\d+)u away/)
                 const label = work.kind === 'journey'
                     ? `walking${work.target ? ` to ${work.target}` : ''}${eta ? ` (${eta[1]}u to go)` : ''}`
@@ -293,10 +239,9 @@ export class Heartbeat {
                 return
             }
 
-            // drain buffered world events (speech, etc)
             const worldEvents = this.socket.drainWorldEvents()
 
-            // log heard speech to working memory (with salience from current energy)
+            // anything he heard goes into working memory
             const salience = this.internalState.salience()
             for (const evt of worldEvents) {
                 const data = evt.data || evt
@@ -310,14 +255,12 @@ export class Heartbeat {
                 }
             }
 
-            // update tools.md from observation (auto-discover objects/actions)
             await this.memoryFiles.updateToolsFromObservation(observation)
 
-            // 2. DETECT CHANGE
             const deltas = this.deltaDetector.detect(observation)
             const deltaNarrative = this.deltaDetector.narrate(deltas)
 
-            // track recently disappeared objects (fade after 30 ticks)
+            // remember what vanished for 30 ticks
             for (const d of deltas) {
                 if (d.type === 'disappeared' && d.category === 'object') {
                     this._recentlyDisappeared.push({ id: d.id, tick: this.tickCount })
@@ -327,8 +270,6 @@ export class Heartbeat {
                 d => this.tickCount - d.tick < 30
             )
 
-            // 3. FEEL
-            // collect nearby entity IDs (stability tracking + exploration context)
             const nearbyIds = [
                 ...(observation.nearbyObjects || observation.nearby_objects || []).map(o => o.id || o.name),
                 ...(observation.nearbyAgents || observation.nearby_agents || []).map(a => a.id || a.name),
@@ -342,10 +283,7 @@ export class Heartbeat {
                 worldEvents,
             })
 
-            // 3b. CLASSIFY TICK
-            // route to the right model tier based on tick complexity.
-            // quality (70B) for important moments, fast (Ollama/8B) for
-            // routine, skip (no LLM) when nothing is happening.
+            // pick a model tier, see _classifyTick
             const stateDesc = this.internalState.describe()
             const repetition = this.repetitionGuard.checkDetailed()
             const repetitionWarnings = repetition ? repetition.map(w => w.text) : null
@@ -362,26 +300,16 @@ export class Heartbeat {
                 why: tierWhy,
                 ...evidenceKeys(observation, worldEvents, this._lastActionResult),
                 menu: (observation.available_actions || []).length,
-                // Which persona the prompt is really built from. Hashed every
-                // tick rather than cached, so an edit in place still shows.
+                // hashed every tick, not cached, so an in place edit shows up
                 persona: this.think?.promptBuilder?.persona ? shortHash(this.think.promptBuilder.persona) : null,
             }
 
-            // 3c. EXPLORATION CONTEXT
             const explorationHint = this.repetitionGuard.explorationContext(nearbyIds)
 
-            // 4. THINK, unless a visitor's note is owed a look.
-            //
-            // Visitor attention has an SLA, not a script. The model keeps
-            // choosing freely until a note has waited through the bounded
-            // interval. Then one inspect slot is reserved, after critical
-            // physical needs and any in-flight commitment have cleared.
-            //
-            // Checked before the model is asked, not after. It used to run on
-            // the model's answer and replace it, which paid for a decision it
-            // then threw away, and that decision's remember still reached
-            // memory.md and the world: he kept a memory from a choice he
-            // never made.
+            // think, unless a note is overdue a look. has to be checked before
+            // asking the model: it used to overwrite the answer after, and the
+            // thrown away decision's remember still got saved. he remembered
+            // choices he never made
             const visitorAttention = dueOfferingAttention(
                 observation,
                 this._lastOfferingAttentionAt,
@@ -398,7 +326,6 @@ export class Heartbeat {
                     reason,
                     source: 'visitor-attention',
                 }
-                // Remembered so the next slot can tell a stall from progress.
                 this._lastOfferingAttention = {
                     target: visitorAttention.target,
                     kind: visitorAttention.kind,
@@ -415,9 +342,8 @@ export class Heartbeat {
                     recentlyDisappeared: this._recentlyDisappeared.length > 0
                         ? this._recentlyDisappeared.map(d => d.id) : undefined,
                     recentSpeeches: this.speechLog?.recentForPrompt() || undefined,
-                    // words he's leaned on across his last ~10 reasons, banned for
-                    // this turn so a motif ("scream", "beat") can't self-feed. the
-                    // action-fixation guard above doesn't watch reason wording.
+                    // words hes leaned on in the last ~10 reasons, banned this turn
+                    // so a motif ("scream", "beat") cant feed itself
                     wornWords: wornWords(this.workingMemory.recentReasons(10)),
                     wornOpeners: wornOpeners(this.workingMemory.recentReasons(10)),
                     wornPhrases: wornPhrases(this.workingMemory.recentReasons(10)),
@@ -436,18 +362,15 @@ export class Heartbeat {
             receipt.promptChars = decision.promptChars ?? null
             if (decision.fallback) receipt.fallback = decision.fallback
             if (decision.raw) receipt.raw = decision.raw
-            // What the brain asked for, before any guard below touches it.
-            // Null when no brain was asked.
+            // what the model wanted, before the guards below get at it
             receipt.asked = decision.source === 'visitor-attention'
                 ? null
                 : { action: decision.action ?? null, target: targetOf(decision.params) }
             const overrides = []
             receipt.overrides = overrides
 
-            // 4b. VALIDATE ACTION
-            // hard constraint: if env specifies available_actions, the agent
-            // MUST use one of them. LLMs sometimes hallucinate actions from
-            // previous contexts (eg move_to in synth mode).
+            // must be on the menu. models make up actions from other envs
+            // sometimes (move_to in synth)
             if (observation.available_actions?.length > 0) {
                 const validActions = new Set(
                     observation.available_actions.map(a => typeof a === 'string' ? a : a.name)
@@ -456,7 +379,7 @@ export class Heartbeat {
                     const fallback = validActions.has('wait') ? 'wait'
                         : validActions.has('hold') ? 'hold'
                         : (typeof observation.available_actions[0] === 'string' ? observation.available_actions[0] : observation.available_actions[0].name)
-                    this.logger.warn(`Action "${decision.action}" not available — correcting to ${fallback}`)
+                    this.logger.warn(`Action "${decision.action}" not available - correcting to ${fallback}`)
                     overrides.push('not_on_menu')
                     decision.action = fallback
                     decision.params = { reason: '(corrected: original action not in available_actions)' }
@@ -464,34 +387,28 @@ export class Heartbeat {
                 }
             }
 
-            // 4b2. ANTI-FIXATION BLOCK
-            // env-agnostic: if the same action+target dominates the recent
-            // window (40%+), force a redirect to break the loop.
-            // works for anything: inspect(shiny_01), set_step(step_5), etc.
+            // same action+target over 40% of recent history, break it up
             const fixationTarget = decision.params?.target || decision.params?.entityId
             if (fixationTarget && this.repetitionGuard.isFixated(decision.action, fixationTarget)) {
                 const count = this.repetitionGuard.comboCount(decision.action, fixationTarget)
                 const blocked = decision.action
                 const redirect = this._fixationRedirect(observation)
                 if (redirect) {
-                    this.logger.warn(`Hard block: ${blocked}("${fixationTarget}") fixated (${count}x) — forcing ${redirect.action}`)
+                    this.logger.warn(`Hard block: ${blocked}("${fixationTarget}") fixated (${count}x) - forcing ${redirect.action}`)
                     overrides.push('fixation')
                     decision.action = redirect.action
                     decision.params = { ...redirect.params, reason: `(blocked: ${blocked} ${fixationTarget} fixated after ${count}x)` }
                     decision.reason = `(blocked: fixation on ${fixationTarget})`
                 }
             }
-            // 4b3. TARGET-ONLY ANTI-FIXATION BLOCK
-            // The combo block above misses fixation that's spread across
-            // multiple actions on ONE target (camera stare = inspect + move_to
-            // + wait on the same spot — the target dominates but no single
-            // combo crosses 40%). Catch that here. Runs on the FINAL decision
-            // including fallback decisions, so it survives the heuristic path.
+            // same target spread over several actions (the camera stare was
+            // inspect + move_to + wait on one spot, no single combo hit 40%).
+            // runs on fallback decisions too
             else if (fixationTarget && this.repetitionGuard.isTargetFixated(fixationTarget)) {
                 const count = this.repetitionGuard.targetCount(fixationTarget)
                 const redirect = this._fixationRedirect(observation)
                 if (redirect) {
-                    this.logger.warn(`Hard block: target "${fixationTarget}" fixated (${count}x across actions) — forcing ${redirect.action}`)
+                    this.logger.warn(`Hard block: target "${fixationTarget}" fixated (${count}x across actions) - forcing ${redirect.action}`)
                     overrides.push('target_fixation')
                     decision.action = redirect.action
                     decision.params = { ...redirect.params, reason: `(blocked: target ${fixationTarget} fixated ${count}x across actions)` }
@@ -499,12 +416,8 @@ export class Heartbeat {
                 }
             }
 
-            // 4c. VALIDATE SPEECH PARAMS
-            // The env advertises speak(text) and its executor accepts text
-            // OR message, but this check demanded message alone, so a model
-            // following the advertised schema had every line it tried to
-            // say thrown away: 21 of 21 speaks in one day died right here.
-            // Normalize the aliases into message first, THEN judge.
+            // env advertises speak(text) but this used to only accept message,
+            // 21 of 21 speaks in a day got binned. fold the aliases in first
             if (decision.action === 'speak') {
                 const p = decision.params || {}
                 const said = [p.message, p.text, p.say, p.content, p.words]
@@ -512,7 +425,7 @@ export class Heartbeat {
                 if (said) {
                     decision.params = { ...p, message: said.trim() }
                 } else {
-                    this.logger.warn('Speak action with empty/invalid message — converting to wait')
+                    this.logger.warn('Speak action with empty/invalid message - converting to wait')
                     overrides.push('speak_empty')
                     decision.action = 'wait'
                     decision.params = {}
@@ -520,23 +433,19 @@ export class Heartbeat {
                 }
             }
 
-            // 4c2. VALIDATE ACTIVITY TARGETS
-            // Three actions (browse_internet, use_phone, watch_tattoos) kept
-            // arriving with no target and dying in the env as "Unknown
-            // activity: undefined". Their hosts are singletons he can see in
-            // nearby_objects, so fill the target in; only wait if the host
-            // genuinely is not there.
+            // these kept comming with no target ("Unknown activity: undefined").
+            // theres only one of each host so just fill it in
             const hostFor = { browse_internet: /internet|cafe/i, use_phone: /phone/i, watch_tattoos: /tattoo/i }
             if (hostFor[decision.action] && !decision.params?.target) {
                 const pool = observation.nearby_objects || observation.nearbyObjects || []
                 const host = pool.find(o => o?.type === 'ACTIVITY' && hostFor[decision.action].test(o.name || ''))
                 if (host) {
-                    this.logger.debug(`${decision.action} had no target — resolved to ${host.id}`)
+                    this.logger.debug(`${decision.action} had no target - resolved to ${host.id}`)
                     overrides.push('target_filled')
                     decision.params = { ...(decision.params || {}), target: host.id }
                 } else {
                     const wanted = decision.action
-                    this.logger.warn(`${wanted} with no target and no host in sight — converting to wait`)
+                    this.logger.warn(`${wanted} with no target and no host in sight - converting to wait`)
                     overrides.push('no_host')
                     decision.action = 'wait'
                     decision.params = {}
@@ -544,35 +453,23 @@ export class Heartbeat {
                 }
             }
 
-            // 4d. SCRUB THE REASON — last gate before it's logged + shipped to
-            // the env's journal. the prompt bans quoting stats/ids but the fast
-            // tier slips ("Hunger at 100%, need something fresh"); a number or a
-            // raw entity id must never reach the feed. leaves the meta
-            // (corrected:/blocked:) strings and clean lines untouched.
+            // scrub stats and ids out of the reason before it hits the journal.
+            // the prompt says not to but the fast tier still does
+            // ("Hunger at 100%, need something fresh")
             const need = decision.params?.target && /food|hunger/i.test(decision.params.target) ? 'hunger' : undefined
             const beforeScrub = decision.reason || decision.params?.reason || ''
             if (decision.reason) decision.reason = sanitizeReason(decision.reason, { need })
             if (decision.params?.reason) decision.params.reason = sanitizeReason(decision.params.reason, { need })
             if ((decision.reason || decision.params?.reason || '') !== beforeScrub) overrides.push('reason_scrubbed')
 
-            // The env only ever receives `params` — act(action, params) — and
-            // 3eyes drops any decision with no reason from the journal. So a
-            // reason the model put at the TOP level (schema-correct, but a
-            // sibling of params) never reaches the diary and the bird reads as
-            // silent. Whether it lands top-level or nested is model-dependent,
-            // so mirror BOTH ways rather than trusting the shape.
-            //
-            // It used to mirror down only. When a model put the reason solely
-            // in params the top level stayed undefined, and the tick line
-            // logged an empty reason while the diary was fine, which reads
-            // like he had nothing to say when he did.
+            // env only gets params, and 3eyes drops reasonless decisions from
+            // the journal. models put reason top level or in params, depends
+            // on the model, so copy it both ways
             decision.params = decision.params || {}
             if (decision.reason && !decision.params.reason) decision.params.reason = decision.reason
             if (!decision.reason && decision.params.reason) decision.reason = decision.params.reason
 
-            // Genuinely nothing to say. Either the model omitted it or the
-            // scrub ate the whole line (a reason that was ALL stat leak).
-            // Silent decisions are invisible in the diary, so say so here.
+            // no reason at all, or the scrub ate all of it
             if (!decision.reason) {
                 this.logger.warn(
                     beforeScrub
@@ -585,9 +482,8 @@ export class Heartbeat {
             receipt.reason = String(decision.reason || '').slice(0, 200)
             if (decision.remember?.content) receipt.remember = true
 
-            this.logger.info(`[tick ${this.tickCount}] ${decision.action} (${decision.source}/${tier}) — ${decision.reason} [v=${stateDesc.mood.toFixed(2)} a=${stateDesc.energy.toFixed(2)}]`)
+            this.logger.info(`[tick ${this.tickCount}] ${decision.action} (${decision.source}/${tier}) - ${decision.reason} [v=${stateDesc.mood.toFixed(2)} a=${stateDesc.energy.toFixed(2)}]`)
 
-            // 5. ACT
             const result = await this.socket.act(decision.action, decision.params)
 
             if (decision.action === 'inspect' &&
@@ -595,20 +491,9 @@ export class Heartbeat {
                 this._lastOfferingAttentionAt = Date.now()
             }
 
-            // Send what he chose to REMEMBER to the world too.
-            //
-            // remember arrives as a field on the decision, not as an action,
-            // so it never went through act() and never left the Pi. Think.js
-            // wrote it to memory.md here on the box and that was the end of
-            // it: the environment kept its own separate memory, the diary
-            // never showed a Learned Fact or an Important Memory, and the
-            // whole "watch him remember things" side of the project was
-            // invisible in production while working fine locally, where the
-            // sim's own brain uses the remember TOOL.
-            //
-            // The environment has accepted a remember action all along. It
-            // stores nothing on the npc's action state, so a second act() in
-            // the same tick is safe and does not disturb what he is doing.
+            // remember is a field not an action, so it only ever went to
+            // memory.md on the pi and the the diary never saw it. send it to the
+            // world as well, a second act() is safe, it doesnt touch action state
             if (decision.remember?.content) {
                 try {
                     await this.socket.act('remember', {
@@ -616,13 +501,12 @@ export class Heartbeat {
                         memory: String(decision.remember.content).slice(0, 200),
                     })
                 } catch (err) {
-                    // his own copy is already written; the world missing one
-                    // is not worth failing a tick over
+                    // his copy is already saved, not worth failing the tick
                     this.logger.warn(`Could not send memory to the world: ${err.message}`)
                 }
             }
 
-            // store action result for next tick's feedback loop
+            // fed back in next tick
             this._lastActionResult = {
                 action: decision.action,
                 params: decision.params,
@@ -634,14 +518,9 @@ export class Heartbeat {
                 msg: String(this._lastActionResult.message || '').slice(0, 160),
             }
 
-            // 6. REFLECT (log with salience)
-            //
-            // Plumbing reasons — "(corrected: …)" / "(blocked: fixation …)"
-            // — are firewall artefacts, not lived experience. Logged with
-            // full salience the consolidator promoted them into permanent
-            // MEMORY.md (Victor "remembering" being anti-fixation-blocked).
-            // Neutralise them: minimal salience so they're not encoded, and
-            // a clean daily-log line with no plumbing annotation.
+            // (corrected: ...) / (blocked: ...) reasons are ours, not his. at full
+            // salience the consolidator put them in MEMORY.md and victor
+            // "remembered" being fixation blocked. keep them out
             const isPlumbing = /^\((corrected|blocked)/.test(decision.reason || '')
             const reflectSalience = isPlumbing ? Math.min(salience, 0.05) : salience
             const cleanReason = isPlumbing ? 'moving on' : decision.reason
@@ -652,22 +531,19 @@ export class Heartbeat {
                 reason: cleanReason,
             }, reflectSalience)
 
-            // log the action result too
             this.workingMemory.push({
                 type: 'action_result',
                 success: this._lastActionResult.success,
                 message: this._lastActionResult.message,
             }, reflectSalience)
 
-            // failures carry their why into the log: a third of decisions
-            // were failing with nothing written down for the daily review
+            // put the failure message in, a third were failing with no clue why
             const why = !this._lastActionResult.success && this._lastActionResult.message
                 ? ` (${String(this._lastActionResult.message).slice(0, 90)})`
                 : ''
             const logLine = `${decision.action}(${JSON.stringify(decision.params)}): ${cleanReason} [${decision.source}] → ${this._lastActionResult.success ? 'ok' : `failed${why}`}`
             await this.dailyLog.append(logLine)
 
-            // log speech separately for clarity
             if (decision.action === 'speak') {
                 this.workingMemory.push({
                     type: 'speech_sent',
@@ -676,10 +552,8 @@ export class Heartbeat {
                 this.speechLog?.record(decision.params.message, this.tickCount)
             }
 
-            // 7. CREATIVITY FEEDBACK + RECORD
-            // score speech creativity BEFORE recording so it compares against
-            // previous speeches, not itself. score nudges mood: repetition
-            // feels bad, novelty feels good. agent never sees the score.
+            // score before record() or it compares against itself. nudges mood,
+            // he never sees the number
             let speechCreativity = null
             if (decision.action === 'speak' && decision.params?.message) {
                 speechCreativity = this.repetitionGuard.scoreSpeech(decision.params.message)
@@ -688,17 +562,14 @@ export class Heartbeat {
             }
             this.repetitionGuard.record(decision.action, decision.params)
 
-            // Score what he just wrote, so the good lines can be handed back
-            // to him as the standard. Everything else built to shape his
-            // voice is a prohibition; this is the only part that can say
-            // "that one worked".
+            // everything else on his voice is a ban list, this is the only bit
+            // that can tell him "that one worked"
             if (decision.reason) {
                 const { score } = scoreLine(decision.reason, this._voiceHistory.map((h) => h.line))
                 this._voiceHistory.push({ line: decision.reason, score })
                 if (this._voiceHistory.length > 60) this._voiceHistory.shift()
             }
 
-            // 8. EMIT
             this.api?.emit('tick', {
                 tick: this.tickCount,
                 action: decision.action,
@@ -714,18 +585,15 @@ export class Heartbeat {
                 timestamp: Date.now(),
             })
 
-            // 9. ADAPT HEARTBEAT
             this._adaptInterval()
 
-            // Time to sleep? Handed his clock, so consolidation happens at
-            // night instead of on a real-time timer that was phase-locked
-            // to the same world hour every day. See SleepCycle.checkSleepTime.
+            // pass the world clock so he sleeps at night, the real time timer
+            // was phase locked to the same world hour every day
             if (this.sleepCycle) {
                 this.sleepCycle.checkSleepTime(observation.world_clock || null)
             }
 
-            // 10. MAINTENANCE
-            // fallback GC: if sleep hasnt fired and GC is overdue, run it now
+            // GC normally runs in sleep, this catches it if sleep hasnt happened
             if (Date.now() - this._lastGCCheckAt > this._gcCheckIntervalMs) {
                 this._lastGCCheckAt = Date.now()
                 if (this.dailyLog.isGCOverdue(24)) {
@@ -734,7 +602,7 @@ export class Heartbeat {
                 }
             }
 
-            // periodic state checkpoint (crash recovery, incl tickCount)
+            // checkpoint for crash recovery
             if (Date.now() - this._lastCheckpointAt > this._checkpointIntervalMs) {
                 this._lastCheckpointAt = Date.now()
                 this.internalState.checkpoint({ tickCount: this.tickCount }).catch(() => {})
@@ -758,10 +626,8 @@ export class Heartbeat {
         }
     }
 
-    // where to send a fixated agent. spatial envs get the classic wander;
-    // non-spatial envs (markets, synth) redirect to wait/hold instead of
-    // being handed a move_to they can't execute. null = no safe redirect,
-    // let the original decision through rather than invent an action.
+    // wander if the env has move_to, else wait/hold (markets, synth).
+    // null = nothing safe, let the original through
     _fixationRedirect(observation) {
         const names = new Set(
             (observation.available_actions || []).map(a => typeof a === 'string' ? a : a.name)
@@ -772,72 +638,54 @@ export class Heartbeat {
         return null
     }
 
-    // adapt heartbeat interval based on energy and activity.
-    // high energy → faster ticks (engaged, responsive).
-    // low energy → slower ticks (resting).
+    // more energy = faster ticks
     _adaptInterval() {
         const energy = Math.abs(this.internalState.energy)
-        // map energy 0..1 to interval max..min
         const range = this.maxIntervalMs - this.minIntervalMs
         const target = this.maxIntervalMs - (energy * range)
-        // smooth transition (dont jump instantly)
+        // ease towards it
         this.currentIntervalMs = Math.round(this.currentIntervalMs * 0.7 + target * 0.3)
         this.currentIntervalMs = Math.max(this.minIntervalMs, Math.min(this.maxIntervalMs, this.currentIntervalMs))
     }
 
-    // classify tick complexity → route to the right model tier.
-    // 'decision' = anthropic (env-flagged money moments)
-    // 'quality' = 70B cloud (expensive, high stakes)
-    // 'fast'    = Ollama/8B cloud (routine)
-    // 'skip'    = FallbackBrain (nothing happening, no LLM)
-    //
-    // Returns { tier, why }: why names the rule that decided, for the
-    // decision log, because the tier alone could not say why two thirds of
-    // a day's decisions went to the 120B.
+    // which model tier this tick gets:
+    //   decision  anthropic, env flags a money moment
+    //   quality   120b, big and slow
+    //   fast      20b / ollama
+    //   skip      FallbackBrain, no llm
+    // why is the rule that fired, goes in the decision log
     _classifyTick(deltas, worldEvents, context, observation) {
-        // Asleep is not a decision point. The env refuses everything but
-        // "wait" until he wakes, so any call made here buys a rejection:
-        // 46 of yesterday's 256 failures were "Asleep at the nest". The
-        // wake-up belongs to the sleep cycle, not to anything decided now.
+        // env refuses anything but wait while he's asleep, 46 of 256 failures
+        // in a day were "Asleep at the nest". waking is SleepCycle's job
         if (observation?.self?.asleep === true) return { tier: 'skip', why: 'asleep' }
 
-        // decision tier: the env is flagging a moment where being wrong
-        // costs money (trade dossier awaiting a verdict, etc). LLMClient
-        // aliases this to quality when no anthropic key is configured.
+        // being wrong costs money here (trade dossier etc). LLMClient drops
+        // this to quality if theres no anthropic key
         if ((observation?.signals?.decision_pending || 0) >= 0.5) return { tier: 'decision', why: 'decision_pending' }
 
-        // quality tier: genuinely high-stakes ticks that need the big model.
-        // Kept DELIBERATELY narrow — the quality (120B) path is the slowest
-        // and most failure-prone, so over-routing to it (a) maximises
-        // exposure to transient cloud failures and (b) wastes latency/cost.
+        // keep quality narrow, 120b is the slowest and fails the most
         if (worldEvents.length > 0) {                                 // someone spoke to us
             const kinds = [...new Set(worldEvents.map(e => (e?.data || e)?.event || 'event'))].sort()
             return { tier: 'quality', why: `world_event:${kinds.join('+')}` }
         }
-        if (context.repetitionWarnings?.length > 0) {                 // needs a creative escape
+        if (context.repetitionWarnings?.length > 0) {                 // stuck in a rut
             const kinds = [...new Set(context.repetitionKinds || ['unknown'])].sort()
             return { tier: 'quality', why: `repetition:${kinds.join('+')}` }
         }
 
-        // fast tier: routine activity — appeared/disappeared deltas, the
-        // post-disappearance hallucination window, heightened arousal, and
-        // any minor delta or action feedback. The 20B fast model handles
-        // these fine and is far more reliable per call. (Previously these
-        // all forced quality; a single object disappearance pinned ~6min of
-        // ticks to the failing model via the recentlyDisappeared window.)
+        // 20b copes with all this fine. these used to go to quality and one
+        // thing vanishing pinned ~6 min of ticks to the failing model
         if (deltas.some(d => d.type === 'appeared' || d.type === 'disappeared')) return { tier: 'fast', why: 'appeared_or_gone' }
         if (context.recentlyDisappeared?.length > 0) return { tier: 'fast', why: 'recently_gone' }
         if (Math.abs(context.internalState?.energy || 0) > 0.5) return { tier: 'fast', why: 'energy' }
 
-        // skip tier: nothing happening at all → no LLM call, heuristic only.
+        // nothing going on, dont bother the llm
         if (deltas.length === 0 && !context.lastActionResult?.message) return { tier: 'skip', why: 'nothing_new' }
 
         return { tier: 'fast', why: 'default' }
     }
 
-    // normalize env signals from alternative formats.
-    // some envs send `world: {vitality: 70, resonance: 50}` (0-100 scale)
-    // instead of `signals: {vitality: 0.7}` (0-1 scale). detect and normalize.
+    // some envs send world: {vitality: 70} on 0-100 instead of signals on 0-1
     _normalizeSignals(world) {
         if (!world || typeof world !== 'object') return null
         const signals = {}

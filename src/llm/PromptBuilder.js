@@ -1,13 +1,11 @@
-// assembles system + user prompts for the LLM.
-// includes: internal state, delta narrative, action results,
-// repetition warnings, and time awareness.
+// system + user prompts for every tick
 
 export class PromptBuilder {
     constructor(persona) {
         this.persona = persona
     }
 
-    // hot-swap persona (called by API server on PUT /persona)
+    // PUT /persona swaps it live
     setPersona(persona) {
         this.persona = persona
     }
@@ -21,10 +19,8 @@ export class PromptBuilder {
         const voice = p.voice?.style || 'natural'
         const vocab = p.voice?.vocabulary?.join(', ') || ''
 
-        // LIVE persona rendering: each day, 2 traits are "loud" — a
-        // deterministic day-seeded rotation through the full cast, so
-        // different days FEEL different without the character drifting.
-        // (Static sheets read as a form; a self has weather.)
+        // two traits are loud each day, rotated off the date. days feel
+        // different but the persona itself never drifts
         let loudLine = ''
         const traitList = p.traits || []
         if (traitList.length >= 2) {
@@ -35,9 +31,8 @@ export class PromptBuilder {
             loudLine = `\nTODAY, LOUDEST IN YOU: ${loud.join(' + ')}. Let these two colour today more than the rest.`
         }
 
-        // voice canon: persona can supply its own rules for the reason field
-        // (voice.canon: array of lines). default is the victor-era creature
-        // voice — kept verbatim so existing deployments read the same prompt.
+        // persona can bring its own voice.canon. the default is victor's, left
+        // word for word so existing deploys get the same prompt
         const canonLines = Array.isArray(p.voice?.canon) && p.voice.canon.length > 0
             ? p.voice.canon
             : [
@@ -49,31 +44,22 @@ export class PromptBuilder {
                 `Vary your openings; dry humour is welcome. ONE small image at most, and only if it's literally what you see or feel ("the rain sounds like applause", fine). Your weirdness comes from being a bird with real opinions, not from broken grammar.`,
             ]
 
-        // extract action names for conditional rules
         const actionNames = new Set(
             (availableActions || []).map(a => typeof a === 'string' ? a : a.name)
         )
 
-        // The catalogue lives here rather than in the per-tick situation.
-        // These descriptions carry real character ("You want one. You are
-        // not brave enough yet"), so they are worth keeping in full, but
-        // they never change, and repeating them inside the live percept made
-        // half of what he read each tick a menu he had already memorised.
-        //
-        // When the catalogue exists, tools.md stays OUT of the prompt: the
-        // file's actions section is built from these same available_actions
-        // every tick, and its nearby-objects section is the same list the
-        // situation renders, so sending the file too put ~7KB in every
-        // prompt twice, and the budget chop was paying for the duplicate
-        // with his memory. The file itself stays for the API panel and
-        // consolidation; only a bare-names environment (no descriptions)
-        // still leans on it here.
+        // catalogue goes in the system prompt, not the per-tick situation. the
+        // descriptions never change and in the percept they were half of what
+        // he read every tick.
+        // if we have it, tools.md stays out: same actions, same nearby list,
+        // ~7KB twice per prompt and the budget chop was taking it out of his
+        // memory. envs that only send bare names still get tools.md
         const actionCatalogue = (availableActions || [])
             .filter((a) => typeof a !== 'string' && a.description)
             .map((a) => `- ${a.name}(${a.params || ''}): ${a.description}`)
             .join('\n')
 
-        // build interaction rules based on what actions exist
+        // only the rules for actions this env actually has
         const interactionRules = []
         if (actionNames.has('speak')) {
             interactionRules.push('- If another agent speaks to you, consider responding')
@@ -179,73 +165,64 @@ The "because" param on these is optional and usually left out. Use it only when 
     buildUserPrompt(perceivedSituation, recentLogLines, workingMemoryLines, extras = {}) {
         const parts = []
 
-        // time awareness
         if (extras.tickCount !== undefined || extras.uptimeMinutes !== undefined) {
             const time = new Date().toLocaleTimeString()
             const uptime = extras.uptimeMinutes !== undefined ? `${extras.uptimeMinutes} minutes` : 'unknown'
             parts.push(`TIME: ${time} (awake for ${uptime}, tick #${extras.tickCount || '?'})`)
         }
 
-        // internal state. sensation only, no raw numbers
+        // sensation only, never the raw numbers
         if (extras.internalState) {
             const s = extras.internalState
             parts.push(`HOW YOU FEEL:\n${s.description}`)
         }
 
-        // the desire layer: the ONE thing currently pulling at you across
-        // days. Not an order — a throughline. Formed/retired during sleep.
+        // the one thing pulling at him accross days, set and retired in sleep
         if (extras.currentThread) {
             parts.push(`WHAT'S BEEN PULLING AT YOU LATELY:\n"${extras.currentThread}"\nlet it colour some of your choices. You don't have to serve it every moment, but a life has a throughline; drift toward it when nothing urgent calls.`)
         }
 
-        // what changed since last tick
         if (extras.deltaNarrative) {
             parts.push(extras.deltaNarrative)
         }
 
-        // result of last action. consequence feedback
         if (extras.lastActionResult) {
             const r = extras.lastActionResult
             const status = r.success ? 'succeeded' : 'failed'
             parts.push(`LAST ACTION RESULT:\n${r.action || 'unknown'} ${status}${r.message ? ': ' + r.message : ''}`)
         }
 
-        // recently disappeared objects. hard warning to prevent hallucination
+        // shouted on purpose, otherwise he keeps walking to things that are gone
         if (extras.recentlyDisappeared?.length > 0) {
             parts.push(`GONE: The following objects have DISAPPEARED and are NO LONGER HERE: ${extras.recentlyDisappeared.join(', ')}. Do NOT interact with or move toward them. If you mention them, use past tense only ("I remember when..." / "there used to be...").`)
         }
 
-        // repetition warnings
         if (extras.repetitionWarnings) {
             parts.push('NOTICE:\n' + extras.repetitionWarnings.join('\n'))
         }
 
-        // exploration context. what youve explored vs whats new
         if (extras.explorationHint) {
             parts.push('EXPLORATION:\n' + extras.explorationHint)
         }
 
-        // persistent speech history. survives sleep cycles
+        // survives sleep
         if (extras.recentSpeeches) {
             parts.push('YOUR RECENT SPEECHES (do NOT repeat these, say something fresh each time):\n' + extras.recentSpeeches)
         }
 
-        // worn-out words: he's leaned on these across recent reasons. ban them
-        // this turn so a motif can't self-feed (no synonym-swapping the same
-        // image either — "scream" → "howl" is still the same crutch).
+        // banned for this turn so a motif cant feed itself. synonyms too,
+        // scream to howl is the same crutch
         if (extras.wornWords?.length > 0) {
             parts.push(`WORN-OUT WORDS: ${extras.wornWords.map(w => `"${w}"`).join(', ')}. You've leaned on these lately, do NOT use them this turn, and don't just swap in a synonym for the same image. Notice something else, or say the plain thing without them.`)
         }
 
-        // same guard, a size up: a whole phrase coming back word for word
-        // ("settle my legs", eleven times in an afternoon) reads as a
-        // stuck record faster than any single word does.
+        // same again for whole phrases ("settle my legs", 11x in one afternoon)
         if (extras.wornPhrases?.length > 0) {
             parts.push(`WORN-OUT PHRASES: ${extras.wornPhrases.map(w => `"${w}"`).join(', ')}. You have said these word for word more than once lately. Do NOT use them or a near-rewording this turn; if the same thing is true again, find a different true thing to say about it.`)
         }
 
-        // His own best and worst, which beats any rule I can write. Until
-        // he has enough of a record this stays quiet rather than guessing.
+        // his own best and worst lines work better than any rule i can write.
+        // empty until theres enough record to pick from
         if (extras.ownVoice?.best?.length > 0) {
             parts.push(`YOUR BEST RECENT LINES. This is the standard, and they are yours:\n${extras.ownVoice.best.map((l) => `  "${l}"`).join('\n')}`)
         }

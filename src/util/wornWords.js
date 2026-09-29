@@ -1,13 +1,9 @@
-// find words the agent has leaned on across its recent reasons, so the
-// prompt can ban them for a turn. presence-based: a word counts once per
-// reason, so a "motif" is "showed up in N separate decisions", not "said
-// twice in one breath". this is the reason-phrase guard the Pi was missing
-// — the model mirrors its own recent history ("hunger's a scream" x5,
-// "the casino pulse", "new beat") with nothing pushing back. mirrors the
-// sim's guard so both brains behave the same.
+// words he keeps leaning on in recent reasons, so the prompt can ban them for
+// a turn. once per reason, so it's "showed up in N decisions" not "said twice
+// in one breath". without it the model just mirrors itself ("hunger's a
+// scream" x5). same idea as the sim's guard
 
-// shared with the record filter, which needs the same notion of "not a
-// content word" so a bullet about the pond doesn't file under "the".
+// record.js uses this too
 export const STOPWORDS = new Set([
     'the', 'and', 'but', 'for', 'not', 'was', 'are', 'with', 'that', 'this',
     'have', 'from', 'just', 'need', 'want', 'get', 'got', 'gotta', 'going',
@@ -18,22 +14,12 @@ export const STOPWORDS = new Set([
     'could', 'would', 'might', 'first', 'here', 'there', 'about',
 ])
 
-// light stem so a motif's inflections collapse to one key: scream/screaming/
-// screams -> "scream", hunger's/hunger -> "hunger", beat/beats -> "beat".
-// only strips when >=4 chars survive, so short words aren't mangled.
-// Words ending in s that are not plurals. Without these, "news" files under
-// "new" and "focus" under "focu".
+// otherwise "news" stems to "new" and "focus" to "focu"
 const NOT_PLURAL = new Set(['news', 'lens', 'gas', 'atlas', 'canvas', 'chess', 'bias'])
 
-/**
- * Fold a word to its stem so one motif counts as one word.
- *
- * The old version required `length - suffix >= 4`, which is longer than most
- * of the words that actually become tics. "hum", "hums", "humming" and
- * "hummed" came out as three different stems, so the guard built to catch
- * the hum could never count it to its own threshold. Exported and shared
- * with the persona sanitizer so both use the same notion of one word.
- */
+// rough stemmer, screaming/screams -> scream, hunger's -> hunger.
+// min base used to be 4 which split hum/hums/humming into different stems,
+// so the guard for the hum could never count the hum. 3 now
 export function stem(w) {
     let s = String(w).toLowerCase().replace(/'s$/, '')
     if (NOT_PLURAL.has(s) || /(ss|us|is|os)$/.test(s)) return s
@@ -54,13 +40,12 @@ export function stem(w) {
 }
 
 export function wornWords(reasons, { minCount = 3, max = 6 } = {}) {
-    // stem -> { count, forms: Map(surface -> n) }. we count by stem but report
-    // a real surface form (the shortest, usually the root) so the ban line
-    // reads "scream" not "scre".
+    // count by stem, but report the shortest real word so the ban line
+    // says "scream" and not whatever the stem came out as
     const groups = new Map()
     for (const r of reasons || []) {
         if (!r) continue
-        const seen = new Set()  // one vote per reason, per stem
+        const seen = new Set()
         for (const raw of String(r).toLowerCase().split(/[^a-z']+/)) {
             const w = raw.replace(/^'+|'+$/g, '').replace(/'s$/, '')
             if (w.length < 3 || STOPWORDS.has(w)) continue
@@ -80,19 +65,10 @@ export function wornWords(reasons, { minCount = 3, max = 6 } = {}) {
         .map((g) => [...g.forms.keys()].sort((a, b) => a.length - b.length)[0])
 }
 
-/**
- * Phrases he keeps leaning on, whole.
- *
- * wornWords counts single stems, so "settle my legs" eleven times in an
- * afternoon only ever registered as "settle" and "leg" creeping toward
- * their separate thresholds, and usually not reaching them inside the
- * window. A repeated PHRASE is a stronger tell than a repeated word, so
- * the bar is lower: twice in the window is already a tic.
- *
- * Stemmed n-grams (2 and 3 words), one vote per reason, grams that are
- * all stopwords skipped. Reports a real surface form, and drops a bigram
- * that only exists inside a reported longer phrase.
- */
+// whole phrases. "settle my legs" 11 times in an afternoon never tripped
+// wornWords, settle and leg each stayed under the bar. a repeated phrase is a
+// louder tell so twice is enough. stemmed 2 and 3 grams, a bigram inside a
+// longer hit gets dropped
 export function wornPhrases(reasons, { minCount = 2, max = 4 } = {}) {
     const groups = new Map()
     for (const r of reasons || []) {
@@ -126,20 +102,8 @@ export function wornPhrases(reasons, { minCount = 2, max = 4 } = {}) {
     return out.map((o) => o.surface)
 }
 
-/**
- * Words he keeps STARTING with.
- *
- * wornWords only sees content words, so it never noticed that six of eight
- * consecutive reasons opened with "need": "need a quick bite...", "need
- * something to quiet...", "need the pond's ripple...". The vocabulary was
- * varied enough to pass while the sentences were all the same sentence. A
- * reader clocks that shape long before they clock a repeated noun.
- *
- * @param {string[]} reasons
- * @param {object} [opts]
- * @param {number} [opts.minCount=3] how many repeats before it counts as a tic
- * @returns {string[]} openers to avoid, commonest first
- */
+// first word of each reason. 6 of 8 in a row opened with "need" and
+// wornWords never saw it, "need" is a stopword. commonest first
 export function wornOpeners(reasons, { minCount = 3 } = {}) {
     const counts = new Map()
     for (const r of reasons || []) {

@@ -1,17 +1,11 @@
-// long-running soak test for 3aiii.
+// soak test for 3aiii. cycles env phases for hours, polls status + memory,
+// catches sleep cycles, writes a report to test-results/soak-*.md
 //
-// cycles through env phases for hours, watches internal state, tracks sleep
-// cycles, memory evolution, dumps a report at the end.
-//
-// usage:
-//   1. start the agent with a short sleep cycle:
-//      ACTIVE_HOURS_BEFORE_SLEEP=0.5 SLEEP_DURATION_MINUTES=5 SERVER_URL=ws://<mac-ip>:4001 node src/index.js
-//   2. run this on the Mac:
-//      node soak-test.js                    # default 2 hours
-//      SOAK_HOURS=4 node soak-test.js       # custom duration
-//
-// the test cycles through env phases and logs everything.
-// reports saved to test-results/soak-*.md
+// start the agent with a short sleep cycle first:
+//   ACTIVE_HOURS_BEFORE_SLEEP=0.5 SLEEP_DURATION_MINUTES=5 SERVER_URL=ws://<mac-ip>:4001 node src/index.js
+// then on the mac:
+//   node soak-test.js                    # 2h
+//   SOAK_HOURS=4 node soak-test.js
 
 import { WebSocketServer } from 'ws'
 import { mkdirSync, writeFileSync } from 'node:fs'
@@ -21,31 +15,25 @@ const PORT = 4001
 const AGENT_STATUS_URL = process.env.AGENT_STATUS_URL || 'http://victor.local:5000'
 const SOAK_HOURS = parseFloat(process.env.SOAK_HOURS || '2')
 const SOAK_MS = SOAK_HOURS * 60 * 60 * 1000
-const POLL_INTERVAL_MS = 30_000  // poll status every 30s
-const MEMORY_POLL_INTERVAL_MS = 5 * 60_000  // poll memory every 5 min
+const POLL_INTERVAL_MS = 30_000
+const MEMORY_POLL_INTERVAL_MS = 5 * 60_000
 
-// ── Environmental Phases ────────────────────────────────────────────
-// Each phase defines a world state. Phases cycle continuously.
+// phases loop forever. objects come and go on purpose, to see if he keeps
+// talking about stuff that's not there any more (hallucination table in the
+// report). a phase that doesn't set objects keeps the last lot.
 //
-// OBJECT PERSISTENCE TEST DESIGN:
-// Objects deliberately appear and disappear across phases to test whether
-// the agent tracks what's actually present vs what it remembers.
-//
-//   Phase            | Objects present           | Key test
-//   ─────────────────|───────────────────────────|─────────────────────────
-//   Calm exploration | pillar-01                 | Single new object
-//   Populated world  | pillar-01, pond-01, relic | Additions (pillar persists)
-//   Social encounter | (inherits populated)      | No object change
-//   Object removal   | pond-01 only              | pillar-01 + relic REMOVED
-//   Empty world      | (nothing)                 | ALL objects gone
-//   New arrivals     | monolith-01, lantern-01   | Entirely new objects appear
-//   Environmental    | monolith-01               | lantern-01 removed under stress
-//   Recovery         | monolith-01, pillar-01    | pillar-01 RETURNS (was gone since phase 4)
-//   Flourishing      | monolith-01, pillar-01, fountain-01 | New addition
-//   Synth mode       | (n/a — sequencer)         | Context switch
-//   Return to spatial| lantern-01                | Only lantern-01 (monolith+pillar gone)
-//   Boredom test     | (nothing)                 | Completely empty again
-//
+//   calm exploration   pillar-01                          one new thing
+//   populated world    pillar-01, pond-01, relic-01       additions, pillar stays
+//   social encounter   (inherits)                         no change
+//   object removal     pond-01                            pillar + relic gone
+//   empty world        nothing                            everything gone
+//   new arrivals       monolith-01, lantern-01            all new
+//   env stress         monolith-01                        lantern goes under stress
+//   recovery           monolith-01, pillar-01             pillar back, gone since phase 4
+//   flourishing        monolith-01, pillar-01, fountain-01
+//   synth mode         n/a, sequencer                     context switch
+//   back to spatial    lantern-01                         monolith + pillar gone
+//   boredom            nothing                            empty again
 const phases = [
     {
         name: 'Calm exploration',
@@ -79,7 +67,7 @@ const phases = [
         name: 'Social encounter',
         durationMin: 5,
         setup: (world) => {
-            // Inherits objects from populated world — no change
+            // objects carry over from populated world
             world.pendingSpeech = [{ agentId: 'scout', message: 'I found something strange near the pond' }]
             world.speechEvent = { event: 'agent_speech', agentId: 'scout', message: 'I found something strange near the pond' }
         },
@@ -88,7 +76,7 @@ const phases = [
         name: 'Object removal test',
         durationMin: 8,
         setup: (world) => {
-            // pillar-01 and relic-01 REMOVED — only pond-01 remains
+            // pillar + relic gone, pond only
             world.objects = [
                 { id: 'pond-01', type: 'pond', interactive: true, pos: { x: -15, y: 0, z: 8 } },
             ]
@@ -98,10 +86,9 @@ const phases = [
         },
     },
     {
-        name: 'Empty world — removal test',
+        name: 'Empty world - removal test',
         durationMin: 6,
         setup: (world) => {
-            // ALL objects removed
             world.objects = []
             world.signals = { vitality: 0.35, resonance: 0.1, warmth: 0.3, abundance: 0.3 }
             world.agents = []
@@ -112,7 +99,7 @@ const phases = [
         name: 'New arrivals',
         durationMin: 8,
         setup: (world) => {
-            // Entirely new objects — nothing from before
+            // nothing from before
             world.objects = [
                 { id: 'monolith-01', type: 'monolith', interactive: true, pos: { x: -8, y: 0, z: 12 } },
                 { id: 'lantern-01', type: 'lantern', interactive: false, pos: { x: 20, y: 0, z: -3 } },
@@ -127,7 +114,7 @@ const phases = [
         name: 'Environmental stress',
         durationMin: 10,
         setup: (world) => {
-            // lantern-01 removed under stress — only monolith remains
+            // lantern goes, monolith stays
             world.objects = [
                 { id: 'monolith-01', type: 'monolith', interactive: true, pos: { x: -8, y: 0, z: 12 } },
             ]
@@ -140,7 +127,7 @@ const phases = [
         name: 'Recovery',
         durationMin: 8,
         setup: (world) => {
-            // pillar-01 RETURNS after being gone since phase 4
+            // pillar comes back, its been gone since phase 4
             world.signals = { vitality: 0.6, resonance: 0.3, warmth: 0.55, abundance: 0.55 }
             world.objects = [
                 { id: 'monolith-01', type: 'monolith', interactive: true, pos: { x: -8, y: 0, z: 12 } },
@@ -165,12 +152,12 @@ const phases = [
         },
     },
     {
-        name: 'Social — second voice',
+        name: 'Social - second voice',
         durationMin: 5,
         setup: (world) => {
-            // Inherits objects from flourishing
-            world.pendingSpeech = [{ agentId: 'oracle', message: 'the resonance is shifting — can you feel it?' }]
-            world.speechEvent = { event: 'agent_speech', agentId: 'oracle', message: 'the resonance is shifting — can you feel it?' }
+            // keeps flourishing's objects
+            world.pendingSpeech = [{ agentId: 'oracle', message: 'the resonance is shifting - can you feel it?' }]
+            world.speechEvent = { event: 'agent_speech', agentId: 'oracle', message: 'the resonance is shifting - can you feel it?' }
         },
     },
     {
@@ -188,7 +175,7 @@ const phases = [
         name: 'Return to spatial',
         durationMin: 5,
         setup: (world) => {
-            // Only lantern-01 — monolith and pillar are gone
+            // just the lantern
             world.synthMode = false
             world.objects = [
                 { id: 'lantern-01', type: 'lantern', interactive: false, pos: { x: 20, y: 0, z: -3 } },
@@ -198,7 +185,7 @@ const phases = [
         },
     },
     {
-        name: 'Empty world — boredom test',
+        name: 'Empty world - boredom test',
         durationMin: 6,
         setup: (world) => {
             world.objects = []
@@ -209,10 +196,8 @@ const phases = [
     },
 ]
 
-// Total cycle time
 const CYCLE_MINUTES = phases.reduce((s, p) => s + p.durationMin, 0)
 
-// ── World State ─────────────────────────────────────────────────────
 let tickCount = 0
 let agentId = null
 let agentPos = { x: 0, y: 0, z: 0 }
@@ -269,45 +254,41 @@ function buildObservation() {
     return obs
 }
 
-// ── Data Collection ─────────────────────────────────────────────────
 const data = {
     startTime: null,
     endTime: null,
     durationHours: SOAK_HOURS,
-    phases: [],          // phase transitions
-    statusPolls: [],     // periodic status snapshots
-    memorySnapshots: [], // periodic memory reads
-    sleepEvents: [],     // sleep/wake transitions
-    actions: [],         // all agent actions
-    speeches: [],        // all speech content
+    phases: [],
+    statusPolls: [],
+    memorySnapshots: [], // full text here, trimmed when the raw json is saved
+    sleepEvents: [],
+    actions: [],
+    speeches: [],
     errors: [],
 }
 
 let currentPhase = null
 let wasSleeping = false
 
-// ── Object presence map (for hallucination detection) ────────────────
-// Simulate phase progression to determine which objects exist in each phase.
-// Phases that don't set world.objects inherit from the previous phase.
+// what's actually present in each phase, for the hallucination check.
+// easiest way is to run the setups in order on a scratch world
 const PHASE_OBJECTS = {}
 {
     const simWorld = { objects: [], signals: null, synthMode: false, agents: [], pendingSpeech: [], speechEvent: null }
     for (const p of phases) {
         const prevObjects = [...simWorld.objects]
         p.setup(simWorld)
-        // If setup didn't touch objects, they stay as-is (inherited)
         PHASE_OBJECTS[p.name] = new Set(simWorld.objects.map(o => o.id))
     }
 }
-// All object IDs used across any phase (for keyword matching)
 const ALL_OBJECT_IDS = [...new Set(Object.values(PHASE_OBJECTS).flatMap(s => [...s]))]
-// Also include base names without -01 suffix for fuzzy matching
+// bare names too, he says "the pillar" not "pillar-01"
 const ALL_OBJECT_KEYWORDS = [...new Set(ALL_OBJECT_IDS.flatMap(id => {
     const base = id.replace(/-\d+$/, '')
     return [id, base]
 }))]
 
-// ── HTTP Helpers ────────────────────────────────────────────────────
+// never throws, null on error or bad json
 function httpGet(path) {
     return new Promise((resolve) => {
         const url = new URL(AGENT_STATUS_URL + path)
@@ -343,7 +324,6 @@ async function pollStatus() {
     }
     data.statusPolls.push(poll)
 
-    // Detect sleep transitions
     if (status.sleeping && !wasSleeping) {
         const evt = { type: 'sleep_start', time: poll.time, tick: tickCount, phase: currentPhase?.name }
         data.sleepEvents.push(evt)
@@ -357,7 +337,6 @@ async function pollStatus() {
         wasSleeping = false
     }
 
-    // Compact log line
     const sleepTag = status.sleeping ? ' [SLEEPING]' : ''
     console.log(`  [${new Date().toLocaleTimeString()}] v=${is.mood?.toFixed(2)} a=${is.energy?.toFixed(2)} hb=${status.heartbeatMs}ms "${is.description || ''}"${sleepTag}`)
 
@@ -380,7 +359,6 @@ async function pollMemory() {
     console.log(`  📝 Memory: ${memLines} entries, Skills: ${skillLines} entries`)
 }
 
-// ── WebSocket Server ────────────────────────────────────────────────
 const wss = new WebSocketServer({ port: PORT })
 let activeSocket = null
 
@@ -465,7 +443,6 @@ wss.on('connection', (ws) => {
     })
 })
 
-// ── Phase Cycling ───────────────────────────────────────────────────
 let phaseIndex = 0
 let phaseTimer = null
 let statusTimer = null
@@ -491,7 +468,6 @@ function advancePhase() {
     phase.setup(world)
     phaseIndex++
 
-    // Schedule next phase
     phaseTimer = setTimeout(advancePhase, phase.durationMin * 60 * 1000)
 }
 
@@ -501,27 +477,24 @@ function startSoak() {
     data.startTime = new Date().toISOString()
 
     console.log(`\n${'='.repeat(60)}`)
-    console.log(`  SOAK TEST STARTED — ${SOAK_HOURS}h (${new Date().toLocaleTimeString()})`)
+    console.log(`  SOAK TEST STARTED - ${SOAK_HOURS}h (${new Date().toLocaleTimeString()})`)
     console.log(`${'='.repeat(60)}`)
 
-    // Start phase cycling
     advancePhase()
 
-    // Start periodic polling
     statusTimer = setInterval(pollStatus, POLL_INTERVAL_MS)
     memoryTimer = setInterval(pollMemory, MEMORY_POLL_INTERVAL_MS)
 
-    // Initial polls
+    // first polls early, otherwise nothing shows for 30s
     setTimeout(pollStatus, 3000)
     setTimeout(pollMemory, 10000)
 
-    // End timer
     soakEndTimer = setTimeout(endSoak, SOAK_MS)
 }
 
 function endSoak() {
     console.log(`\n${'='.repeat(60)}`)
-    console.log(`  SOAK TEST COMPLETE — ${tickCount} ticks`)
+    console.log(`  SOAK TEST COMPLETE - ${tickCount} ticks`)
     console.log(`${'='.repeat(60)}\n`)
 
     clearTimeout(phaseTimer)
@@ -530,19 +503,17 @@ function endSoak() {
 
     data.endTime = new Date().toISOString()
 
-    // Final polls
     Promise.all([pollStatus(), pollMemory()]).then(() => {
         generateReport()
         setTimeout(() => process.exit(0), 3000)
     })
 }
 
-// ── Report Generator ────────────────────────────────────────────────
 function generateReport() {
     mkdirSync('test-results', { recursive: true })
     const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
 
-    // Save raw data (without full memory snapshots to keep file manageable)
+    // memory snapshots cut to 500 chars or the raw file gets silly
     const rawData = { ...data }
     rawData.memorySnapshots = rawData.memorySnapshots.map(s => ({
         ...s,
@@ -552,7 +523,7 @@ function generateReport() {
     }))
     writeFileSync(`test-results/soak-${ts}-raw.json`, JSON.stringify(rawData, null, 2))
 
-    // Save last memory snapshot in full
+    // last one in full though
     if (data.memorySnapshots.length > 0) {
         const last = data.memorySnapshots[data.memorySnapshots.length - 1]
         writeFileSync(`test-results/soak-${ts}-memory-final.md`, last.memory || '(empty)')
@@ -560,7 +531,7 @@ function generateReport() {
     }
 
     const lines = []
-    lines.push(`# Soak Test Report — ${ts}`)
+    lines.push(`# Soak Test Report - ${ts}`)
     lines.push(``)
     lines.push(`Duration: ${SOAK_HOURS} hours`)
     lines.push(`Start: ${data.startTime}`)
@@ -572,7 +543,6 @@ function generateReport() {
     lines.push(`Sleep cycles: ${data.sleepEvents.filter(e => e.type === 'sleep_start').length}`)
     lines.push(``)
 
-    // ── Sleep cycles ──
     lines.push(`## Sleep Cycles`)
     lines.push(``)
     if (data.sleepEvents.length === 0) {
@@ -584,7 +554,6 @@ function generateReport() {
     }
     lines.push(``)
 
-    // ── Phase summary ──
     lines.push(`## Phase Summary`)
     lines.push(``)
     lines.push(`| Phase | Cycle | Start Tick | Actions | Speeches |`)
@@ -596,12 +565,11 @@ function generateReport() {
     }
     lines.push(``)
 
-    // ── Internal state over time (sampled) ──
     lines.push(`## Internal State Trajectory (sampled)`)
     lines.push(``)
     lines.push(`| Time | Phase | Mood | Energy | Heartbeat | Description |`)
     lines.push(`|------|-------|---------|---------|-----------|-------------|`)
-    // Sample every 5th poll to keep report manageable
+    // ~60 rows whatever the length of the run
     const sampleInterval = Math.max(1, Math.floor(data.statusPolls.length / 60))
     for (let i = 0; i < data.statusPolls.length; i += sampleInterval) {
         const p = data.statusPolls[i]
@@ -612,7 +580,6 @@ function generateReport() {
     }
     lines.push(``)
 
-    // ── Action distribution ──
     lines.push(`## Action Distribution`)
     lines.push(``)
     const actionCounts = {}
@@ -625,7 +592,6 @@ function generateReport() {
     }
     lines.push(``)
 
-    // ── Action distribution per phase type ──
     lines.push(`## Actions by Phase Type`)
     lines.push(``)
     const phaseNames = [...new Set(phases.map(p => p.name))]
@@ -639,7 +605,6 @@ function generateReport() {
     }
     lines.push(``)
 
-    // ── Speech samples (first 5 per phase type) ──
     lines.push(`## Speech Samples (first 5 per phase)`)
     lines.push(``)
     for (const phaseName of phaseNames) {
@@ -652,7 +617,7 @@ function generateReport() {
         lines.push(``)
     }
 
-    // ── Object hallucination analysis ──
+    // hallucinations: any mention of an object that isn't in this phase
     lines.push(`## Object Persistence Analysis`)
     lines.push(``)
     lines.push(`Tests whether the agent mentions objects that are NOT present in the current phase.`)
@@ -663,10 +628,8 @@ function generateReport() {
     for (const phaseName of phaseNames) {
         const present = PHASE_OBJECTS[phaseName] || new Set()
         const absent = ALL_OBJECT_KEYWORDS.filter(kw => {
-            // A keyword is "absent" if no present object matches it
             return ![...present].some(id => id === kw || id.replace(/-\d+$/, '') === kw)
         })
-        // Check speeches in this phase for mentions of absent objects
         const phaseSpeech = data.speeches.filter(s => s.phase === phaseName)
         const phaseInteracts = data.actions.filter(a => a.phase === phaseName && a.action === 'interact')
         const refs = []
@@ -700,16 +663,15 @@ function generateReport() {
         lines.push(`These are mentions of objects that were NOT in the agent's current observation:`)
         lines.push(``)
         for (const h of hallucinations.slice(0, 30)) {
-            lines.push(`- [tick ${h.tick}, ${h.phase}] ${h.type}: mentioned "${h.keyword}" — "${h.text}"`)
+            lines.push(`- [tick ${h.tick}, ${h.phase}] ${h.type}: mentioned "${h.keyword}" - "${h.text}"`)
         }
         if (hallucinations.length > 30) lines.push(`... and ${hallucinations.length - 30} more`)
         lines.push(``)
     } else {
-        lines.push(`**No hallucinated object references detected** — the agent correctly avoided mentioning absent objects.`)
+        lines.push(`**No hallucinated object references detected** - the agent correctly avoided mentioning absent objects.`)
         lines.push(``)
     }
 
-    // ── Memory evolution ──
     lines.push(`## Memory Evolution`)
     lines.push(``)
     if (data.memorySnapshots.length > 0) {
@@ -719,15 +681,14 @@ function generateReport() {
         const lastEntries = (last.memory || '').split('\n').filter(l => l.startsWith('- ')).length
         const firstSkills = (first.skills || '').split('\n').filter(l => l.startsWith('- ')).length
         const lastSkills = (last.skills || '').split('\n').filter(l => l.startsWith('- ')).length
-        lines.push(`Memory entries: ${firstEntries} → ${lastEntries}`)
-        lines.push(`Skill entries: ${firstSkills} → ${lastSkills}`)
+        lines.push(`Memory entries: ${firstEntries} -> ${lastEntries}`)
+        lines.push(`Skill entries: ${firstSkills} -> ${lastSkills}`)
         lines.push(`Snapshots taken: ${data.memorySnapshots.length}`)
     } else {
         lines.push(`(no memory snapshots captured)`)
     }
     lines.push(``)
 
-    // ── Failures ──
     const failures = data.actions.filter(a => !a.success)
     if (failures.length > 0) {
         lines.push(`## Action Failures`)
@@ -750,9 +711,9 @@ function generateReport() {
     }
 }
 
-// ── Graceful shutdown ───────────────────────────────────────────────
+// ctrl-c still writes the report
 process.on('SIGINT', () => {
-    console.log('\n\nSoak test interrupted — generating report...')
+    console.log('\n\nSoak test interrupted - generating report...')
     clearTimeout(phaseTimer)
     clearInterval(statusTimer)
     clearInterval(memoryTimer)

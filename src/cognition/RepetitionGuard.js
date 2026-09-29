@@ -23,18 +23,15 @@ export class RepetitionGuard {
         this.maxHistory = config.repetitionHistorySize || 30
         this.logger = logger
         this.history = []
-        this._recentSpeech = []  // recent speech for repetition detection
-        this._targetInteractions = new Map()  // targetId → { count, lastTime }
+        this._recentSpeech = []  // last 20 things he said or reasoned
+        this._targetInteractions = new Map()  // targetId -> { count, lastTime }
     }
 
     // record an action after its chosen
     record(action, params) {
         let target = this._extractTarget(params)
-        // Synthetic targets ('wander', null) are escape hatches, not places.
-        // Recording them let 'wander' become a "dominant target" under
-        // sustained fixation, so the guard started warning the agent to
-        // "stop targeting wander" — fighting its own escape. Treat them as
-        // no-target so they never pollute the cycling/dominance detectors.
+        // wander is the escape hatch, not a place. counting it made wander a
+        // "dominant target" and the guard told him to stop wandering
         if (target === 'wander') target = null
         this.history.push({
             action,
@@ -45,7 +42,7 @@ export class RepetitionGuard {
         if (this.history.length > this.maxHistory) {
             this.history.shift()
         }
-        // target interactions for exploration context
+        // for explorationContext()
         if (target) {
             const entry = this._targetInteractions.get(target)
             if (entry) {
@@ -55,16 +52,9 @@ export class RepetitionGuard {
                 this._targetInteractions.set(target, { count: 1, lastTime: Date.now() })
             }
         }
-        // Everything he says, which is almost entirely his reasons.
-        //
-        // This used to record `speak` messages only. He has produced ZERO
-        // speak actions in 210,240 ticks, so the three language checks below
-        // ("you already said that", "your lines keep starting the same way",
-        // "your wording is narrowing") have never fired once. They are the
-        // guards built specifically to stop repetitive, uncreative output,
-        // they work, and they were pointed at a channel that has never
-        // carried a single message. Meanwhile the diary is made entirely of
-        // reasons, which they never saw.
+        // reasons count as speech. was speak-only, and he's done zero speak
+        // actions in 210k ticks, so the language checks below never once fired
+        // while the diary is made entirely of reasons
         const said = action === 'speak' ? params?.message : params?.reason
         if (said && String(said).trim()) {
             this._recentSpeech.push(String(said).toLowerCase().trim())
@@ -72,29 +62,27 @@ export class RepetitionGuard {
         }
     }
 
-    // check for repetition patterns. returns array of warnings or null
+    // warning strings, or null
     check() {
         const found = this.checkDetailed()
         return found ? found.map(w => w.text) : null
     }
 
-    // The same warnings with a kind on each. Any warning sends the tick to
-    // the quality tier, and on 25 Sep that was two thirds of his decisions,
-    // so the decision log needs to say which ones: the checks on what he
-    // did, or the four at the end that read his own reasons.
+    // same warnings with a kind on each, for the decision log. any warning
+    // bumps the tick to the quality tier (2/3 of decisions on 25 Sep)
     checkDetailed() {
         if (this.history.length < 3) return null
 
         const warnings = []
         const warn = (kind, text) => warnings.push({ kind, text })
 
-        // 1. same action 3+ times consecutively
+        // same action 3x running
         const last3 = this.history.slice(-3)
         if (last3.every(h => h.action === last3[0].action)) {
             warn('same_action_x3', `You have done "${last3[0].action}" three times in a row. Try something different.`)
         }
 
-        // 2. one action dominates (>60% of recent history)
+        // one action over 60% of history
         const counts = {}
         for (const h of this.history) {
             counts[h.action] = (counts[h.action] || 0) + 1
@@ -108,8 +96,7 @@ export class RepetitionGuard {
             }
         }
 
-        // 2b. same action+target combo dominates (>30% of recent history).
-        // environment-agnostic — works for inspect(shiny_01), set_step(step_5), whatever.
+        // action+target combo over 30%. inspect(shiny_01), set_step(step_5), whatever
         const comboCounts = {}
         for (const h of this.history) {
             if (h.target) {
@@ -127,7 +114,7 @@ export class RepetitionGuard {
             }
         }
 
-        // 2c. same target in 3+ of last 5 actions (catches spread-out fixation)
+        // same target 3 of last 5, the spread out version
         const last5targets = this.history.slice(-5).map(h => h.target).filter(Boolean)
         const target5counts = {}
         for (const t of last5targets) target5counts[t] = (target5counts[t] || 0) + 1
@@ -138,7 +125,7 @@ export class RepetitionGuard {
             }
         }
 
-        // 3. exact same action+params repeated 3+ times in last 5
+        // identical action+params 3 of last 5
         const last5keys = this.history.slice(-5).map(h => h.key)
         const keyCounts = {}
         for (const k of last5keys) {
@@ -151,15 +138,15 @@ export class RepetitionGuard {
             }
         }
 
-        // 4. alternating pattern (A→B→A→B or A→B→C→A→B→C)
+        // A,B,A,B or A,B,C,A,B,C
         const altWarning = this._checkAlternating()
         if (altWarning) warn('cycle', altWarning)
 
-        // 4b. target-level cycling. catches "shiny→food→shiny→food" regardless of action
+        // same on targets, shiny/food/shiny/food whatever the action
         const targetAltWarning = this._checkTargetCycling()
         if (targetAltWarning) warn('target_cycling', targetAltWarning)
 
-        // 5. speech frequency — cap around 30% of recent actions
+        // talking too much
         if (total >= 5 && counts['speak']) {
             const speechPct = counts['speak'] / total
             if (speechPct > 0.35) {
@@ -167,18 +154,17 @@ export class RepetitionGuard {
             }
         }
 
-        // 6. speech repetition. fuzzy keyword matching to catch paraphrased repeats
+        // repeats, keyword overlap catches the paraphrased ones
         if (this._recentSpeech.length >= 2) {
             const last = this._recentSpeech[this._recentSpeech.length - 1]
             const lastKw = this._extractKeywords(last)
 
-            // exact match
             const exactRepeats = this._recentSpeech.filter(s => s === last).length
             if (exactRepeats >= 2) {
                 warn('said_before', `You already said "${last}" recently. Say something completely different.`)
             }
 
-            // fuzzy — 60% keyword overlap = "same idea"
+            // 60% keyword overlap = same idea
             if (lastKw.size >= 2) {
                 const fuzzyRepeats = this._recentSpeech.slice(0, -1).filter(s => {
                     const kw = this._extractKeywords(s)
@@ -191,7 +177,7 @@ export class RepetitionGuard {
                 }
             }
 
-            // flag generic openings (same 3+ starting words)
+            // same first 3 words
             const lastWords = last.split(/\s+/).slice(0, 3).join(' ')
             if (lastWords.length > 5) {
                 const similar = this._recentSpeech.filter(s => s.startsWith(lastWords)).length
@@ -201,19 +187,14 @@ export class RepetitionGuard {
             }
         }
 
-        // 7. vocabulary rut. Distinct from the phrase repetition above: a
-        // single content word recurring across MANY recent speeches (gnaws,
-        // pulse, dare, hum…) is what makes the voice feel stuck even when each
-        // line is otherwise "new". _extractKeywords already drops stop-words
-        // and sub-3-char tokens, so a word landing in a quarter of recent
-        // speeches is a genuine lexical rut, not grammar. Checked generally
-        // (not against the persona's vocab list) because the worst ruts are
-        // EMERGENT words the persona never declared.
+        // vocab rut. one word turning up in a quarter of recent lines (gnaws,
+        // pulse, dare, hum) reads stuck even when every line is new. not checked
+        // against the persona vocab, the worst ruts are words he picked up himself
         if (this._recentSpeech.length >= 6) {
             const rutThreshold = Math.max(3, Math.ceil(this._recentSpeech.length * 0.25))
             const speechFreq = new Map()
             for (const s of this._recentSpeech) {
-                for (const w of this._extractKeywords(s)) {  // a Set → counts once per speech
+                for (const w of this._extractKeywords(s)) {  // Set, so once per line
                     speechFreq.set(w, (speechFreq.get(w) || 0) + 1)
                 }
             }
@@ -230,9 +211,8 @@ export class RepetitionGuard {
         return warnings.length > 0 ? warnings : null
     }
 
-    // score how creative/unique a speech is compared to recent speech.
-    // 0.0 = exact repeat, 1.0 = completely novel.
-    // call BEFORE record() so the message isnt compared against itself.
+    // 0 = exact repeat, 1 = new. call before record() or it gets compared
+    // against itself
     scoreSpeech(message) {
         if (this._recentSpeech.length === 0) return 1.0
 
@@ -244,7 +224,6 @@ export class RepetitionGuard {
 
         let maxOverlap = 0
         for (const prev of this._recentSpeech) {
-            // exact match first
             if (prev === msgLower) return 0.0
 
             const prevKw = this._extractKeywords(prev)
@@ -257,20 +236,19 @@ export class RepetitionGuard {
         return Math.max(0, 1.0 - maxOverlap)
     }
 
-    // action diversity score (0 = all same, 1 = all different). used by adaptive heartbeat
+    // 0 = all same, 1 = all different. adaptive heartbeat reads this
     diversityScore() {
         if (this.history.length < 2) return 1
         const unique = new Set(this.history.map(h => h.action))
         return unique.size / this.history.length
     }
 
-    // extract target from action params (works in any env)
+    // whichever id field the env happens to use
     _extractTarget(params) {
         if (!params) return null
         return params.target || params.entityId || params.npcId || params.spotId || params.nestId || null
     }
 
-    // target diversity score (0 = all same target, 1 = all different)
     targetDiversityScore() {
         const targets = this.history.map(h => h.target).filter(Boolean)
         if (targets.length < 2) return 1
@@ -278,9 +256,8 @@ export class RepetitionGuard {
         return unique.size / targets.length
     }
 
-    // build exploration context for PromptBuilder.
-    // env-agnostic: shows whats been hammered vs barely touched.
-    // advisory language only — the agent decides based on its needs.
+    // for PromptBuilder: whats been hammered vs barely touched.
+    // advisory only, he still decides
     explorationContext(currentNearbyIds) {
         if (this._targetInteractions.size === 0) return null
 
@@ -288,7 +265,6 @@ export class RepetitionGuard {
         const wellExplored = []
         const barelyExplored = []
 
-        // check nearby entities against interaction counts
         const nearbySet = new Set(currentNearbyIds || [])
 
         for (const [target, data] of this._targetInteractions) {
@@ -317,22 +293,17 @@ export class RepetitionGuard {
         return parts.join('\n')
     }
 
-    // is a specific action+target combo fixated in the recent window?
-    // env-agnostic: works for inspect(shiny_01), set_step(step_5), etc.
+    // action+target combo at 40%+ of the window
     isFixated(action, target) {
         if (this.history.length < 10) return false
         const combo = `${action}:${target}`
         const recent = this.history.slice(-this.maxHistory)
         const count = recent.filter(h => `${h.action}:${h.target}` === combo).length
-        // fixated if same combo is 40%+ of recent history
         return count / recent.length >= 0.4
     }
 
-    // Target-only fixation: the SAME target across ANY actions. Catches the
-    // case the exact-combo isFixated misses — e.g. a camera spot hit
-    // relentlessly via inspect(spot) + move_to(spot) + wait, where the
-    // target dominates but no single action:target combo crosses 40%. This
-    // was the operator's visible "only stares at cameras" fixation.
+    // same target accross any action. inspect(spot) + move_to(spot) + wait
+    // never gets one combo to 40%, which was the "only stares at cameras" bug
     isTargetFixated(target) {
         if (!target || target === 'wander') return false
         if (this.history.length < 10) return false
@@ -346,13 +317,12 @@ export class RepetitionGuard {
         return recent.filter(h => h.target === target).length
     }
 
-    // count of a specific action+target combo in the recent window
     comboCount(action, target) {
         const combo = `${action}:${target}`
         return this.history.filter(h => `${h.action}:${h.target}` === combo).length
     }
 
-    // reset exploration counts (called on sleep cycle)
+    // on sleep
     resetExploration() {
         this._targetInteractions.clear()
     }
@@ -367,12 +337,11 @@ export class RepetitionGuard {
         return `${action}:${JSON.stringify(normalized)}`
     }
 
-    // detect alternating/cycling patterns like A→B→A→B or A→B→C→A→B→C
     _checkAlternating() {
         if (this.history.length < 6) return null
         const recent = this.history.slice(-8).map(h => h.action)
 
-        // check cycle lengths 2 and 3
+        // cycles of 2 and 3
         for (const len of [2, 3]) {
             if (recent.length < len * 2) continue
             const tail = recent.slice(-len * 3)  // last 3 cycles worth
@@ -389,26 +358,25 @@ export class RepetitionGuard {
         return null
     }
 
-    // target-level cycling: agent keeps returning to the same target between other actions.
-    // eg shiny_02 → food_01 → shiny_02 → wander → shiny_02
+    // keeps coming back to one target in between other things,
+    // eg shiny_02, food_01, shiny_02, wander, shiny_02
     _checkTargetCycling() {
         if (this.history.length < 6) return null
         const recentTargets = this.history.slice(-10).map(h => h.target).filter(Boolean)
         if (recentTargets.length < 5) return null
 
-        // count how many times the most common target appears
         const counts = {}
         for (const t of recentTargets) counts[t] = (counts[t] || 0) + 1
         const [topTarget, topCount] = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]
 
-        // if one target is 40%+ of last 10 targeted actions, its a cycle
+        // 40%+ of the last 10 targeted actions
         if (topCount >= Math.ceil(recentTargets.length * 0.4)) {
             return `You keep returning to "${topTarget}" between other actions. This is a fixation loop. STOP targeting it entirely and do something unrelated.`
         }
         return null
     }
 
-    // extract meaningful keywords from speech (stop-word removal)
+    // no stop words, nothing under 3 chars
     _extractKeywords(text) {
         const words = text.toLowerCase().replace(/[^a-z\s]/g, '').split(/\s+/).filter(w => w.length > 2)
         return new Set(words.filter(w => !STOP_WORDS.has(w)))

@@ -1,18 +1,16 @@
 import { createServer } from 'node:http'
 
-// HTTP API + SSE event stream.
-// no dependencies, pure node built-ins.
+// little http api + SSE, no deps
 //
-// endpoints:
-//   GET  /status           agent state snapshot (incl internal state)
-//   GET  /memory           all three memory files
-//   POST /memory/remember  inject a memory entry
-//   GET  /logs/today       today's daily log
-//   POST /sleep            trigger sleep cycle now
-//   POST /wake             wake from sleep early
-//   PUT  /persona          hot-swap persona (JSON body)
-//   GET  /metrics          runtime metrics for observability
-//   GET  /events           SSE stream of all runtime events
+//   GET  /status
+//   GET  /memory           memory, skills, tools
+//   POST /memory/remember
+//   GET  /logs/today
+//   POST /sleep
+//   POST /wake
+//   PUT  /persona          hot swap, json body
+//   GET  /metrics
+//   GET  /events           SSE
 
 export class ApiServer {
     constructor(port, state, logger, options = {}) {
@@ -21,7 +19,7 @@ export class ApiServer {
         this.logger = logger
         this.host = options.host || '127.0.0.1'
         this.adminToken = options.adminToken || ''
-        this._sseClients = new Map()  // res → { ping, connectedAt }
+        this._sseClients = new Map()  // res -> { ping, connectedAt }
         this._server = null
     }
 
@@ -32,7 +30,7 @@ export class ApiServer {
         this._server.listen(this.port, this.host, () => {
             this.logger.info(`API listening on http://${this.host}:${this.port}`)
             if (this.host === '0.0.0.0' && !this.adminToken) {
-                this.logger.warn('API bound to 0.0.0.0 with no ADMIN_TOKEN — anyone on the network can control the agent. Set ADMIN_TOKEN.')
+                this.logger.warn('API bound to 0.0.0.0 with no ADMIN_TOKEN - anyone on the network can control the agent. Set ADMIN_TOKEN.')
             }
         })
         this._server.on('error', err => {
@@ -40,9 +38,7 @@ export class ApiServer {
         })
     }
 
-    // Constant-time-ish bearer-token check for mutating routes. When
-    // adminToken is unset (loopback dev), everything is allowed. When set,
-    // POST/PUT routes require `Authorization: Bearer <token>`.
+    // bearer check, constant time-ish. no token set = open (loopback dev)
     _authorised(req) {
         if (!this.adminToken) return true
         const h = req.headers['authorization'] || ''
@@ -63,7 +59,6 @@ export class ApiServer {
         this._server?.close()
     }
 
-    // broadcast an event to all SSE clients
     emit(eventName, data) {
         const payload = `event: ${eventName}\ndata: ${JSON.stringify(data)}\n\n`
         for (const [res, meta] of this._sseClients) {
@@ -77,10 +72,8 @@ export class ApiServer {
         }
     }
 
-    // router
-
     async _route(req, res) {
-        // CORS for local dashboard access
+        // for the local dashboard
         res.setHeader('Access-Control-Allow-Origin', '*')
         res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS')
         res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
@@ -93,10 +86,9 @@ export class ApiServer {
         const url = new URL(req.url, `http://localhost:${this.port}`)
         const path = url.pathname
 
-        // Mutating routes require auth when ADMIN_TOKEN is set. GET reads
-        // (status/memory/metrics/events) stay open for the dashboard.
+        // GETs stay open for the dashboard, anything that writes needs the token
         if (req.method !== 'GET' && req.method !== 'OPTIONS' && !this._authorised(req)) {
-            this.logger.warn(`API ${req.method} ${path} rejected — bad/missing admin token`)
+            this.logger.warn(`API ${req.method} ${path} rejected - bad/missing admin token`)
             return this._json(res, 401, { error: 'Unauthorised, Bearer ADMIN_TOKEN required' })
         }
 
@@ -117,8 +109,6 @@ export class ApiServer {
             this._json(res, 500, { error: err.message })
         }
     }
-
-    // handlers
 
     async _getStatus(req, res) {
         const { persona, heartbeat, sleepCycle, workingMemory, socket, internalState } = this.state
@@ -197,9 +187,8 @@ export class ApiServer {
             return this._json(res, 400, { error: 'Persona requires at least { id, name }' })
         }
         this.state.persona = body
-        // rebuild prompt builder with new persona
         this.state.promptBuilder?.setPersona(body)
-        // and the record guard, or a swapped persona keeps the old ban list
+        // memoryFiles too or the old ban list sticks around
         this.state.memoryFiles?.setPersona(body)
         this.emit('persona', { name: body.name, id: body.id })
         this.logger.info(`Persona hot-swapped to: ${body.name}`)
@@ -210,7 +199,6 @@ export class ApiServer {
         const { heartbeat, sleepCycle, workingMemory, internalState, repetitionGuard, memoryFiles, dailyLog } = this.state
         const mem = process.memoryUsage()
 
-        // file sizes
         const [memoryContent, skillsContent, toolsContent] = await Promise.all([
             memoryFiles.readMemory(),
             memoryFiles.readSkills(),
@@ -223,36 +211,29 @@ export class ApiServer {
             tickCount: heartbeat?.tickCount || 0,
             heartbeatMs: heartbeat?.currentIntervalMs || null,
             sleeping: sleepCycle?.isSleeping() || false,
-            // emotional state
             mood: internalState?.mood || 0,
             energy: internalState?.energy || 0,
-            // memory sizes (bytes)
+            // chars really, near enough bytes
             fileSizes: {
                 memory: memoryContent.length,
                 skills: skillsContent.length,
                 tools: toolsContent.length,
             },
-            // buffer utilization
             buffers: {
                 workingMemory: workingMemory?.events?.length || 0,
                 workingMemoryMax: workingMemory?.maxSize || 0,
                 repetitionHistory: repetitionGuard?.history?.length || 0,
                 logBuffer: dailyLog?._buffer?.length || 0,
             },
-            // action diversity
             actionDiversity: repetitionGuard?.diversityScore() || 0,
-            // tier distribution (cost observability)
+            // where the money goes
             tierCounts: this.state.think?.llm?.tierCounts || { skip: 0, fast: 0, quality: 0 },
-            // THE health number that matters: rolling fraction of recent
-            // generate() calls an LLM actually answered (vs heuristic
-            // fallback). 1.0 = healthy; low = the brain is running dark.
+            // the one to watch. share of recent calls a model actually
+            // answered, 1.0 is fine, low means hes running on the fallback
             llmSuccessRate: this.state.think?.llm?.recentSuccessRate?.() ?? null,
             ollamaBreakerOpen: (this.state.think?.llm?._ollamaBreakerUntil || 0) > Date.now(),
-            // prompt size (last tick)
             lastPromptChars: this.state.think?._lastPromptChars || 0,
-            // SSE clients
             sseClients: this._sseClients.size,
-            // node heap
             heapUsedMB: Math.round(mem.heapUsed / 1024 / 1024 * 10) / 10,
             heapTotalMB: Math.round(mem.heapTotal / 1024 / 1024 * 10) / 10,
             rssMB: Math.round(mem.rss / 1024 / 1024 * 10) / 10,
@@ -267,7 +248,6 @@ export class ApiServer {
             'X-Accel-Buffering': 'no',
         })
 
-        // send current status on connect
         const { persona, sleepCycle, internalState } = this.state
         res.write(`event: connected\ndata: ${JSON.stringify({
             agent: persona?.name,
@@ -281,11 +261,10 @@ export class ApiServer {
             ping: null,
         }
 
-        // heartbeat ping every 15s. also checks for stale connections
+        // ping every 15s, and drop anyone we havent written to in 5 min
         meta.ping = setInterval(() => {
-            // remove stale clients (no successful write in 5 min)
             if (Date.now() - meta.lastWrite > 5 * 60 * 1000) {
-                this.logger.info('SSE client stale — removing')
+                this.logger.info('SSE client stale - removing')
                 clearInterval(meta.ping)
                 this._sseClients.delete(res)
                 try { res.end() } catch {}
@@ -308,8 +287,6 @@ export class ApiServer {
             this.logger.info(`SSE client disconnected (total: ${this._sseClients.size})`)
         })
     }
-
-    // helpers
 
     _json(res, status, body) {
         res.writeHead(status, { 'Content-Type': 'application/json' })

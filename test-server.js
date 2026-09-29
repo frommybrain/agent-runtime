@@ -1,20 +1,16 @@
-// minimal test env server for validating 3aiii v0.2.
+// hand-driven env server for poking 3aiii v0.2. speaks the ws protocol
+// (WELCOME/IDENTIFY/OBSERVE/ACT/WORLD_EVENT), every message both ways goes
+// to test-logs/<timestamp>.jsonl
 //
-// speaks the agent WebSocket protocol (WELCOME/IDENTIFY/OBSERVE/ACT/WORLD_EVENT).
-// inject changes via keyboard to test each cognitive capability.
+// node test-server.js, then point the agent at it: SERVER_URL=ws://<mac-ip>:4001
 //
-// all messages (both directions) logged to test-logs/YYYY-MM-DD_HH-MM-SS.jsonl.
-//
-// usage: node test-server.js
-// then start the agent pointing at this server: SERVER_URL=ws://<mac-ip>:4001
-//
-// keyboard controls (press key + Enter):
-//   o  add a new interactive object ("terminal-01")
-//   r  remove the object
-//   s  send a speech event from a stranger
-//   c  toggle cosmology signals (resonance/vitality)
-//   f  next action will fail
-//   x  send a non-spatial observation (synth/sequencer)
+// key + enter:
+//   o  add terminal-01 (then random artifacts)
+//   r  remove last object
+//   s  stranger says something
+//   c  cosmology signals on/off
+//   f  fail the next action
+//   x  synth/spatial toggle
 //   q  quit
 
 import { WebSocketServer } from 'ws'
@@ -24,7 +20,6 @@ import { request } from 'node:http'
 
 const PORT = 4001
 
-// logging
 mkdirSync('test-logs', { recursive: true })
 const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
 const logFile = `test-logs/${timestamp}.jsonl`
@@ -33,17 +28,17 @@ const logStream = createWriteStream(logFile, { flags: 'a' })
 function log(direction, type, data) {
     const entry = {
         time: new Date().toISOString(),
-        dir: direction,  // 'in' (from agent), 'out' (to agent), or 'sys' (internal)
+        dir: direction,  // in / out / sys
         type,
         data,
     }
     logStream.write(JSON.stringify(entry) + '\n')
-    const prefix = direction === 'in' ? '← AGENT' : direction === 'out' ? '→ AGENT' : '  SYS  '
+    const prefix = direction === 'in' ? '<- AGENT' : direction === 'out' ? '-> AGENT' : '  SYS  '
     const summary = typeof data === 'string' ? data : JSON.stringify(data).slice(0, 120)
     console.log(`[${entry.time.split('T')[1].split('.')[0]}] ${prefix} ${type}: ${summary}`)
 }
 
-// world state (mutable via keyboard)
+// all of this gets poked from the keyboard
 let tickCount = 0
 let agentId = null
 let agentPos = { x: 0, y: 0, z: 0 }
@@ -52,9 +47,9 @@ let useSynthMode = false
 
 const worldState = {
     objects: [],
-    signals: null,    // null = no cosmology, object = cosmology active
-    agents: [],       // other agents nearby
-    pendingSpeech: [], // speech events queued for next observation
+    signals: null,    // null means cosmology off
+    agents: [],
+    pendingSpeech: [], // drained into the next observation
 }
 
 function buildObservation() {
@@ -77,17 +72,16 @@ function buildObservation() {
             { name: 'speak', params: 'message', description: 'Say something' },
             { name: 'wait', description: 'Do nothing this tick' },
         ],
-        recentSpeech: worldState.pendingSpeech.splice(0),  // drain pending speech into observation
+        recentSpeech: worldState.pendingSpeech.splice(0),
     }
 
-    // add interact action if there are interactive objects
+    // only offer interact when there's something to interact with
     if (worldState.objects.some(o => o.interactive)) {
         obs.available_actions.push(
             { name: 'interact', params: 'target', description: 'Interact with a nearby object' }
         )
     }
 
-    // add cosmology signals if active
     if (worldState.signals) {
         obs.signals = { ...worldState.signals }
     }
@@ -112,7 +106,6 @@ function buildSynthObservation() {
     }
 }
 
-// WebSocket server
 const wss = new WebSocketServer({ port: PORT })
 let activeSocket = null
 
@@ -120,13 +113,13 @@ wss.on('listening', () => {
     console.log(`\n🧪 Test environment server running on ws://0.0.0.0:${PORT}`)
     console.log(`📝 Logging to ${logFile}`)
     console.log(`\nKeyboard controls:`)
-    console.log(`  o  — add interactive object`)
-    console.log(`  r  — remove object`)
-    console.log(`  s  — send speech from stranger`)
-    console.log(`  c  — toggle cosmology signals`)
-    console.log(`  f  — next action will fail`)
-    console.log(`  x  — toggle synth/spatial mode`)
-    console.log(`  q  — quit\n`)
+    console.log(`  o  - add interactive object`)
+    console.log(`  r  - remove object`)
+    console.log(`  s  - send speech from stranger`)
+    console.log(`  c  - toggle cosmology signals`)
+    console.log(`  f  - next action will fail`)
+    console.log(`  x  - toggle synth/spatial mode`)
+    console.log(`  q  - quit\n`)
     log('sys', 'SERVER_STARTED', { port: PORT })
 })
 
@@ -134,7 +127,6 @@ wss.on('connection', (ws) => {
     activeSocket = ws
     log('sys', 'AGENT_CONNECTED', {})
 
-    // send WELCOME
     send(ws, { type: 'WELCOME', serverName: 'test-environment' })
 
     ws.on('message', (raw) => {
@@ -156,7 +148,7 @@ wss.on('connection', (ws) => {
                 const obs = buildObservation()
                 send(ws, { type: 'OBSERVATION', data: obs })
                 log('sys', 'TICK', { tick: tickCount, objects: worldState.objects.length, signals: !!worldState.signals, mode: useSynthMode ? 'synth' : 'spatial' })
-                // poll agent /status every 5 ticks to log internal state
+                // /status every 5 ticks so the log has mood/energy in it
                 if (tickCount % 5 === 0) pollAgentStatus()
                 break
 
@@ -171,7 +163,6 @@ wss.on('connection', (ws) => {
                 }
                 nextActionFails = false
 
-                // update agent position if they moved
                 if (success && msg.action === 'move_to' && msg.params) {
                     if (msg.params.x !== undefined) agentPos.x = msg.params.x
                     if (msg.params.z !== undefined) agentPos.z = msg.params.z
@@ -208,7 +199,6 @@ function sendWorldEvent(event) {
     log('out', 'WORLD_EVENT', event)
 }
 
-// status polling
 const AGENT_STATUS_URL = process.env.AGENT_STATUS_URL || 'http://victor.local:5000/status'
 
 function pollAgentStatus() {
@@ -233,11 +223,10 @@ function pollAgentStatus() {
             } catch {}
         })
     })
-    req.on('error', () => {})  // silently ignore if agent unreachable
+    req.on('error', () => {})  // agent not up yet, dont care
     req.end()
 }
 
-// keyboard
 const rl = createInterface({ input: process.stdin, output: process.stdout })
 
 rl.on('line', (input) => {
@@ -255,7 +244,6 @@ rl.on('line', (input) => {
                 console.log('  ✓ Added terminal-01 (interactive)')
                 log('sys', 'WORLD_CHANGE', { action: 'add_object', id: 'terminal-01' })
             } else {
-                // add a second object
                 const id = `shiny-${String(Math.floor(Math.random() * 100)).padStart(2, '0')}`
                 worldState.objects.push({
                     id,
@@ -280,9 +268,9 @@ rl.on('line', (input) => {
 
         case 's': {
             const speechMsg = ['hello there', 'what are you doing?', 'have you seen the artifact?', 'something feels different today'][Math.floor(Math.random() * 4)]
-            // queue into observation so agent can see it
+            // goes in the observation so he can read it, and as a world event
+            // for the energy/social nudge
             worldState.pendingSpeech.push({ agentId: 'stranger', message: speechMsg })
-            // also send as world event for the energy/social nudge
             sendWorldEvent({
                 event: 'agent_speech',
                 agentId: 'stranger',

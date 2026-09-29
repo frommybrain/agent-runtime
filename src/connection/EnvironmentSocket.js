@@ -16,12 +16,12 @@ export class EnvironmentSocket {
         this._pendingObserve = null
         this._pendingAction = null
         this._reconnectTimer = null
-        this._worldEvents = []  // buffer for incoming WORLD_EVENT messages
-        this._reconnectAttempts = 0  // for exponential backoff
+        this._worldEvents = []
+        this._reconnectAttempts = 0
     }
 
     connect() {
-        // clean up previous WebSocket before making a new one (stops listener leak on reconnect)
+        // drop the old socket first or listeners pile up on every reconnect
         if (this.ws) {
             this.ws.removeAllListeners()
             try { this.ws.close() } catch {}
@@ -40,19 +40,16 @@ export class EnvironmentSocket {
             this.ws.on('open', () => {
                 clearTimeout(timeout)
                 this.connected = true
-                this._reconnectAttempts = 0  // reset backoff on successful connection
+                this._reconnectAttempts = 0
                 this.logger.info('Connected')
-                // Liveness heartbeat. Flaky museum wifi can half-open a TCP
-                // connection: the socket stays "connected" while every
-                // observe silently times out, leaving Victor brain-dead but
-                // alive. Ping every 20s; if a pong didn't come back since the
-                // last ping, the link is dead — terminate it to force a clean
-                // reconnect. (ws auto-responds to our ping with a pong.)
+                // museum wifi leaves half open sockets: still "connected", every
+                // observe times out, victor alive but brain dead. ping every 20s,
+                // no pong since the last one = kill it and let reconnect happen
                 this._pongAlive = true
                 clearInterval(this._pingInterval)
                 this._pingInterval = setInterval(() => {
                     if (!this._pongAlive) {
-                        this.logger.warn('No pong since last ping — connection is half-open, terminating')
+                        this.logger.warn('No pong since last ping - connection is half-open, terminating')
                         try { this.ws.terminate() } catch {}
                         return
                     }
@@ -64,11 +61,8 @@ export class EnvironmentSocket {
             this.ws.on('pong', () => { this._pongAlive = true })
 
             this.ws.on('message', (raw, isBinary) => {
-                // Guard the parse + dispatch. A single malformed or binary
-                // frame used to throw synchronously inside the 'message'
-                // emit → uncaught exception → process exit (losing in-RAM
-                // working memory). The server guards the identical parse;
-                // the client must reciprocate.
+                // one bad frame used to throw straight out of the emit and kill
+                // the process, taking working memory with it
                 if (isBinary) return
                 let msg
                 try {
@@ -89,7 +83,7 @@ export class EnvironmentSocket {
                 this.identified = false
                 clearInterval(this._pingInterval)
                 this.logger.warn('Disconnected')
-                // reject pending requests immediately (prevents 5s timeout hang)
+                // fail them now rather than sit out the 5s timeout
                 if (this._pendingObserve) {
                     clearTimeout(this._pendingObserve.timer)
                     this._pendingObserve.reject(new Error('Disconnected'))
@@ -114,14 +108,11 @@ export class EnvironmentSocket {
     _handleMessage(msg) {
         switch (msg.type) {
             case 'WELCOME': {
-                // send IDENTIFY. always include `token` — envs that
-                // dont require auth (ADMIN_TOKEN unset) accept any value.
-                // envs that do (3eyes sim-server in prod) constant-time-compare
-                // against the configured token.
+                // envs without ADMIN_TOKEN ignore the token, prod sim checks it
                 const identifyMsg = { type: 'IDENTIFY', agentId: this.agentId }
                 if (this.adminToken) identifyMsg.token = this.adminToken
                 else if (msg.requiresToken) {
-                    this.logger.warn('Server requires a token but ADMIN_TOKEN env is unset — IDENTIFY will be rejected')
+                    this.logger.warn('Server requires a token but ADMIN_TOKEN env is unset - IDENTIFY will be rejected')
                 }
                 this._send(identifyMsg)
                 break
@@ -138,12 +129,9 @@ export class EnvironmentSocket {
                     this._identifyResolve()
                     this._identifyResolve = null
                 }
-                // tell the world who we've become. the sim's copy of the
-                // persona is frozen at its last deploy; ours evolves twice a
-                // day. every reconnect re-sends so a sim restart (render
-                // redeploys wipe nothing but ram caches) catches up straight
-                // away, and index.js re-pushes on a slow timer to cover
-                // evolutions between reconnects.
+                // the sim's persona is stuck at its last deploy, ours changes
+                // twice a day. resend on every connect so a sim restart catches
+                // up, index.js also repushes on a slow timer
                 this.pushPersona()
                 break
 
@@ -170,7 +158,6 @@ export class EnvironmentSocket {
 
             case 'ERROR':
                 this.logger.error(`Server error: ${msg.message}`)
-                // reject pending requests
                 if (this._pendingObserve) {
                     this._pendingObserve.reject(new Error(msg.message))
                     this._pendingObserve = null
@@ -213,7 +200,7 @@ export class EnvironmentSocket {
         })
     }
 
-    // get and clear buffered world events (speech, agent_joined, etc)
+    // speech, agent_joined etc since last drain
     drainWorldEvents() {
         const events = this._worldEvents.slice()
         this._worldEvents.length = 0
@@ -224,9 +211,8 @@ export class EnvironmentSocket {
         return this.connected && this.identified && this.ws?.readyState === WebSocket.OPEN
     }
 
-    // who to say we are. index.js registers a provider that reads the
-    // persona file fresh each push, so whatever SleepCycle last wrote is
-    // what the sim hears, with no shared object to go stale.
+    // index.js passes a fn that rereads the persona file, so the sim always
+    // gets whatever SleepCycle wrote last
     setPersonaProvider(fn) {
         this._personaProvider = fn
     }
@@ -249,7 +235,7 @@ export class EnvironmentSocket {
 
     _scheduleReconnect() {
         if (this._reconnectTimer) return
-        // exponential backoff: 5s → 10s → 20s → 40s → 60s → ... cap at 5 min
+        // doubles each time, capped at 5 min
         const backoff = Math.min(
             this.reconnectMs * Math.pow(2, this._reconnectAttempts),
             5 * 60 * 1000

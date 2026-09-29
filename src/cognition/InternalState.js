@@ -1,15 +1,7 @@
-// internal state. mood and energy, both -1..1.
-// these arent instructions, theyre sensations. environment shifts them,
-// the persona + LLM decide what to do with it.
-//
-// mood:   neg ↔ pos  (bad ↔ good)
-// energy: low ↔ high (calm ↔ activated)
-//
-// nudged by signals, action outcomes, social events, novelty.
-// high energy moments get encoded harder in memory (salience).
-// LLM sees these as vibes, not commands.
-//
-// v0.3: checkpoints to disk so state survives a crash.
+// mood and energy, both -1..1. sensations not instructions, the world
+// nudges them and the persona + LLM decide what to do about it.
+// high energy moments get remembered harder (salience).
+// checkpointed to disk so a crash doesnt reset him
 
 import { readFile, writeFile, mkdir, rename } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -22,40 +14,38 @@ export class InternalState {
 
         this.decayRate = config.stateDecayRate || 0.1
         this.signalPullRate = config.signalPullRate || 0.15
-        this._history = []  // recent state for sleep reflection
+        this._history = []  // for sleep reflection
         this._maxHistory = 50
         this._checkpointPath = join(config.dataDir, 'state-checkpoint.json')
-        this._prevEntityIds = null    // stability tracking
-        this._stabilityStreak = 0     // how many ticks the same entities have been around
+        this._prevEntityIds = null
+        this._stabilityStreak = 0     // ticks the same entities have been around
     }
 
-    // called each tick with context from the cycle
     // context: { actionResult, deltas, environmentSignals, worldEvents }
     update(context) {
         const before = { mood: this.mood, energy: this.energy }
 
-        // 1. decay toward neutral. nothing lasts forever
+        // decay toward neutral
         this.mood *= (1 - this.decayRate)
         this.energy *= (1 - this.decayRate)
 
-        // 2. action results. asymmetric on purpose: failure stings, success is mild.
-        //    without this, mood decays to 0 and flatlines when theres no signals.
+        // asymmetric on purpose, failure stings and success barely registers.
+        // without it mood decays to 0 and flatlines when theres no signals
         if (context.actionResult) {
             if (!context.actionResult.success) {
                 this._nudgeMood(-0.15)
             } else {
-                // mild positive nudge keeps mood slightly above zero when youre acting
                 this._nudgeMood(0.02)
-                // exploration reward — interact = discovery, should feel good
+                // interacting is discovery, little extra for that
                 if (context.actionResult.action === 'interact') {
                     this._nudgeMood(0.04)
                 }
             }
         }
 
-        // 3. environmental changes. novelty = energy spike, once per tick.
-        //    familiarity discount: if the same entities have been around for 5+ ticks
-        //    delta noise is mostly positional. only appearances/disappearances reset streak.
+        // novelty bumps energy, once per tick. if the same things have been
+        // around 5+ ticks the deltas are mostly position noise so halve it,
+        // unless something actually came or went
         if (context.deltas?.length > 0) {
             const hasStructuralChange = context.deltas.some(
                 d => d.type === 'appeared' || d.type === 'disappeared'
@@ -65,37 +55,33 @@ export class InternalState {
             this._nudgeEnergy(intensity * 0.2 * familiarityDiscount)
         }
 
-        // 4. continuous signals. ATTRACTORS not additive nudges.
-        //    signals pull state toward a target. resonance 0.8 pulls energy to 0.8.
-        //    when resonance drops, energy decays naturally via decay rate.
-        //    stops pinning to ±1.0 from sustained signals.
+        // signals pull toward a target rather than adding. additive nudges
+        // pinned him at +/-1 whenever a signal stayed high
         if (context.environmentSignals) {
             const s = context.environmentSignals
             const pull = this.signalPullRate
 
             if (s.vitality !== undefined) {
-                // vitality drives mood: 0→-0.8, 0.5→0, 1→+0.8
+                // 0 -> -0.8, 0.5 -> 0, 1 -> +0.8
                 const target = (s.vitality - 0.5) * 1.6
                 this.mood += (target - this.mood) * pull
             }
             if (s.resonance !== undefined) {
-                // resonance pulls energy toward its value
                 const target = s.resonance
                 this.energy += (target - this.energy) * pull
             }
             if (s.warmth !== undefined) {
-                // warmth: centered like vitality. 0→-0.3, 0.5→0, 1→+0.3
+                // same shape, +/-0.3
                 const target = (s.warmth - 0.5) * 0.6
                 this.mood += (target - this.mood) * pull * 0.7
             }
             if (s.abundance !== undefined) {
-                // abundance: gentle. 0→-0.2, 0.5→0, 1→+0.2
+                // gentler again
                 const target = (s.abundance - 0.5) * 0.4
                 this.mood += (target - this.mood) * pull * 0.4
             }
-            // arbitrary numeric signals in 0..1 — gently pull energy.
-            // skip large values (eg bpm: 120) since those are data not vibes.
-            // gentle multiplier (0.1) so energy doesnt saturate in signal-rich envs.
+            // any other 0..1 number nudges energy a little. bpm: 120 etc is data, skip.
+            // 0.1 or energy saturates in envs with lots of signals
             for (const [key, val] of Object.entries(s)) {
                 if (['vitality', 'resonance', 'warmth', 'abundance'].includes(key)) continue
                 if (typeof val === 'number' && val >= 0 && val <= 1) {
@@ -104,7 +90,7 @@ export class InternalState {
             }
         }
 
-        // 5. social events. one-time nudges (events, not continuous)
+        // social, one off nudges
         if (context.worldEvents?.length > 0) {
             for (const evt of context.worldEvents) {
                 const data = evt.data || evt
@@ -119,11 +105,9 @@ export class InternalState {
             }
         }
 
-        // clamp
         this.mood = this._clamp(this.mood)
         this.energy = this._clamp(this.energy)
 
-        // record history for reflection
         this._history.push({
             time: Date.now(),
             mood: this.mood,
@@ -131,7 +115,6 @@ export class InternalState {
         })
         if (this._history.length > this._maxHistory) this._history.shift()
 
-        // log significant shifts
         const vDelta = Math.abs(this.mood - before.mood)
         const aDelta = Math.abs(this.energy - before.energy)
         if (vDelta > 0.1 || aDelta > 0.1) {
@@ -139,7 +122,7 @@ export class InternalState {
         }
     }
 
-    // describe state for the LLM — sensation, not instruction
+    // for the prompt
     describe() {
         const v = this.mood
         const a = this.energy
@@ -148,22 +131,10 @@ export class InternalState {
         const aLabel = a > 0.5 ? 'very high' : a > 0.2 ? 'elevated'
             : a > -0.2 ? 'moderate' : a > -0.5 ? 'low' : 'very low'
 
-        // Conditions, not moods.
-        //
-        // This grid used to hand him emotion-summaries: "a subtle unease,
-        // something is slightly off", "a growing frustration", "uneasy, on
-        // edge". He then wrote "I need water to calm this odd unease" and
-        // "unease gnaws, want to see if the junk heap hides something odd",
-        // which is not him having a feeling, it is him paraphrasing his own
-        // prompt. Every vague word we kept objecting to was one we put in
-        // his mouth two lines earlier.
-        //
-        // A bird does not feel a subtle unease. He notices the street is
-        // quieter than it should be, or that his feathers will not sit
-        // right, or that three things in a row have not worked. Those are
-        // things he can point at, so his reasons get something to be about.
-        // Several per cell, picked at random, so the same state does not
-        // produce the same sentence twice running.
+        // conditions, not moods. this used to say "a subtle unease" and he'd
+        // write "calm this odd unease" straight back, paraphrasing the prompt.
+        // give him things he can point at instead (quiet street, feathers wont
+        // sit right). a few per cell so it doesnt repeat
         const pick = (arr) => arr[Math.floor(Math.random() * arr.length)]
 
         let description
@@ -240,7 +211,7 @@ export class InternalState {
         }
     }
 
-    // Map (mood, energy) to a named regime, or null in the broad middle.
+    // named regime at the corners, null in the middle
     _regime(v, a) {
         if (v > 0.3 && a > 0.45) return {
             name: 'MANIC BRIGHT',
@@ -256,9 +227,8 @@ export class InternalState {
         }
         if (v < -0.2 && a > 0.35) return {
             name: 'RATTLED HOUR',
-            // "on edge" was the last place that phrase lived, and it is
-            // where "the edge" in his reasons came from. Describe the
-            // behaviour, never hand him the noun.
+            // used to say "on edge", which is where "the edge" in his reasons
+            // came from. describe the behaviour, dont give him the noun
             directive: 'startle easily today. Keep near safe ground, snap at small provocations, double-check things that were fine yesterday.',
         }
         if (a < -0.5) return {
@@ -268,8 +238,7 @@ export class InternalState {
         return null
     }
 
-    // track entity stability. how many consecutive ticks the same entities are present.
-    // called each tick with the nearby entity IDs.
+    // called each tick with nearby ids, feeds the familiarity discount
     updateStability(entityIds) {
         const currentSet = new Set(entityIds || [])
         if (this._prevEntityIds && this._setsEqual(currentSet, this._prevEntityIds)) {
@@ -288,28 +257,23 @@ export class InternalState {
         return true
     }
 
-    // creativity feedback from speech scoring.
-    // repetition makes the world feel duller (mood drops).
-    // novelty is mildly rewarding (mood nudges up).
-    // the agent never knows why, it just feels the shift.
+    // score from RepetitionGuard.scoreSpeech. repeating himself makes the world
+    // feel duller, he never knows why
     applySpeechCreativity(score) {
         if (score < 0.4) {
-            // repetitive — sharp penalty (asymmetric, like failure)
+            // asymmetric again, like failure
             this._nudgeMood(-0.08)
         } else if (score > 0.8) {
-            // creative — mild reward
             this._nudgeMood(0.03)
         }
-        // 0.4-0.8: neutral, no effect
+        // 0.4-0.8 does nothing
     }
 
-    // salience multiplier. high-energy moments are remembered more strongly.
-    // returns 0.5 (calm, low salience) to 1.0 (peak energy, full salience)
+    // 0.5 calm to 1.0 at peak energy
     salience() {
         return 0.5 + Math.abs(this.energy) * 0.5
     }
 
-    // summary for sleep reflection
     historySummary() {
         if (this._history.length === 0) return 'No state history recorded.'
         const avgV = this._history.reduce((s, h) => s + h.mood, 0) / this._history.length
@@ -324,8 +288,7 @@ export class InternalState {
         this._history = []
     }
 
-    // save state to disk (crash recovery)
-    // extra: other fields to persist alongside mood/energy (eg tickCount)
+    // extra: anything else worth keeping across a restart (tickCount)
     async checkpoint(extra = {}) {
         try {
             const data = {
@@ -334,9 +297,7 @@ export class InternalState {
                 timestamp: Date.now(),
                 ...extra,
             }
-            // Atomic write: a crash or power loss mid-write would otherwise
-            // truncate the checkpoint and lose the bird's state on restart.
-            // Write to a temp file then rename (atomic on the same fs).
+            // tmp + rename so a power cut mid write cant leave it truncated
             const tmp = `${this._checkpointPath}.tmp`
             await writeFile(tmp, JSON.stringify(data), 'utf-8')
             await rename(tmp, this._checkpointPath)
@@ -345,13 +306,12 @@ export class InternalState {
         }
     }
 
-    // restore from last checkpoint (called on startup).
-    // returns full checkpoint data (incl extras like tickCount) or null
+    // on startup. returns the whole checkpoint incl extras, or null
     async restore() {
         try {
             const raw = await readFile(this._checkpointPath, 'utf-8')
             const data = JSON.parse(raw)
-            // only restore if checkpoint is less than 1hr old
+            // older than an hour isnt worth restoring
             const ageMs = Date.now() - (data.timestamp || 0)
             if (ageMs < 60 * 60 * 1000) {
                 this.mood = this._clamp(data.mood || 0)
@@ -361,7 +321,7 @@ export class InternalState {
             }
             this.logger.info(`State checkpoint too old (${Math.round(ageMs / 60000)}min), starting fresh`)
         } catch {
-            // no checkpoint file, first run
+            // first run, no file
         }
         return null
     }

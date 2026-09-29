@@ -1,16 +1,9 @@
-// We were teaching him the habit we kept telling him to drop.
+// no em dashes in anything the model reads. his output kept coming out full
+// of them and it was our own fault, 88 of them across the prompt builders.
+// the model copies the shape of the instructions, not just what they say.
 //
-// 3eyes's rule is no em dashes, anywhere. His output kept producing them, and
-// the reason turned out to be embarrassing: every instruction we hand the
-// model was written in them. "Vary your actions — don't repeat the same
-// thing endlessly", 88 of those across the prompt builders. An example
-// teaches shape, not just content, which is the same way one seed line
-// taught him "badly and completely".
-//
-// So this fails the build if an em dash gets back into anything the model
-// reads. Comments are fine, they are for us. Regexes that MATCH on em
-// dashes are not just fine but necessary, since they are the guards that
-// strip the character out of his output.
+// comments are fine, they're for us. regexes that match on the dash have to
+// stay, they're what strips it out of his output
 
 import { test } from 'node:test'
 import assert from 'node:assert'
@@ -35,10 +28,10 @@ const isComment = (s) => {
     return t.startsWith('//') || t.startsWith('*') || t.startsWith('/*')
 }
 
-// A line that matches or strips em dashes has to contain one to do its job.
+// a matcher has to contain the dash to do its job
 const isMatcher = (s) => s.includes('.replace(/') || s.includes('RegExp(') || /\/\[[^\]]*—/.test(s)
 
-// Console output is for us, not for him, and reads in a terminal not a prompt.
+// log lines go to a terminal, not a prompt
 const isLog = (s) => /\b(logger|console|log)\.(debug|info|warn|error)\(/.test(s)
 
 test('no em dash reaches the model', () => {
@@ -58,8 +51,8 @@ test('no em dash reaches the model', () => {
 })
 
 test('the guards that strip em dashes still have one to match', () => {
-    // If someone "helpfully" scrubs these, his output stops being cleaned and
-    // the failure is invisible, so assert they are intact.
+    // if these get "tidied" away his output stops being cleaned and nobody
+    // would notice
     const sanitize = readFileSync(join(SRC, 'util', 'sanitizeReason.js'), 'utf-8')
     assert.ok(sanitize.includes('—'), 'sanitizeReason no longer strips em dashes')
 })

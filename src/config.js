@@ -10,9 +10,8 @@ export function loadConfig() {
         serverUrl: process.env.SERVER_URL || 'ws://localhost:4001',
         reconnectIntervalMs: 5000,
         identifyTimeoutMs: 10000,
-        // optional auth token sent on IDENTIFY. required by envs that have
-        // ADMIN_TOKEN set (eg 3eyes sim-server when bound to 0.0.0.0).
-        // empty string = no token, accepted by envs that dont require auth.
+        // sent on IDENTIFY. envs with ADMIN_TOKEN set need it (3eyes sim when
+        // bound to 0.0.0.0), empty is fine everywhere else
         adminToken: process.env.ADMIN_TOKEN || '',
 
         // heartbeat (adaptive)
@@ -26,44 +25,30 @@ export function loadConfig() {
         ollamaModel: process.env.OLLAMA_MODEL || 'qwen3:4b',
         cloudApiKey: process.env.CLOUD_API_KEY || null,
         cloudApiUrl: process.env.CLOUD_API_URL || null,
-        // default models on Groq:
-        //   quality = openai/gpt-oss-120b. bigger AND ~75% cheaper than
-        //             llama-3.3-70b on Groq's pricing
-        //   fast    = openai/gpt-oss-20b. same family as quality, 1000 TPS
-        //             (vs 840 for llama-3.1-8b). avoids the voice tics 8B
-        //             llama produces under sustained use
+        // groq defaults. 120b is bigger than llama-3.3-70b and ~75% cheaper.
+        // 20b for fast, ~1000 TPS and none of the voice tics 8b llama picks up
         cloudModel: process.env.CLOUD_MODEL || 'openai/gpt-oss-120b',
         cloudModelFast: process.env.CLOUD_MODEL_FAST || 'openai/gpt-oss-20b',
-        // decision tier (optional). anthropic for high-stakes ticks — an env
-        // opts in by sending signals.decision_pending >= 0.5 (eg a trade
-        // dossier waiting on a verdict). no key set = tier quietly routes to
-        // the normal quality chain, so victor/synth deployments are untouched.
+        // optional decision tier, goes to anthropic. an env opts in with
+        // signals.decision_pending >= 0.5 (eg a trade dossier waiting on a
+        // verdict). no key = falls back to the quality chain, victor/synth dont care
         anthropicApiKey: process.env.ANTHROPIC_API_KEY || null,
         decisionModel: process.env.DECISION_MODEL || 'claude-sonnet-5',
-        // reasoning_effort for gpt-oss models. 'low' keeps per-tick action
-        // decisions fast + cheap and stops unbounded reasoning from
-        // starving the JSON output (the 400 json_validate_failed cause).
-        // Set REASONING_EFFORT="" to disable for non-gpt-oss providers.
+        // gpt-oss only. low keeps ticks quick and stops the reasoning eating
+        // the json (400 json_validate_failed). REASONING_EFFORT="" for other providers
         reasoningEffort: process.env.REASONING_EFFORT ?? 'low',
         temperature: 0.7,
-        // max_tokens caps TOTAL completion tokens — and gpt-oss is a
-        // reasoning model that spends a large, variable budget on internal
-        // chain-of-thought BEFORE it emits the JSON action. At 500 the
-        // reasoning routinely consumed the whole budget, the model emitted
-        // an empty completion, and Groq's json_object validator returned
-        // 400 json_validate_failed (failed_generation: ""). In production
-        // this fired on ~half of all quality-tier ticks, collapsing the
-        // bird onto the heuristic FallbackBrain. 1500 gives reasoning +
-        // the (small) JSON output room to coexist. Env-overridable so a
-        // deployment can tune without a code change.
+        // this caps reasoning + output together. at 500 gpt-oss burned it all
+        // thinking, sent back an empty completion and groq 400'd it
+        // (json_validate_failed), about half the quality ticks ended up on
+        // FallbackBrain. 1500 leaves room for both
         maxTokens: parseInt(process.env.MAX_TOKENS || '1500'),
 
         // memory
         dataDir: process.env.DATA_DIR || './data',
         workingMemorySize: 20,
         maxDailyLogAgeDays: 7,
-        // data/decisions: one JSON line per decision, about 1MB a day.
-        // Two weeks, so a week of it can be read against the week before.
+        // data/decisions, ~1MB a day. two weeks so you can compare a week to the last one
         decisionLogDays: parseInt(process.env.DECISION_LOG_DAYS || '14'),
 
         // internal state
@@ -76,56 +61,34 @@ export function loadConfig() {
         // sleep cycle
         activeHoursBeforeSleep: parseFloat(process.env.ACTIVE_HOURS_BEFORE_SLEEP || '0.83'),
         sleepDurationMinutes: parseInt(process.env.SLEEP_DURATION_MINUTES || '10'),
-        // A process restart is not a new waking day. If the service comes
-        // back during the night, keep it awake long enough for that night to
-        // pass instead of starting another full sleep after one minute.
+        // a restart in the night isnt a new day, dont go straight back to sleep
         worldSleepRestartGuardMinutes: parseInt(process.env.WORLD_SLEEP_RESTART_GUARD_MINUTES || '30'),
-        // Visitor offerings remain voluntary moments, but they cannot sit
-        // behind unrelated choices forever. This is the longest a single
-        // waiting offering goes before the runtime reserves one look. A
-        // backlog shortens the interval automatically.
+        // longest one offering waits before he's sent to look. a backlog shortens it
         offeringAttentionMaxMinutes: parseInt(process.env.OFFERING_ATTENTION_MAX_MINUTES || '15'),
 
-        // How often self-reflection may actually rewrite the persona.
-        //
-        // Sleep runs about every 50 minutes, which is right for memory: he
-        // consolidates what just happened while it is still fresh. It is
-        // badly wrong for identity. Persona evolution rode the same cadence,
-        // so who he is was up for revision roughly 24 times a day, and
-        // Victor picked up seven near-identical traits in a single night,
-        // one per sleep, each justified with the same sentence about
-        // visiting "many varied locations".
-        //
-        // Decoupled rather than slowed: consolidation stays hourly, the
-        // character sheet changes about twice a day. Nothing is skipped,
-        // only deferred to the next eligible sleep.
+        // min gap between persona rewrites. sleep is ~50min which is fine for
+        // memory but when evolution rode along with it victor got seven
+        // near-identical traits in one night. defered to the next sleep, not skipped
         personaEvolutionMinHours: parseFloat(process.env.PERSONA_EVOLUTION_MIN_HOURS || '12'),
 
-        // A thread is what pulls at him across days; see SleepCycle
-        // _formDesire. It has to be able to die, or it writes his memory
-        // and then cites it back as proof it should stay.
+        // threads (SleepCycle._formDesire) have to be able to die or they
+        // write memory and then cite it back as a reason to stay
         threadMaxRenewals: parseInt(process.env.THREAD_MAX_RENEWALS || '12'),
         threadMaxAgeDays: parseFloat(process.env.THREAD_MAX_AGE_DAYS || '2'),
 
-        // How many bullets of memory.md one subject may own. Victor's was 45
-        // lines with "glow" in 7 of them and "light" in 8, every place in
-        // town written down as medicine for the same feeling. A number
-        // rather than a list of banned topics, because next month's fixation
-        // will not be this month's.
+        // max memory.md bullets per subject. victors had "glow"/"light" in 15
+        // of 45. a number not a banned list, next months fixation wont be this ones
         memorySubjectCeiling: parseInt(process.env.MEMORY_SUBJECT_CEILING || '4'),
 
-        // quiet hours. reduced activity during low-viewership windows.
-        // format: "HH:MM-HH:MM" in UTC (eg "02:00-10:00")
+        // quiet hours, less going on when nobody's watching. "HH:MM-HH:MM" UTC
         quietHours: process.env.QUIET_HOURS || null,
         quietActiveMinutes: parseInt(process.env.QUIET_ACTIVE_MINUTES || '15'),
         quietSleepMinutes: parseInt(process.env.QUIET_SLEEP_MINUTES || '30'),
 
-        // API server
+        // api
         apiPort: parseInt(process.env.API_PORT || '5000'),
-        // The local control API can hot-swap the persona, inject memories,
-        // and force sleep — so it binds to loopback by default (reach it via
-        // an SSH tunnel). Set API_HOST=0.0.0.0 to expose it on the LAN, but
-        // ONLY together with ADMIN_TOKEN — mutating routes require it.
+        // loopback by default, it can swap the persona and write memories. ssh
+        // tunnel in. API_HOST=0.0.0.0 only with ADMIN_TOKEN set
         apiHost: process.env.API_HOST || '127.0.0.1',
 
         // logging

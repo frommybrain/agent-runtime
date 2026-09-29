@@ -1,54 +1,37 @@
-# Environment Protocol Standard
+# Environment protocol
 
-Version 1.0 — 3aiii ↔ Environment Contract
+Protocol version 1.0.
 
-Any environment (3D world, synth bridge, data stream, game engine) that wants to host a 3aiii agent has to implement this WebSocket protocol.
+What a world has to implement to host a 3aiii agent. A 3D world, a synth bridge, a data feed, whatever. The agent is the WebSocket client, the world is the server, and everything is JSON with a `type` field.
 
----
+## The conversation
 
-## Connection Lifecycle
+1. agent connects
+2. world sends `WELCOME`
+3. agent sends `IDENTIFY`
+4. world sends `IDENTIFIED`
+5. then every tick: agent sends `OBSERVE`, world answers `OBSERVATION`, agent sends `ACT`, world answers `ACTION_RESULT`
+6. the world can push `WORLD_EVENT` at any point
 
-```
-Environment                          3aiii
-    │                                      │
-    │◄──── WebSocket connect ──────────────│
-    │                                      │
-    ├─── WELCOME ─────────────────────────►│
-    │                                      │
-    │◄──── IDENTIFY {agentId} ─────────────│
-    │                                      │
-    ├─── IDENTIFIED {worldBounds, ...} ───►│
-    │                                      │
-    │         ┌─── tick loop ───┐          │
-    │◄────────│ OBSERVE         │──────────│
-    ├─────────│ OBSERVATION     │─────────►│
-    │◄────────│ ACT             │──────────│
-    ├─────────│ ACTION_RESULT   │─────────►│
-    │         └─────────────────┘          │
-    │                                      │
-    ├─── WORLD_EVENT (async, any time) ───►│
-    │                                      │
-```
+Messages, world to agent:
 
-### Message Types
+- `WELCOME` ready, identify yourself. can carry `requiresToken: true`, the agent then warns if it has no token
+- `IDENTIFIED` registration confirmed, plus any world metadata
+- `OBSERVATION` the snapshot, see below
+- `ACTION_RESULT` `{ "type": "ACTION_RESULT", "success": true, "message": "..." }`
+- `WORLD_EVENT` async stuff (speech, spawns, weather)
+- `ERROR` `{ "type": "ERROR", "message": "..." }`, the agent just logs it
 
-| Direction | Type | Description |
-|-----------|------|-------------|
-| env → agent | `WELCOME` | Server ready, agent should identify |
-| agent → env | `IDENTIFY` | `{type: "IDENTIFY", agentId: "victor"}` |
-| env → agent | `IDENTIFIED` | Confirmation + world metadata |
-| agent → env | `OBSERVE` | Request current observation |
-| env → agent | `OBSERVATION` | Full observation snapshot |
-| agent → env | `ACT` | `{type: "ACT", action: "move_to", params: {...}}` |
-| env → agent | `ACTION_RESULT` | `{type: "ACTION_RESULT", success: true, message: "..."}` |
-| env → agent | `WORLD_EVENT` | Async events (speech, spawns, weather) |
-| env → agent | `ERROR` | `{type: "ERROR", message: "..."}` |
+Agent to world:
 
----
+- `IDENTIFY` `{ "type": "IDENTIFY", "agentId": "victor" }`. if the agent has `ADMIN_TOKEN` set it adds `"token"`, compare it against yours if you require auth
+- `OBSERVE` asks for a snapshot
+- `ACT` `{ "type": "ACT", "action": "move_to", "params": { ... } }`
+- `PERSONA_SYNC` `{ "type": "PERSONA_SYNC", "persona": { ... } }`, the current persona file. sent after `IDENTIFIED` and again every hour, so the world can keep up with how the persona has evolved. ignore it if you don't need it
 
-## OBSERVATION Format
+## OBSERVATION
 
-The `OBSERVATION` message wraps a `data` payload. This is the core contract, the agent perceives whatever is in `data`.
+A `data` payload. This is the core of it, the agent perceives whatever is in `data`.
 
 ```json
 {
@@ -64,9 +47,17 @@ The `OBSERVATION` message wraps a `data` payload. This is the core contract, the
 }
 ```
 
-### `self` — Agent's own state
+`nearby_agents` and `nearby_objects` work too. Any other top-level key gets narrated as `key: value` (objects as clipped JSON), so a world can send extra stuff without the agent needing new code. The whole rendered situation is capped at 12,000 characters.
 
-The agent's position, current action, any internal state the environment tracks.
+A few optional top-level keys the agent does know about:
+
+- `world_clock` `{ "hour": 22, "is_night": true, "day": 14, "night_ends_in_sec": 900 }`. when present the agent sleeps once per world night instead of on its timer, and wakes when `night_ends_in_sec` runs out (clamped to between 1 minute and 2 hours)
+- `recent_events` array of strings, rendered under an "Earlier today" heading
+- `nearby_details` array of strings, scenery the agent can see but not act on
+
+### self
+
+The agent's own state: position, what it's doing, whatever else the world tracks.
 
 ```json
 {
@@ -88,53 +79,46 @@ The agent's position, current action, any internal state the environment tracks.
 }
 ```
 
-**Rules:**
-- `pos` — any coordinate system. 3aiii narrates whatever keys are present (`x`, `y`, `z`, `lat`, `lng`, etc.)
-- `action` — string describing current activity (eg `"idle"`, `"foraging"`, `"moving"`)
-- `interacting_with` — ID of entity being interacted with, or `null`
-- Nested objects are supported and narrated automatically:
-  - Objects with `level` + `urgency` → narrated as `"My hunger: strong (70%)"`
-  - Objects with `status` → narrated as `"My wellbeing: uncomfortable — critical: hunger"`
-  - Primitives → narrated as `"My mood: curious but hungry"`
-  - Arrays → joined with commas
-- Additional fields are welcome, Perceive.js narrates anything it finds
+`pos` can be any coordinate system, it narrates whatever keys are there (`x`, `y`, `z`, `lat`, `lng`...). `action` is a string for the current activity (`"idle"`, `"foraging"`, `"moving"`). `interacting_with` is an entity id or `null`.
 
-### `nearbyAgents` — Other agents in perception range
+Everything else on `self` is narrated too, nested objects included:
 
-```json
-[
-  {
-    "id": "luna",
-    "distance": 5.2,
-    "action": "foraging",
-    "direction": "north"
-  }
-]
-```
+- `{ level, urgency }` becomes `My hunger: strong`
+- `{ status, criticalNeeds }` becomes `My wellbeing: uncomfortable, critical: hunger`
+- plain values become `My mood: curious but hungry`
+- arrays get joined with commas
 
-**Required:** `id` (or `name`)
-**Optional:** `distance`, `action`, `direction`, any extra properties
+Execution state. If the world runs actions that take time, tell the agent so it doesnt decide again halfway through:
 
-### `nearbyObjects` — Entities in perception range
+- `busy: true` a timed action is running (`action` names it)
+- `journey: { "active": true, "target": "pond" }` it's walking somewhere
+- `asleep: true` the world has it asleep, it won't call the LLM and just waits
+
+While either `busy` or `journey.active` is set no new decision is made. Older worlds that only set `action` to something starting with `move toward ` still count as a journey.
+
+### nearbyAgents
 
 ```json
 [
-  {
-    "id": "berry_bush_03",
-    "type": "food_spot",
-    "interactive": true,
-    "distance": 3.1,
-    "direction": "east"
-  }
+  { "id": "luna", "distance": 5.2, "action": "foraging", "direction": "north" }
 ]
 ```
 
-**Required:** `id` (or `name` or `type`)
-**Optional:** `distance`, `direction`, `interactive`, `pos`, any extra properties (state, description, etc.)
+Needs `id` (or `name`). `distance`, `action`, `direction` and anything else are optional.
 
-### `available_actions` — What the agent can do
+### nearbyObjects
 
-Array of action descriptors. This is the **authoritative** list, the agent will only choose from these.
+```json
+[
+  { "id": "berry_bush_03", "type": "food_spot", "interactive": true, "distance": 3.1, "direction": "east" }
+]
+```
+
+Needs `id` (or `name` or `type`). Optional: `distance`, `direction`, `interactive`, `pos`, plus whatever else (state, description).
+
+### available_actions
+
+The list the agent picks from. It won't choose anything that isn't on it, and neither will FallbackBrain.
 
 ```json
 [
@@ -156,15 +140,11 @@ Array of action descriptors. This is the **authoritative** list, the agent will 
 ]
 ```
 
-**Rules:**
-- Each action has `name`, `description`, `params` (human-readable parameter description)
-- Simple string format also accepted: `["move_to", "wait", "forage"]` (but descriptors are preferred)
-- The agent's PromptBuilder dynamically adjusts rules based on which actions exist (eg speech rules only appear if `speak` is available)
-- FallbackBrain also respects this list, never generates actions outside it
+Each has `name`, `description` and `params` (a human-readable description of the params). A plain array of names like `["move_to", "wait", "forage"]` also works but you lose the descriptions. PromptBuilder changes the rules depending on what's in the list, eg the speech rules only show up if `speak` is there.
 
-### `signals` — Environmental conditions
+### signals
 
-Ambient signals that influence the agent's internal state (mood/energy). **Always 0-1 range.**
+Ambient conditions that push mood and energy. Always 0-1.
 
 ```json
 {
@@ -175,15 +155,8 @@ Ambient signals that influence the agent's internal state (mood/energy). **Alway
 }
 ```
 
-**Known signals** (with built-in natural language descriptions in Perceive.js):
-- `vitality` — energy/life level of the environment
-- `resonance` — sense of connection/harmony
-- `warmth` — temperature/comfort
-- `abundance` — resource richness
+Perceive.js has built-in wording for `vitality`, `resonance`, `warmth` and `abundance`, among others. Anything it doesn't know gets narrated as `key: value`. If your world uses another scale, normalise before sending:
 
-**Custom signals** are narrated generically (key: value). Use 0-1 range.
-
-**If your environment uses a different scale** (eg 0-100), normalize before sending:
 ```js
 signals: {
   vitality: rawVitality / 100,
@@ -191,23 +164,21 @@ signals: {
 }
 ```
 
-### `recentSpeech` — Speech heard recently (optional)
+`decision_pending` is special: at 0.5 or above the tick goes to the `decision` tier (Anthropic, if `ANTHROPIC_API_KEY` is set on the agent).
+
+### recentSpeech
+
+Optional.
 
 ```json
 [
-  {
-    "from": "luna",
-    "message": "Found berries over here!",
-    "secondsAgo": 12
-  }
+  { "from": "luna", "message": "Found berries over here!", "secondsAgo": 12 }
 ]
 ```
 
----
+## ACT and ACTION_RESULT
 
-## ACT Format
-
-Agent sends an action request:
+The agent sends:
 
 ```json
 {
@@ -220,9 +191,7 @@ Agent sends an action request:
 }
 ```
 
-## ACTION_RESULT Format
-
-Environment responds with the outcome:
+The world answers:
 
 ```json
 {
@@ -232,16 +201,11 @@ Environment responds with the outcome:
 }
 ```
 
-**Rules:**
-- `success` — boolean, did the action start/complete?
-- `message` — human-readable result (the agent sees this as feedback on next tick)
-- Failed actions should explain why: `{success: false, message: "Too far from berry_bush_03"}`
+`success` is whether the action started or finished. `message` is shown to the agent next tick, so make failures say why: `{ "success": false, "message": "Too far from berry_bush_03" }`.
 
----
+## WORLD_EVENT
 
-## WORLD_EVENT Format
-
-Async events pushed to the agent between observe/act cycles.
+Pushed between ticks. The agent keeps the last 20 and reads them on its next tick.
 
 ```json
 {
@@ -254,16 +218,11 @@ Async events pushed to the agent between observe/act cycles.
 }
 ```
 
-**Common event types:**
-- `agent_speech` — another agent spoke (`agentId`, `message`)
-- `agent_joined` / `agent_left` — agents entering/leaving
-- Custom events are supported, Perceive.js narrates them generically
+`agent_speech` (with `agentId`, `message`), `agent_joined` and `agent_left` are understood. Anything else gets narrated generically.
 
----
+## IDENTIFIED
 
-## IDENTIFIED Metadata
-
-The `IDENTIFIED` response can include world metadata:
+Can carry world metadata:
 
 ```json
 {
@@ -275,31 +234,15 @@ The `IDENTIFIED` response can include world metadata:
 }
 ```
 
-These are optional and environment-specific. The agent stores them but doesnt require any particular fields.
+All optional. The agent keeps `worldBounds` and `terminalGridSize` but needs neither.
 
----
+## Minimum for a new world
 
-## Implementation Checklist
-
-For a new environment to work with 3aiii:
-
-- [ ] WebSocket server listening on a configurable port
-- [ ] Send `WELCOME` on connection
-- [ ] Handle `IDENTIFY` → create/find agent entity → send `IDENTIFIED`
-- [ ] Handle `OBSERVE` → build observation snapshot → send `OBSERVATION`
-- [ ] Handle `ACT` → execute action in world → send `ACTION_RESULT`
-- [ ] Push `WORLD_EVENT` for async events (speech, entity changes)
-- [ ] `self` includes position and any needs/state the agent should perceive
-- [ ] `nearbyAgents` / `nearbyObjects` with at least `id` and `distance`
-- [ ] `available_actions` listing all valid actions with descriptions
-- [ ] `signals` in 0-1 range for environmental conditions
-- [ ] Handle reconnection gracefully (agent may disconnect and reconnect)
-
----
+A WebSocket server on a port you can configure. Send `WELCOME` on connect, answer `IDENTIFY` with `IDENTIFIED`, `OBSERVE` with `OBSERVATION`, `ACT` with `ACTION_RESULT`. In the observation, `self` with a position and whatever state you want it to feel, nearby agents and objects with at least `id` and `distance`, the full `available_actions` list, and signals in 0-1. Push `WORLD_EVENT` for speech and things changing. And expect the agent to drop and reconnect, it backs off from 5s up to 5 minutes.
 
 ## Examples
 
-### 3D World (anon-ai-world sim-server)
+A 3D world (the anon-ai-world sim-server):
 
 ```json
 {
@@ -332,7 +275,7 @@ For a new environment to work with 3aiii:
 }
 ```
 
-### Synth Bridge (hardware synthesizers)
+A synth bridge (hardware synths):
 
 ```json
 {
@@ -356,4 +299,4 @@ For a new environment to work with 3aiii:
 }
 ```
 
-The agent perceives both environments identically — Perceive.js narrates whatever fields are present without needing environment-specific code.
+The agent handles both the same way. Perceive.js narrates whatever fields turn up, there's no per-world code.

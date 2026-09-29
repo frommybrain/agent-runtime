@@ -1,14 +1,10 @@
-// automated test suite for 3aiii v0.2.
+// scripted scenario run for 3aiii v0.2. fake ws env, polls /status as it
+// goes, writes a report into test-results/ at the end.
 //
-// runs a WebSocket env server and drives scenarios automatically.
-// polls agent /status to track internal state. logs everything.
-// dumps a summary report at the end.
+//   on the pi:  SERVER_URL=ws://<mac-ip>:4001 node src/index.js
+//   on the mac: node test-suite.js
 //
-// usage:
-//   1. start agent on Pi: SERVER_URL=ws://<mac-ip>:4001 node src/index.js
-//   2. run this on the Mac: node test-suite.js
-//
-// the suite waits for the agent to connect, then runs through scenarios.
+// nothing happens untill the agent connects.
 
 import { WebSocketServer } from 'ws'
 import { mkdirSync, writeFileSync } from 'node:fs'
@@ -17,7 +13,6 @@ import { request } from 'node:http'
 const PORT = 4001
 const AGENT_STATUS_URL = process.env.AGENT_STATUS_URL || 'http://victor.local:5000/status'
 
-// scenarios
 const scenarios = [
     {
         name: 'Baseline (empty world)',
@@ -111,7 +106,6 @@ const scenarios = [
     },
 ]
 
-// world state
 let tickCount = 0
 let agentId = null
 let agentPos = { x: 0, y: 0, z: 0 }
@@ -167,7 +161,6 @@ function buildObservation() {
     return obs
 }
 
-// results
 const results = {
     startTime: null,
     endTime: null,
@@ -212,10 +205,9 @@ function pollStatus() {
     })
 }
 
-// WebSocket server
 const wss = new WebSocketServer({ port: PORT })
 let activeSocket = null
-let tickResolve = null  // resolve fn for waiting on a tick
+let tickResolve = null  // set by waitForTick, fired on the next OBSERVE
 
 wss.on('listening', () => {
     console.log(`\n🧪 Test suite server running on ws://0.0.0.0:${PORT}`)
@@ -240,14 +232,13 @@ wss.on('connection', (ws) => {
                     worldBounds: { halfSize: 100 },
                 }))
                 console.log(`   Agent identified: ${msg.agentId}`)
-                // start scenarios
                 runScenarios(ws)
                 break
 
             case 'OBSERVE': {
                 const obs = buildObservation()
 
-                // inject speech world event if queued
+                // speech goes out as a WORLD_EVENT too, same as the real server
                 if (world.speechEvent) {
                     ws.send(JSON.stringify({ type: 'WORLD_EVENT', data: world.speechEvent }))
                     world.speechEvent = null
@@ -255,7 +246,6 @@ wss.on('connection', (ws) => {
 
                 ws.send(JSON.stringify({ type: 'OBSERVATION', data: obs }))
 
-                // poll status every 2 ticks
                 if (tickCount % 2 === 0) pollStatus()
 
                 if (tickResolve) {
@@ -299,7 +289,6 @@ wss.on('connection', (ws) => {
     })
 })
 
-// scenario runner
 function waitForTick() {
     return new Promise(resolve => { tickResolve = resolve })
 }
@@ -311,7 +300,7 @@ function sleep(ms) {
 async function runScenarios(ws) {
     results.startTime = new Date().toISOString()
     console.log(`\n${'='.repeat(60)}`)
-    console.log(`  STARTING TEST SUITE — ${scenarios.length} scenarios`)
+    console.log(`  STARTING TEST SUITE - ${scenarios.length} scenarios`)
     console.log(`${'='.repeat(60)}\n`)
 
     // let the agent boot
@@ -333,23 +322,18 @@ async function runScenarios(ws) {
         console.log(`\n--- ${scenario.name} (${scenario.ticks} ticks) ---`)
         console.log(`    Expected: ${scenario.expect}`)
 
-        // apply scenario setup
         scenario.setup(world)
 
-        // capture status at start
         scenarioResult.statusBefore = await pollStatus()
 
-        // wait for the ticks
         for (let i = 0; i < scenario.ticks; i++) {
             await waitForTick()
         }
 
-        // capture status at end
         scenarioResult.statusAfter = await pollStatus()
         scenarioResult.endTick = tickCount
         scenarioResult.endTime = new Date().toISOString()
 
-        // collect actions from this scenario
         scenarioResult.actions = results.actions.filter(
             a => a.tick >= scenarioResult.startTick && a.tick <= scenarioResult.endTick
         )
@@ -362,7 +346,6 @@ async function runScenarios(ws) {
         }
     }
 
-    // done, generate report
     results.endTime = new Date().toISOString()
     currentScenario = null
 
@@ -372,35 +355,31 @@ async function runScenarios(ws) {
 
     generateReport()
 
-    // keep server alive briefly for final polls, then exit
+    // give the last poll a chance to land
     await sleep(3000)
     process.exit(0)
 }
 
-// report generator
 function generateReport() {
     mkdirSync('test-results', { recursive: true })
     const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
 
-    // save raw data
     writeFileSync(`test-results/${ts}-raw.json`, JSON.stringify(results, null, 2))
 
-    // generate human-readable report
     const lines = []
-    lines.push(`# Test Suite Report — ${ts}`)
+    lines.push(`# Test Suite Report - ${ts}`)
     lines.push(``)
     lines.push(`Total ticks: ${tickCount}`)
     lines.push(`Duration: ${results.startTime} to ${results.endTime}`)
     lines.push(`Total actions: ${results.actions.length}`)
     lines.push(``)
 
-    // scenario summaries
     lines.push(`## Scenario Results`)
     lines.push(``)
 
     for (const s of results.scenarios) {
         lines.push(`### ${s.name}`)
-        lines.push(`Ticks: ${s.startTick}–${s.endTick} | Expected: ${s.expect}`)
+        lines.push(`Ticks: ${s.startTick}-${s.endTick} | Expected: ${s.expect}`)
 
         if (s.statusBefore && s.statusAfter) {
             const bv = s.statusBefore.mood?.toFixed(3) ?? '?'
@@ -409,18 +388,17 @@ function generateReport() {
             const aa = s.statusAfter.energy?.toFixed(3) ?? '?'
             const bh = s.statusBefore.heartbeatMs ?? '?'
             const ah = s.statusAfter.heartbeatMs ?? '?'
-            lines.push(`Mood: ${bv} → ${av} | Energy: ${ba} → ${aa} | Heartbeat: ${bh}ms → ${ah}ms`)
+            lines.push(`Mood: ${bv} -> ${av} | Energy: ${ba} -> ${aa} | Heartbeat: ${bh}ms -> ${ah}ms`)
             lines.push(`State: "${s.statusAfter.description}"`)
         }
 
-        // action breakdown
         const actionCounts = {}
         for (const a of s.actions) {
             actionCounts[a.action] = (actionCounts[a.action] || 0) + 1
         }
         lines.push(`Actions: ${Object.entries(actionCounts).map(([k, v]) => `${k}(${v})`).join(', ') || 'none'}`)
 
-        // check for spatial actions in synth mode
+        // spatial actions leaking into synth mode
         if (s.name.includes('Synth')) {
             const spatialLeaks = s.actions.filter(a => ['move_to', 'speak', 'interact'].includes(a.action))
             if (spatialLeaks.length > 0) {
@@ -430,7 +408,7 @@ function generateReport() {
             }
         }
 
-        // check for synth actions in spatial mode
+        // and the other way round
         if (s.name.includes('Return to spatial')) {
             const synthLeaks = s.actions.filter(a => ['set_step', 'change_bpm', 'add_chord', 'remove_chord'].includes(a.action))
             if (synthLeaks.length > 0) {
@@ -440,20 +418,19 @@ function generateReport() {
             }
         }
 
-        // check for speech response
+        // rough, any speak counts as a reply
         if (s.name.includes('speaks') || s.name.includes('speech')) {
             const speechActions = s.actions.filter(a => a.action === 'speak')
             if (speechActions.length > 0) {
                 lines.push(`✓ Agent spoke ${speechActions.length} time(s) (potential response)`)
             } else {
-                lines.push(`⚠ Agent did not speak — may not have responded to speech`)
+                lines.push(`⚠ Agent did not speak - may not have responded to speech`)
             }
         }
 
         lines.push(``)
     }
 
-    // mood/energy trajectory
     lines.push(`## Internal State Trajectory`)
     lines.push(``)
     lines.push(`| Tick | Scenario | Mood | Energy | Heartbeat | Description |`)
@@ -465,7 +442,6 @@ function generateReport() {
     }
     lines.push(``)
 
-    // action diversity
     lines.push(`## Action Distribution`)
     lines.push(``)
     const totalActions = {}
@@ -478,7 +454,6 @@ function generateReport() {
     }
     lines.push(``)
 
-    // speech content analysis
     lines.push(`## Speech Content`)
     lines.push(``)
     const speeches = results.actions.filter(a => a.action === 'speak')
@@ -488,13 +463,12 @@ function generateReport() {
     if (speeches.length === 0) lines.push(`(no speech actions recorded)`)
     lines.push(``)
 
-    // failures
     const failures = results.actions.filter(a => !a.success)
     if (failures.length > 0) {
         lines.push(`## Action Failures`)
         lines.push(``)
         for (const f of failures) {
-            lines.push(`- [tick ${f.tick}] ${f.action} — failed`)
+            lines.push(`- [tick ${f.tick}] ${f.action} - failed`)
         }
         lines.push(``)
     }

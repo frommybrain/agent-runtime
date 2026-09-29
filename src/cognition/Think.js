@@ -1,6 +1,5 @@
-// orchestrates: perceive → build prompt → call LLM → parse response.
-// takes cognitive context (state, deltas, action results, repetition warnings)
-// and threads it through to the prompt builder.
+// perceive -> prompt -> LLM -> parse. the extras (state, deltas, warnings)
+// just get passed through to the prompt builder
 
 import { perceive } from './Perceive.js'
 import { fallbackDecision } from './FallbackBrain.js'
@@ -15,33 +14,26 @@ export class Think {
         this.workingMemory = workingMemory
         this.logger = logger
 
-        // token budget: ~4 chars per token. 7800 dated from an 8k-context
-        // model; the chain is gpt-oss-120b (131k) and qwen3:4b (262k) now,
-        // so the number is a cost dial, not a wall. Measured 22 Aug with
-        // the tools.md duplication gone: honest peaks sit ~8050 tokens
-        // (situation 7.8k chars at a busy corner), so the old ceiling had
-        // the chop firing on real content for a ~250-token overage. Sized
-        // to clear that with a little room; the breakdown warn names the
-        // fat if it ever creeps past this one.
+        // ~4 chars a token. was 7800 from the 8k context days, both models
+        // have way more now so this is a cost dial not a wall. real peaks were
+        // ~8050 (22 Aug) so 7800 was chopping real content, bumped a bit past that
         this._maxInputChars = 8400 * 4
-        this._lastPromptChars = 0       // tracked for metrics
+        this._lastPromptChars = 0       // metrics
     }
 
     // extras: { internalState, deltaNarrative, lastActionResult, repetitionWarnings, tickCount, uptimeMinutes, salience, tier }
     async decide(observation, worldEvents, extras = {}) {
         const tier = extras.tier || 'quality'
 
-        // skip tier: no LLM, fallback brain directly
+        // skip tier never touches the LLM
         if (tier === 'skip') {
             this.logger.debug('Tick classified as skip, using fallback brain')
             return { ...this._wrapFallback(observation), fallback: 'skip' }
         }
 
-        // 1. perceive. raw observation → natural language
         let situation = perceive(observation, worldEvents)
         this.logger.debug(`Perceived: ${situation.split('\n')[0]}...`)
 
-        // 2. build prompts
         const [memory, skills, tools] = await Promise.all([
             this.memoryFiles.readMemory(),
             this.memoryFiles.readSkills(),
@@ -51,12 +43,9 @@ export class Think {
         const recentLog = await this.dailyLog.readRecentLines(5)
         const recentMemory = this.workingMemory.recent(5)
 
-        // The desire layer: surface the current thread (formed during
-        // sleep) so decisions feel the pull of a throughline. On a
-        // FRACTION of ticks only: shown every tick, the prompt's own
-        // "you don't have to serve it every moment" hedge did nothing
-        // (46% of a day's decisions ran the same query), because presence
-        // reads as instruction. Most ticks he just lives.
+        // current thread (made during sleep), 30% of ticks only. every tick
+        // and 46% of a days decisions ran the same query, the "you dont have
+        // to serve it" hedge in the prompt did nothing
         try {
             const thread = await this.memoryFiles.readCurrentThread()
             if (thread?.text && Math.random() < 0.3) extras.currentThread = thread.text
@@ -65,9 +54,8 @@ export class Think {
         const systemPrompt = this.promptBuilder.buildSystemPrompt(memory, skills, tools, observation.available_actions)
         let userPrompt = this.promptBuilder.buildUserPrompt(situation, recentLog, recentMemory, extras)
 
-        // 2b. token budget check. truncate memory if over.
-        // v0.3.1: truncate "Learned Facts" (middle section, largest) rather than
-        // slicing from the end which would cut "Important Memories" first
+        // over budget: trim the situation first, then the user prompt, then
+        // Learned Facts as a last resort
         let finalSystemPrompt = systemPrompt
         let totalChars = systemPrompt.length + userPrompt.length
         if (totalChars > this._maxInputChars && situation.length > 3500) {
@@ -80,12 +68,8 @@ export class Think {
                 totalChars = systemPrompt.length + userPrompt.length
             }
         }
-        // The live situation is only one part of the user prompt. Delta
-        // narration, exploration history and voice examples can together be
-        // larger than it, so fitting situation alone cannot guarantee the
-        // request fits. Keep the opening state and the closing current-world
-        // block, and compact the middle to the space left by the system
-        // prompt. This makes the configured ceiling an actual ceiling.
+        // situation isnt the only big thing in the user prompt (deltas, exploration,
+        // voice examples) so fit the whole thing too, keeping both ends
         const maxUserChars = Math.max(6000, this._maxInputChars - systemPrompt.length - 200)
         if (userPrompt.length > maxUserChars) {
             this.logger.warn(`Assembled user prompt is ${userPrompt.length} chars; fitting it to ${maxUserChars}`)
@@ -94,11 +78,8 @@ export class Think {
         }
         if (totalChars > this._maxInputChars) {
             const overBy = totalChars - this._maxInputChars
-            // name the actual fat, not just the overage: this warn spent a
-            // day saying "truncating Learned Facts" while that section held
-            // 717 chars of an 8700-char overage. the chop is a backstop, and
-            // if the prompt is still over afterwards the numbers here are
-            // what to read before touching anything.
+            // log the breakdown. this once blamed Learned Facts for a day when it
+            // was 717 chars of an 8700 overage
             this.logger.warn(`Prompt over budget by ~${Math.round(overBy / 4)} tokens (system ${systemPrompt.length}, user ${userPrompt.length}; memory ${memory.length}, skills ${skills.length}, tools ${tools.length}, situation ${situation.length}), truncating Learned Facts`)
             const truncatedMemory = this._truncateLearnedFacts(memory, overBy)
             finalSystemPrompt = this.promptBuilder.buildSystemPrompt(truncatedMemory, skills, tools, observation.available_actions)
@@ -109,10 +90,8 @@ export class Think {
         }
         this._lastPromptChars = finalSystemPrompt.length + userPrompt.length
 
-        // 3. call LLM with tier routing
         const { text, source, model, usage, ms } = await this.llm.generate(finalSystemPrompt, userPrompt, 30000, tier)
-        // For the decision log: which model answered, how long the whole
-        // chain took, and what the prompt cost, fallback or not.
+        // for the decision log, fallback or not
         const receipt = { llm: { model: model || null, ms: ms ?? null, usage: usage || null }, promptChars: this._lastPromptChars }
 
         if (!text) {
@@ -122,18 +101,16 @@ export class Think {
 
         this.logger.debug(`LLM response (${source}): ${text.slice(0, 120)}`)
 
-        // 4. parse response
         const parsed = this._parseResponse(text)
         if (!parsed) {
             this.logger.warn('Failed to parse LLM response, using fallback')
             return { ...this._wrapFallback(observation), ...receipt, fallback: 'unparseable', raw: text.slice(0, 300) }
         }
 
-        // 5. memory write if present — use salience for encoding strength.
-        // v0.3.1: cap entry length so LLM cant write novels into memory
+        // capped, or it writes essays into memory.md
         if (parsed.remember && typeof parsed.remember.content === 'string' && parsed.remember.content.trim()) {
             const salience = extras.salience || 0.5
-            let content = parsed.remember.content.trim().slice(0, 120)  // hard cap 120 chars
+            let content = parsed.remember.content.trim().slice(0, 120)
             if (salience > 0.7) content += ' [salient]'
             await this.memoryFiles.appendToMemory(
                 parsed.remember.section || 'Learned Facts',
@@ -147,35 +124,28 @@ export class Think {
             params: parsed.params || {},
             reason: parsed.reason || '',
             source: source,
-            // Pass the memory back up as well as writing it above. The
-            // environment keeps its own memory and its own diary, and until
-            // now it never heard about any of this: he remembered things
-            // into a file on the Pi and the world showed nothing.
+            // the env keeps its own memory + diary and never heard about these,
+            // they just went into a file on the pi
             remember: parsed.remember?.content ? parsed.remember : undefined,
             ...receipt,
         }
     }
 
-    // sleep consolidation. direct LLM call with custom prompts
-    // jsonMode MUST be false for prompts that ask for markdown output
-    // (memory.md / skills.md consolidation) — otherwise Groq 400s the
-    // request (json_object mode requires the word "json" in the messages),
-    // which silently killed every consolidation pass ("memory=false").
+    // sleep consolidation. jsonMode has to be false for the markdown ones
+    // (memory.md, skills.md) or groq 400s, json_object mode wants the word
+    // "json" in the messages. silently killed every pass for a while
     async consolidate(systemPrompt, userPrompt, timeoutMs = 60000, jsonMode = true) {
         const { text, source } = await this.llm.generate(systemPrompt, userPrompt, timeoutMs, 'quality', jsonMode)
         return text
     }
 
     _parseResponse(text) {
-        // try to pull JSON out of the response.
-        // LLMs sometimes wrap it in markdown code blocks
         let jsonStr = text.trim()
 
-        // strip markdown code fences
+        // models love wrapping it in ```json
         const fenceMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/)
         if (fenceMatch) jsonStr = fenceMatch[1].trim()
 
-        // find JSON object
         const braceStart = jsonStr.indexOf('{')
         const braceEnd = jsonStr.lastIndexOf('}')
         if (braceStart !== -1 && braceEnd > braceStart) {
@@ -192,32 +162,26 @@ export class Think {
         }
     }
 
-    // truncate memory by removing entries from "Learned Facts" (the largest,
-    // least critical section) instead of end-slicing which would destroy
-    // Important Memories first
+    // Learned Facts is the biggest and least important section. slicing off
+    // teh end would take Important Memories first
     _truncateLearnedFacts(memory, overBy) {
         const marker = '## Learned Facts'
         const idx = memory.indexOf(marker)
         if (idx === -1) {
-            // no Learned Facts section — fall back to end truncation
+            // no section, just cut the end
             return memory.slice(0, Math.max(200, memory.length - overBy))
         }
 
-        // find next section after Learned Facts
         const afterMarker = idx + marker.length
         const nextSection = memory.indexOf('\n## ', afterMarker)
         const sectionEnd = nextSection === -1 ? memory.length : nextSection
 
-        // extract section entries
         const before = memory.slice(0, afterMarker)
         const section = memory.slice(afterMarker, sectionEnd)
         const after = memory.slice(sectionEnd)
 
-        // Drop oldest NON-salient facts first; only sacrifice [salient] ones
-        // if the budget still isn't met. Salient entries are the moments the
-        // bird marked as hitting hardest — exactly the deep learning that a
-        // blind "oldest-first" cut used to throw away while keeping recent
-        // routine. Within each tier we still remove oldest-first.
+        // oldest non-salient first, [salient] only if thats not enough.
+        // plain oldest-first threw away the stuff that mattered and kept routine
         const lines = section.split('\n')
         const isFact = (l) => l.startsWith('- ')
         const isSalient = (l) => /\[salient\]\s*$/.test(l)

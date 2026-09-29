@@ -1,7 +1,6 @@
-// the meaning-level dedup: verdicts from the LLM applied to a reflection's
-// arrays. the word-level sanitizer can't see that "private" and
-// "selectively open" are one idea; this is the half that acts once
-// something can.
+// meaning level dedup, applying the llm's verdicts to a reflection's arrays.
+// word level sanitizer can't tell "private" and "selectively open" are the
+// same idea
 
 import { test } from 'node:test'
 import assert from 'node:assert'

@@ -1,12 +1,6 @@
-// The voice scorer exists in this repo and in agent-runtime, because they
-// are two codebases with two deploy targets and the Pi's service has no
-// install step for a shared package.
-//
-// That duplication is exactly what cost hours this morning: wornWords lived
-// in both, one copy had a stemming bug, and nothing complained. So each copy
-// carries a fingerprint of its own contents and this test recomputes it.
-// Edit the file without running `npm run sync:voice` and this fails, which
-// is the alarm that was missing.
+// voiceScore.js is a copy of the sim's scorer (no shared package, the pi has
+// no install step). the copy carries a fingerprint of itself so an edit here
+// that skips the sync fails loudly instead of drifting quietly.
 
 import { test } from 'node:test'
 import assert from 'node:assert/strict'

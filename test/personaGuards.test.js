@@ -1,11 +1,8 @@
-// The persona has silted up twice now, so the rules that stop it are pinned
-// here. Run with `npm test`. No framework, node's own runner.
-//
-// The case that matters is real: Victor's sheet on the Pi had grown from 9
-// baseline traits to 14, and five of the additions were the same sentence
-// with different nouns ("finds calm in water's ripple", "finds brief lift in
-// warm air", "finds brief focus in warm mechanical hums", ...). Every one of
-// them passed the old guard, because they shared almost no content words.
+// persona has silted up twice, so the guards get pinned here.
+// real case: victor's sheet on the pi went from 9 traits to 14, five of them
+// the same sentence with the nouns swapped ("finds calm in water's ripple",
+// "finds brief lift in warm air" etc). old guard let every one through,
+// they barely share any content words
 
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
@@ -73,9 +70,8 @@ test('richness floor still stops the sheet hollowing out', () => {
 })
 
 test('restoring onto a full sheet does not breach the cap', () => {
-    // the 08-12 shape: drift swapped spontaneous for focused, then added
-    // two more allies; the guard restored spontaneous by appending and
-    // shipped 12 traits against a cap of 11
+    // 12 Aug: drift swapped spontaneous for focused and added two more,
+    // restore appended spontaneous back and we shipped 12 against a cap of 11
     const evolvedFull = [
         ...BASELINE.filter((t) => t !== 'spontaneous'),
         'focused', 'patient', 'methodical',
@@ -109,7 +105,7 @@ test('a clause that only reports a dial is dropped', () => {
 })
 
 test('a line with nothing left over is left alone rather than gutted', () => {
-    // no second clause to fall back on, so keep it: odd beats empty
+    // nothing to fall back on, odd beats empty
     assert.equal(sanitizeReason('Curiosity spikes'), 'Curiosity spikes')
 })
 
@@ -121,9 +117,8 @@ test('lines that were already fine are untouched', () => {
 })
 
 test('one quietly omitted authored quirk comes back', () => {
-    // The slow deletion: the model returns the full list minus one, the
-    // sanitizer never sees the omission, and the sheet loses the quirk
-    // that makes him fun. Authored entries are a floor, not a suggestion.
+    // model hands back the list minus one, sanitizer never notices, quirk
+    // gone. authored entries are a floor
     const persona = { quirks: BASELINE.slice(0, -1) }
     enforceRichnessFloor(persona, { quirks: BASELINE })
     assert.equal(persona.quirks.length, BASELINE.length)
@@ -137,11 +132,10 @@ test('grown entries survive a canon restore', () => {
     assert.ok(persona.quirks.includes(BASELINE[BASELINE.length - 1]), 'canon is restored')
 })
 
-// The 16 Aug finding: the count guard held while the sheet degraded, because
-// jaccard punishes size difference. "private yet attuned to rhythmic cues"
-// vs "private" is 1 shared token over 4, so it walked in, and the sheet
-// carried three ways of saying private inside the cap. Containment asks the
-// question we mean. Fixtures are the real entries off the Pi.
+// 16 Aug: count guard held but the sheet still rotted. jaccard punishes size
+// difference, "private yet attuned to rhythmic cues" vs "private" is 1/4 so
+// it got in, three ways of saying private under the cap. containment is the
+// right question. entries are off the pi
 test('a padded restatement of an existing trait is dropped', () => {
     const { kept, dropped } = run([...BASELINE, 'private yet attuned to rhythmic cues'])
     assert.ok(!kept.includes('private yet attuned to rhythmic cues'), 'the private restatement is out')
@@ -159,10 +153,9 @@ test('a genuinely different entry still gets past the containment check', () => 
     assert.ok(kept.includes('keeps a running argument with the speaking clock'))
 })
 
-// ── The evolver's content gate, 21 Aug ──
-// At 08:19 the fixation wrote itself in as a trait. The count guard held
-// and nothing looked at what the words said; a trait is the worst landing
-// spot because it enters every subsequent prompt.
+// evolver content gate, 21 Aug. at 08:19 the fixation wrote itself in as a
+// trait, count guard fine, nothing read the words. worst place for it, traits
+// go into every prompt after
 
 import { sanitizeEvolvedArrays as _sanitize21 } from '../src/loop/SleepCycle.js'
 

@@ -1,27 +1,16 @@
-// sleep cycle manager.
-// configurable active/sleep durations + quiet hours.
-// during sleep: LLM consolidates memory, extracts skills, reflects on
-// state history, optionally evolves persona, garbage collects.
-//
-// v0.3 changes:
-// - readForConsolidation() caps LLM context input
-// - clears repetition guard during sleep
-// - persona drift guard: measures distance from original, blocks runaway evolution
-// - flushes daily log buffer before consolidation
+// sleep cycle. active/sleep timing + quiet hours, and the night passes:
+// consolidate memory, pull out skills, self-reflect (maybe evolve the
+// persona), form a thread, gc old logs.
 
 import { sanitizeJson } from '../util/sanitizeJson.js'
 
-// The reason channel's own coinages. HOLLOW covers the mystery-noun family
-// ("a clue" is in it), but his internet epithets walk straight past it —
-// "the glow room" 24 times in one day, and "his search for the glow
-// thread" already written into the persona evolution text. Consolidation
-// view only: the diary scorer never reads this list, so the green stone's
-// real glow stays sayable in public lines.
-// Broadened 21 Aug: "the glowing pond" and "subtle light cues" walked
-// straight past \bthe\s+glow\b, and a consolidation that ingests those
-// reasons is the fixation's food supply. Still consolidation-view only.
-// The fixation's whole sensory family, for the one surface where a single
-// entry is worth more than a hundred diary lines: an evolved disposition.
+// LIGHT_MOTIF is the whole light family, only used on evolved dispositions
+// where one entry does more damage than a hundred diary lines.
+// REASON_TIC is the reason channel's own coinages. HOLLOW catches the
+// mystery nouns but not these ("the glow room" 24x in a day). widened 21 Aug
+// after "the glowing pond" and "subtle light cues" got past. consolidation
+// view only, the diary scorer never reads it so the green stone's real glow
+// is still sayable
 const LIGHT_MOTIF = /\b(glow\w*|glint\w*|shimmer\w*|lumin\w*|light|lights|lit|flicker\w*|gleam\w*|glimmer\w*|radian\w*|puls(?:e|es|ing)|beacon\w*|neon)\b/i
 const REASON_TIC = /\b(glow\w*|glint\w*)\s+(room|thread|trail|hunt|chase)\b|\bthe\s+glow\w*\b|\b(subtle )?light cues\b|\bvisual rhythms?\b/i
 import { stem } from '../util/wornWords.js'
@@ -30,28 +19,12 @@ import { _patterns as voicePatterns } from '../util/voiceScore.js'
 
 import { readFile, writeFile, copyFile } from 'node:fs/promises'
 
-/**
- * The authored sheet is a floor, not just a ceiling: every baseline entry
- * must be present after an evolution, full stop.
- *
- * This began as a 60% richness floor, which stopped the catastrophic case
- * (nine traits collapsing to one) and waved through the slow one: the merge
- * replaces an array wholesale, so a model that quietly omits one authored
- * quirk deletes it, one per cycle, under the drift guard's radar, because
- * drift additions were blocked at the cap while deletions sailed. The quirk
- * it chose to drop was the reckless coin-flip one, the single entry that
- * makes him fun, while logging a reason about calm water. Sanitize already
- * says "baseline entries are canon, never dropped", but it can only judge
- * what the model RETURNS; an omission never reaches it. So canon is
- * enforced here, on the merged sheet, where an omission is visible.
- * Evolved (grown) entries remain removable; the authored ones are not the
- * model's to delete. Pure + exported so it can be unit-tested in isolation.
- *
- * @param {object} persona          - persona being evolved (mutated in place)
- * @param {object} originalPersona  - immutable baseline (comparable fields)
- * @param {object} [logger]         - optional logger with .info()
- * @returns {object} the same persona, for chaining
- */
+// every authored entry has to still be there after an evolution.
+// the merge replaces arrays wholesale, so a model that just leaves a quirk
+// out deletes it, one a cycle, under the drift guard (it dropped the
+// coin-flip one, the one that makes him fun). the sanitizer only sees what
+// comes back, an omission never reaches it, so canon is enforced here on the
+// merged sheet. evolved entries can still go. mutates persona and returns it
 export function enforceRichnessFloor(persona, originalPersona, logger = null) {
     if (!originalPersona) return persona
     for (const field of ['traits', 'values', 'fears', 'quirks']) {
@@ -65,11 +38,9 @@ export function enforceRichnessFloor(persona, originalPersona, logger = null) {
         for (const item of missing) {
             logger?.info?.(`Drift guard: restored authored ${field} entry "${String(item).slice(0, 70)}"`)
         }
-        // Restoring onto a full list must not breach the cap this guard
-        // exists to protect (12 traits shipped that way once, three of
-        // them arguing for the same fixation). Authored entries always
-        // stay; evolved ones are trimmed oldest-first-kept, so the newest
-        // additions, the ones drift just made, are what give way.
+        // restoring onto a full list can't go over the cap (shipped 12 traits
+        // once, three of them the same fixation). authored always stay, the
+        // newest evolved ones give way first
         const cap = baseline.length + 2
         if (merged.length > cap) {
             const authoredSet = new Set(baseline.map((s) => String(s).toLowerCase()))
@@ -86,18 +57,9 @@ export function enforceRichnessFloor(persona, originalPersona, logger = null) {
     return persona
 }
 
-/**
- * When the character sheet last actually changed, or null if it never has.
- *
- * Entries are written with `date`, and the caller used to read `at`, so
- * Date.parse('') came back NaN for every entry, nothing looked finite, and
- * the minimum-gap check silently never applied. The sheet was reconsidered
- * every sleep instead of twice a day. Both spellings are read because old
- * logs are already on disk.
- *
- * @param {object} persona
- * @returns {number|null} epoch ms
- */
+/** epoch ms of the last real sheet change, or null. entries are written with
+ * `date` but the caller used to read `at`, so it was always NaN and the min-gap
+ * check never kicked in. reads both, old logs are still on disk */
 export function lastEvolutionAt(persona) {
     const found = [...(persona?.evolution || [])].reverse()
         .map((e) => Date.parse(e?.date || e?.at || ''))
@@ -105,7 +67,7 @@ export function lastEvolutionAt(persona) {
     return found ?? null
 }
 
-// --- evolution sanitizer helpers ---------------------------------------
+// evolution sanitizer bits
 
 const MOTIF_STOPWORDS = new Set([
     'the', 'and', 'but', 'for', 'not', 'was', 'are', 'with', 'that', 'this',
@@ -113,8 +75,8 @@ const MOTIF_STOPWORDS = new Set([
     'when', 'than', 'then', 'them', 'they', 'from', 'into', 'over', 'out',
     'about', 'after', 'before', 'while', 'more', 'most', 'some', 'only',
     'often', 'sometimes', 'occasionally', 'small', 'things', 'himself',
-    // frame verbs: structural, not thematic. The frame check below counts
-    // these properly, and leaving them in made "find" register as a motif.
+    // frame verbs, structure not theme. the frame check counts them, and
+    // left in here "find" showed up as a motif
     'find', 'finds', 'seek', 'seeks', 'draw', 'draws', 'drawn', 'brief',
 ])
 
@@ -127,39 +89,25 @@ function motifTokens(s) {
     return seen
 }
 
-// The shape of an entry, not its words.
-//
-// Token overlap cannot see what was actually wrong with his sheet: "finds
-// calm in water's ripple", "finds brief lift in warm air", "finds brief
-// focus in warm mechanical hums" and "seeks fleeting sparks in mundane
-// environments" share almost no content words, so every pairwise jaccard
-// was around 0.1, yet they are plainly one idea written four times. They
-// are all <verb> <sensation> in <ambient thing>. A disposition says what he
-// DOES; these say what he likes the feel of, which is a diary entry wearing
-// a trait's clothes.
-//
-// So entries are also bucketed by frame, and a frame may appear at most
-// twice among the additions.
+// shape of an entry, not its words. "finds calm in water's ripple", "finds
+// brief lift in warm air", "seeks fleeting sparks in mundane environments"
+// share almost no words (jaccard ~0.1) but its one idea written again and
+// again: <verb> <sensation> in <ambient thing>. a diary entry wearing a
+// trait's clothes. max twice per frame among the additions
 const FRAME_VERBS = /^(finds?|seeks?|draws?|drawn|attuned|soothed|comforted|calmed|steadied|settled|lifted|grounded|takes? comfort|likes? the)\b/i
 const FRAME_TAIL = /\b(in|by|when|among|through|from)\b/
 
-// Every one of these is ONE frame, whichever verb opens it. Bucketing per
-// verb was useless: "finds calm in X", "seeks sparks in Y" and "attuned to
-// Z" are the same move, and he had four of them. A couple of sensory
-// affinities is character; five is a tic.
+// one frame whatever the verb, per-verb buckets were useless.
+// a couple of sensory affinities is character, five is a tic
 function entryFrame(entry) {
     const e = String(entry).trim().toLowerCase()
     if (!FRAME_VERBS.test(e)) return null
     return FRAME_TAIL.test(e) ? 'sensory-affinity' : 'sensory-affinity-bare'
 }
 
-// Containment: intersection over the SMALLER set. Jaccard punishes size
-// difference, which is exactly how "private yet attuned to rhythmic cues"
-// walked past "private" (1 shared token / 4 total = 0.25) and the sheet
-// ended up holding three restatements of one authored trait, all inside
-// the count cap. Dividing by the smaller set asks the question we mean:
-// is one of these substantially inside the other. Same lesson the memory
-// ecology learned, same fix.
+// intersection over the SMALLER set. jaccard let "private yet attuned to
+// rhythmic cues" past "private" (0.25) and the sheet ended up with three
+// restatements of one authored trait. same fix as memory dedup
 function tokenContainment(a, b) {
     if (a.size === 0 || b.size === 0) return 0
     let inter = 0
@@ -167,47 +115,25 @@ function tokenContainment(a, b) {
     return inter / Math.min(a.size, b.size)
 }
 
-// log-observation dressed as personality: "recognizes that X", "notes Y".
-// anything OPENING with an epistemic verb is a diary line, not a
-// disposition — real traits read "steps back when...", "quietly proud of..."
+// log-observation dressed as personality ("recognizes that X", "notes Y").
+// real traits read like "steps back when...", "quietly proud of..."
 const OBSERVATION_RE = /^(recognizes|notes|realizes|understands|learns|acknowledges|accepts|observes|notices)\b/i
 
-// How many kept entries may carry the same stemmed content word, and how
-// many may share a sentence shape. Both are counted across the whole sheet.
+// per stemmed word and per sentence shape, counted accross the whole sheet
 const MOTIF_CEILING = 2
 const FRAME_CEILING = 2
 
 /**
- * Scrub a self-reflection's proposed array fields before they merge.
- * enforceRichnessFloor stops the persona hollowing OUT; this stops it
- * silting UP. Victor's hum spiral arrived as 46 separate "recognizes that
- * X eases the hum" entries — each an observation dressed as a trait, each
- * individually passing the drift check (drift measures loss of baseline,
- * so pure additions never trip it), until the character sheet WAS the
- * motif. Rules, per array field (traits/values/fears/quirks):
- *   1. baseline entries are canon — never dropped
- *   2. drop observation-shaped entries (see OBSERVATION_RE) and anything
- *      over 90 chars: traits are dispositions, short by nature
- *   3. drop restatements (token containment >= 0.6 against anything kept)
- *   4. motif ceiling: one content word may appear in at most 3 entries
- *      across the whole sheet; later entries carrying it drop
- *   5. hard cap per field: baseline size + 2 (8 if no baseline), keeping
- *      the head, since existing entries lead the list in an honest
- *      reflection. This is the load-bearing rule: rules 2 to 4 are all
- *      lexical and a model varies wording faster than we can enumerate it,
- *      so the count is the only limit that cannot be worded around.
- * Pure + exported so it can be unit-tested in isolation.
- *
- * @param {object} changes          - reflection.changes (mutated in place)
- * @param {object} persona          - current persona (for unchanged fields)
- * @param {object} originalPersona  - immutable baseline (comparable fields)
- * @param {object} [logger]         - optional logger with .info()
- * @param {string[]} [banned]       - words the voice rules forbid. baseline
- *   entries are exempt: the authored sheet is allowed to say whatever it
- *   says, and "just past the edge of things" is one of his real values.
- *   This only stops the reflection WRITING new ones, which is how "resourceful
- *   use of varied experiences to break flatness" got onto the sheet.
- * @returns {number} how many entries were dropped
+ * scrub a reflection's proposed arrays before the merge. the floor above stops
+ * the sheet hollowing out, this stops it silting up (the hum spiral was 46
+ * "recognizes that X eases the hum" entries, each one passing drift, since
+ * drift only notices loss).
+ * baseline is canon. otherwise drop: observation-shaped, over 90 chars, banned
+ * words, restatements (containment >= 0.6), anything over the motif/frame
+ * ceilings. then cap at baseline + 2 (8 with no baseline). the cap is what
+ * really holds, the rest is lexical and the model rewords faster than we can list
+ * @param {string[]} [banned] voice-rule words, baseline entries exempt
+ * @returns {number} entries dropped. mutates changes
  */
 export function sanitizeEvolvedArrays(changes, persona, originalPersona, logger = null, banned = [], barredStems = null) {
     if (!changes || typeof changes !== 'object') return 0
@@ -237,24 +163,13 @@ export function sanitizeEvolvedArrays(changes, persona, originalPersona, logger 
         const baseline = new Set(
             (originalPersona?.[field] || []).map((s) => String(s).trim().toLowerCase())
         )
-        // Headroom above the authored sheet. Was +5, and it let seven
-        // versions of one trait onto Victor's: "finds calm in water's
-        // ripple", "attuned to subtle rhythms in mundane hums", "finds
-        // brief clarity from coffee aroma", "is fascinated by
-        // bioluminescent beetles", "feels a spark from neon lights",
-        // "finds momentary spark from flickering bar lights", "uses
-        // sensory spikes to reset focus". All one trait, worded seven ways.
-        //
-        // The frame check below caught two of them and the other five
-        // walked past it, because "attuned to" and "is fascinated by" and
-        // "uses" are not in FRAME_VERBS. Widening that list is the same
-        // losing game as banning "the edge" and getting "the whisper": the
-        // model varies the wording faster than we can enumerate it, and a
-        // lexical guard cannot see that seven sentences mean one thing.
-        //
-        // So the cap is the real defence, because it does not care how
-        // something is phrased. Two slots of headroom is enough to grow
-        // into and far too few to build a monoculture in.
+        // headroom over the authored sheet. was +5 and let seven wordings of
+        // one trait onto Victor's ("finds calm in water's ripple", "feels a
+        // spark from neon lights", "uses sensory spikes to reset focus"...).
+        // the frame check got two of them. widening FRAME_VERBS is the same
+        // losing game as banning "the edge" and getting "the whisper", the
+        // cap doesn't care how it's phrased. 2 is room to grow, not enough for
+        // a monoculture
         const cap = baseline.size > 0 ? baseline.size + 2 : 8
 
         const kept = []
@@ -274,26 +189,17 @@ export function sanitizeEvolvedArrays(changes, persona, originalPersona, logger 
                 if (entry.length > 90) { drop(field, entry, 'over 90 chars'); continue }
                 const hits = bannedIn(entry, banned)
                 if (hits.length > 0) { drop(field, entry, `banned word "${hits[0]}"`); continue }
-                // Content, not just count. At 08:19 on 21 Aug the fixation
-                // wrote itself in as the trait "attuned to subtle light
-                // cues" (reason: "Repeated focus on the glowing pond,
-                // lanterns, and visual rhythms"). The count guard held and
-                // nothing looked at what the words SAID, and a trait is
-                // the worst possible landing spot: it enters every
-                // subsequent prompt and manufactures the evidence for the
-                // next one. The frame detector and the light family both
-                // stand here now. "light" bare is deliberately in the
-                // family for this one surface: the corpus of evolved
-                // dispositions is tiny and high-stakes, and losing an
-                // occasional "light-hearted" is the right price.
+                // content, not just count. 21 Aug the fixation wrote itself
+                // in as "attuned to subtle light cues" and nothing read what
+                // it said. a trait is the worst place for that, it goes in
+                // every prompt after and makes its own evidence.
+                // bare "light" is in the family on purpose here, losing the
+                // odd "light-hearted" is fine
                 if (isMessageFrame(entry)) { drop(field, entry, 'message-frame shaped'); continue }
                 if (LIGHT_MOTIF.test(entry)) { drop(field, entry, 'light-fixation motif'); continue }
-                // A subject he was forced to let go cannot come back as a
-                // disposition. The glow was retired as a thread and scrubbed
-                // from memory on 13 Aug, and the next morning this writer
-                // put it back as a quirk, from which it started steering
-                // decisions again. The thread bar was never going to hold
-                // while the persona had its own door.
+                // a retired subject cant come back as a disposition. the glow
+                // was retired and scrubbed from memory on 13 Aug and was back
+                // as a quirk by the next morning
                 const retired = _retiredHit(entry, barredStems)
                 if (retired) { drop(field, entry, `retired subject "${retired}"`); continue }
             }
@@ -301,19 +207,16 @@ export function sanitizeEvolvedArrays(changes, persona, originalPersona, logger 
             const tokens = motifTokens(entry)
 
             if (!isCanon) {
-                // Containment, not jaccard: a proposed entry that is mostly
-                // INSIDE an existing one (or swallows one whole) is a
-                // restatement spending a cap slot, however much padding it
-                // arrives wrapped in. Extensions of an existing disposition
-                // belong as revisions of it, not as neighbours to it.
+                // mostly inside an existing entry (or swallowing one) is a
+                // restatement eating a cap slot, however it's padded.
+                // extensions should be revisions, not neighbours
                 let nearDup = false
                 for (const kt of keptTokens) {
                     if (tokenContainment(tokens, kt) >= 0.6) { nearDup = true; break }
                 }
                 if (nearDup) { drop(field, entry, 'restates an existing entry'); continue }
 
-                // Ceiling of 3 was too generous against a cap of +5: it let
-                // a single motif own most of everything he had grown.
+                // was 3 against the old +5 cap, one motif owned most of what he grew
                 let overMotif = null
                 for (const t of tokens) {
                     if ((wordCounts.get(t) || 0) >= MOTIF_CEILING) { overMotif = t; break }
@@ -342,26 +245,14 @@ export function sanitizeEvolvedArrays(changes, persona, originalPersona, logger 
     return dropped
 }
 
-/**
- * Apply semantic-twin verdicts to a reflection's arrays. The containment
- * dedup above catches restatements that share words; "private" and
- * "selectively open" share none, and three of eleven trait slots ended up
- * holding one idea — the drift-collapse failure wearing different
- * clothes. Meaning needs a reader, so the sleep cycle asks the LLM
- * (see _semanticTwinPass) and this applies what came back, with the
- * authored sheet always winning:
- *
- *   - a PROPOSED entry that restates a current one REPLACES it — the
- *     axis moves instead of accumulating. Unless the current one is
- *     authored, in which case the proposal drops.
- *   - at most ONE pair of existing entries per sleep may merge (the
- *     non-authored, later one goes). One per night heals a stacked axis
- *     in a few sleeps with no way to collapse a sheet wholesale — the
- *     2026-06 drift wipe is why the cap is this tight.
- *
- * Anything malformed is ignored: no verdict, no change, same as before
- * this existed.
- */
+// applies what _semanticTwinPass got back. containment only catches
+// restatements that share words, "private" and "selectively open" share none
+// and three of eleven trait slots ended up one idea. authored always wins:
+// - a proposal that restates a current entry replaces it (drops instead if
+//   the current one is authored)
+// - at most ONE existing pair merges per night, the non-authored one goes.
+//   tight on purpose after the 2026-06 drift wipe
+// anything malformed = no change
 export function collapseSemanticTwins(changes, persona, originalPersona, result, logger = null) {
     if (!result || typeof result !== 'object') return 0
     const fields = ['traits', 'values', 'fears', 'quirks']
@@ -421,15 +312,9 @@ export class SleepCycle {
         this.speechLog = speechLog
         this.logger = logger
 
-        // Keep the whole config. The fields below are the long-standing
-        // shorthands; anything added later (persona evolution interval,
-        // thread expiry) reads through this.config, and three of those
-        // shipped today as reads on `undefined` because it was never
-        // stored. That threw inside the sleep pass every cycle:
-        //   "Sleep consolidation error: Cannot read properties of
-        //    undefined (reading 'personaEvolutionMinHours')"
-        // so both features were dead AND they were taking consolidation
-        // down with them.
+        // keep the whole config, newer settings (evolution interval, thread
+        // expiry) read through it. it wasn't stored at first and every sleep
+        // threw on undefined and took consolidation down with it
         this.config = config || {}
 
         this.activeHours = config.activeHoursBeforeSleep
@@ -455,9 +340,8 @@ export class SleepCycle {
         this._declinedProposals = []
     }
 
-    // load the immutable original persona baseline.
-    // on first-ever boot, saves a copy that never changes.
-    // on every subsequent boot (incl after crashes), loads from that file.
+    // immutable persona baseline. written once on the first ever boot, read
+    // back from that file every boot after (crashes included)
     async loadOriginalPersona(currentPersona) {
         const { join } = await import('node:path')
         const baselinePath = join(this.dataDir, 'persona-baseline.json')
@@ -465,19 +349,16 @@ export class SleepCycle {
             const raw = await readFile(baselinePath, 'utf-8')
             this._originalPersona = this._extractComparableFields(JSON.parse(raw))
             this.logger.info('Drift guard: loaded immutable persona baseline')
-            // Canon repair at boot. The floor at evolution time stops NEW
-            // deletions; anything already lost before the floor existed
-            // would stay lost until the model happened to evolve again, so
-            // the check runs here too, against the sheet we just woke with.
-            // Written back to disk when something was missing, because the
-            // hourly persona sync reads the FILE, not this process.
+            // canon repair at boot too, or anything lost before the floor
+            // existed stays lost until the next evolution. written back
+            // because the hourly persona sync reads the file, not us
             const before = JSON.stringify(currentPersona)
             enforceRichnessFloor(currentPersona, this._originalPersona, this.logger)
             if (this.personaPath && JSON.stringify(currentPersona) !== before) {
                 try { await writeFile(this.personaPath, JSON.stringify(currentPersona, null, 2), 'utf-8') } catch { /* next evolution writes it */ }
             }
         } catch {
-            // first ever boot — save the current persona as the baseline
+            // first ever boot, current persona becomes the baseline
             await writeFile(baselinePath, JSON.stringify(currentPersona, null, 2), 'utf-8')
             this._originalPersona = this._extractComparableFields(currentPersona)
             this.logger.info('Drift guard: saved initial persona baseline')
@@ -488,41 +369,25 @@ export class SleepCycle {
         return this.sleeping
     }
 
-    // called each heartbeat tick to check if its time to sleep.
-    //
-    // worldClock, when the host world sends one, is { hour, is_night, day }.
-    // Without it this falls back to the old real-time timer, so a runtime
-    // hosted somewhere with no day/night keeps working exactly as before.
-    //
-    // WHY THE TIMER WAS WRONG. It slept after fifty real minutes and stayed
-    // down for ten. In 3eyes one of his days is exactly one real hour, so
-    // sixty on sixty is phase-locked: the pause landed at the same world
-    // hour every single day, and that hour was the middle of his afternoon.
-    // 3eyes kept finding him asleep in daylight because it was never once
-    // anywhere else. Measured from the log, the consolidation WORK takes
-    // about fifteen seconds; the other nine and three quarter minutes were
-    // an arbitrary rest.
-    //
-    // So: consolidate at night, once per night, and be awake for his whole
-    // day. The world already puts him in a nest while the brain is away
-    // (see advanceSleepCycle in the sim), so the two finally mean the same
-    // thing instead of contradicting each other.
+    // every tick. worldClock is { hour, is_night, day } if the host sends one,
+    // otherwise it's the old real-time timer.
+    // the timer was 50 min up / 10 down, and a 3eyes day is one real hour, so
+    // it was phase-locked and he fell asleep mid afternoon every single day.
+    // the actual work is ~15s. so: once a night, awake all day. the sim puts
+    // him in the nest while the brain is away (advanceSleepCycle)
     checkSleepTime(worldClock = null) {
         if (this.sleeping) return
 
         if (worldClock && typeof worldClock.hour === 'number') {
             this._lastWorldClock = worldClock
             if (!worldClock.is_night) return
-            // Once a night. `day` is which of his days it is, so a night
-            // that straddles midnight still counts as the one night.
+            // once a night, one that straddles midnight is still one night
             const nightId = worldClock.hour < 12 ? worldClock.day - 1 : worldClock.day
             if (this._lastNightSlept === nightId) return
-            // A process restart is not a new waking day. Before this guard,
-            // every deploy made a fresh in-memory `_lastNightSlept`, then a
-            // restart during the night began another whole sleep after only
-            // one minute awake. The world's night is shorter than this
-            // window, while an ordinary morning-to-night stretch is longer,
-            // so a restart skips only the night already in progress.
+            // a restart isnt a new day. every deploy reset _lastNightSlept and a
+            // restart at night slept again after a minute awake. the world's
+            // night is shorter than this window so it only skips the night
+            // already in progress
             const restartGuardMs = this.worldSleepRestartGuardMinutes * 60_000
             if (Date.now() - this._wakeTime < restartGuardMs) return
             this._lastNightSlept = nightId
@@ -563,40 +428,37 @@ export class SleepCycle {
                 logsDeleted: 0,
             }
 
-            // Pass 0: pre-consolidation dedup — strip near-duplicates before the LLM sees them
+            // pass 0: strip near-dupes before the LLM sees them
             const dedupRemoved = await this.memoryFiles.deduplicateMemory()
             if (dedupRemoved > 0) {
                 await this.dailyLog.append(`Pre-consolidation dedup: removed ${dedupRemoved} near-duplicates`)
             }
 
-            // Pass 1: consolidate memory.md
+            // pass 1: memory.md
             stats.memoryConsolidated = await this._consolidateMemory()
-            await this._sleepDelay(5000)  // spread rate limit load
+            await this._sleepDelay(5000)  // spread the rate limit load
 
-            // Pass 2: extract skills from memory → skills.md
+            // pass 2: skills.md
             stats.skillsExtracted = await this._extractSkills()
             await this._sleepDelay(5000)
 
-            // Pass 3 (REMOVED in v0.3.1): _refreshTools() was destructive. the LLM
-            // could corrupt the ground truth header in tools.md. since tools.md is
-            // rebuilt from the live observation every tick, LLM cleanup was redundant.
+            // (the old tools cleanup pass was cut in v0.3.1, it could wreck the
+            // ground truth header and tools.md gets rebuilt every tick anyway)
 
-            // Pass 3: self-reflection — review behaviour and optionally evolve persona
+            // pass 3: self-reflection, maybe evolve the persona
             stats.selfReflected = await this._selfReflect()
 
-            // Pass 4: the desire layer — form, keep, or retire the ONE
-            // thread that pulls at the agent across days. Needs but no
-            // desires reads as a Tamagotchi; this is where wanting lives.
+            // pass 4: the desire layer, the one thread pulling at him across
+            // days. needs with no wants reads as a tamagotchi
             stats.desireFormed = await this._formDesire()
 
-            // Pass 4: garbage collect old daily logs
             stats.logsDeleted = await this.dailyLog.garbageCollect()
 
-            // Pass 5: clear volatile state
+            // volatile state
             this.workingMemory.clear()
             this.internalState.clearHistory()
             if (this.repetitionGuard) this.repetitionGuard.clear()
-            // trim speech log (keep last 25, dont clear, it persists across sleep)
+            // speech log is trimmed not cleared, it's meant to outlive sleep
             if (this.speechLog) {
                 this.speechLog.trim(25)
                 await this.speechLog.save()
@@ -611,15 +473,9 @@ export class SleepCycle {
             await this.dailyLog.append(`Sleep consolidation error: ${err.message}`)
         }
 
-        // Schedule wake-up.
-        //
-        // With a world clock, sleep until his morning: the host tells us
-        // how many real seconds are left of his night, because it is the
-        // only side that knows both where he is in the day and how long one
-        // of his days lasts. Being down for his whole night is the point,
-        // not a cost: the world puts him in a nest meanwhile, so the brain
-        // being away and the bird being asleep finally describe the same
-        // thing. Bounded either side so a bad clock cannot strand him.
+        // with a world clock, sleep till his morning. only the host knows how
+        // much real time is left of his night so it sends it. clamped both
+        // ways so a bad clock can't strand him
         const wc = this._lastWorldClock
         let sleepMs
         if (wc && typeof wc.night_ends_in_sec === 'number' && wc.night_ends_in_sec > 0) {
@@ -642,12 +498,9 @@ export class SleepCycle {
         this.workingMemory.push({ type: 'sleep', message: 'SLEEP ENDED, feeling refreshed' })
     }
 
-    // Subjects retired from the desire layer, as stems, for the 6-day bar.
-    // Shared by every writer that runs during sleep: the thread bar, the
-    // persona writer AND memory consolidation have to agree, or letting go
-    // of something only moves it. The glow proved this three times: barred
-    // as a thread, barred as a quirk, and it moved into memory.md as a
-    // Learned Fact that fed the decision prompt just the same.
+    // retired thread subjects as stems, barred for 6 days. every sleep writer
+    // has to agree on this or letting go just moves it: the glow went thread,
+    // then quirk, then a Learned Fact in memory.md
     async _barredStems() {
         try {
             const retired = (await this.memoryFiles.readRetiredThreads())
@@ -661,18 +514,9 @@ export class SleepCycle {
         }
     }
 
-    // The reasons channel is saturated with the hollow register (one day:
-    // glint 166, pull 100, glow 94, hum 56) and nobody ever reads it, but
-    // it flows through the daily log into consolidation and out into
-    // memory.md and persona evolution. That pipe is what put the drum
-    // fixation into three persona slots. So the sleep pass reads a
-    // cleaned view: an action line whose REASON leans on the hollow
-    // vocabulary keeps its fact and loses its reason. The log file on
-    // disk stays complete, for debugging and for the daily review.
-    // The LLM half of the semantic twin pass; collapseSemanticTwins (top of
-    // file) applies whatever comes back. One small call per sleep, JSON
-    // mode, and every failure path leaves the proposal exactly as the
-    // word-level sanitizer left it.
+    // LLM half of the semantic twin check, collapseSemanticTwins applies it.
+    // one small json call a sleep. any failure leaves the proposal as the
+    // word-level sanitizer left it
     async _semanticTwinPass(changes, persona) {
         const fields = ['traits', 'values', 'fears', 'quirks']
         const sections = []
@@ -699,6 +543,10 @@ export class SleepCycle {
         return collapseSemanticTwins(changes, persona, this._originalPersona, parsed, this.logger)
     }
 
+    // the reasons are soaked in the hollow register (one day: glint 166, pull
+    // 100, glow 94, hum 56) and nobody reads them, but they flow through the
+    // log into memory and the persona. thats how the drum fixation got three
+    // persona slots. sleep reads a cleaned view, the file on disk stays whole
     _stripHollowReasons(text) {
         const HOLLOW = voicePatterns?.HOLLOW
         if (!HOLLOW || !text) return text
@@ -714,16 +562,15 @@ export class SleepCycle {
 
     async _consolidateMemory() {
         const rawMemory = await this.memoryFiles.readMemory()
-        // capped log so we dont blow context (max 200 lines, not entire day)
+        // capped at 200 lines or the day blows the context
         const rawTodayLog = this._stripHollowReasons(await this.dailyLog.readForConsolidation(200))
 
         if (!rawTodayLog.trim()) return false
 
-        // The rewrite loop that kept the glow alive: memory carries it, the
-        // day's log mentions it, so the rewrite keeps it, so tomorrow's
-        // inputs carry it. Barred subjects are cut from BOTH inputs, told
-        // to the model, and stripped from the output. Three fences because
-        // one model instruction is advisory and the inputs are the seed.
+        // the loop that kept the glow alive: memory has it, the log mentions
+        // it, the rewrite keeps it. barred subjects get cut from both inputs,
+        // told to the model and stripped from the output. the instruction on
+        // its own is only advisory
         const bar = await this._barredStems()
         const circlesBarred = (line) => {
             if (!bar.stems?.size) return false
@@ -737,18 +584,15 @@ export class SleepCycle {
             ? rawTodayLog.split('\n').filter((l) => !circlesBarred(l)).join('\n')
             : rawTodayLog
 
-        // include salient events — high-energy moments should be prioritised
+        // the big moments get their own block
         const salientEvents = this.workingMemory.salientEvents(0.6)
             .filter((e) => !circlesBarred(`${e.action || ''} ${e.message || ''}`))
         const salientNote = salientEvents.length > 0
             ? `\n\nWHAT HIT HARDEST TODAY (these landed with real feeling, let them shape what you keep):\n${salientEvents.map(e => `- [${e.time}] ${e.type}: ${e.action || e.message || JSON.stringify(e)}`).join('\n')}`
             : ''
 
-        // Load persona so the consolidation is IN VOICE, not clinical. The
-        // old "you are a memory consolidation system" framing produced a
-        // strategy-wiki ("watch points are camera-like observers; food_apple
-        // _tree reduces hunger") — accurate, lifeless, and full of entity
-        // IDs. Memory should read like the bird's own private record.
+        // in his voice. "you are a memory consolidation system" gave a strategy
+        // wiki full of entity ids ("food_apple_tree reduces hunger")
         let pName = 'the agent', pVoice = ''
         try {
             const persona = JSON.parse(await readFile(this.personaPath, 'utf-8'))
@@ -775,10 +619,8 @@ Return ONLY the updated memory.md content (or the single token NO_CHANGE), nothi
 
         const result = await this.think.consolidate(prompt, userPrompt, 60000, false) // markdown output
 
-        // Quiet-day escape: if nothing new happened, the model can decline to
-        // rewrite rather than churn the file into paraphrased slop. Precise
-        // match on a short standalone token so a real memory that mentions
-        // "no change" in passing can't trip it.
+        // quiet day: NO_CHANGE instead of paraphrasing the file into slop.
+        // short exact token so a memory that says "no change" cant trip it
         const trimmedResult = (result || '').trim()
         if (trimmedResult.length <= 12 && /^no[_\s-]?change$/i.test(trimmedResult)) {
             this.logger.info('Memory consolidation: quiet day, left memory unchanged')
@@ -838,13 +680,8 @@ Return ONLY the updated skills.md content, nothing else.`
         return false
     }
 
-    // _refreshTools() REMOVED in v0.3.1. tools.md is rebuilt from live
-    // observations every tick. LLM cleanup was redundant and could corrupt
-    // the ground truth header, causing section duplication.
-
-    // self-reflection: review recent behaviour, internal state patterns,
-    // and optionally propose persona evolution.
-    // includes drift guard: blocks evolution if persona has diverged too far from original.
+    // look back over behaviour + state history and maybe evolve the persona.
+    // the drift guard blocks it if he's wandered too far from the baseline
     async _selfReflect() {
         const memory = await this.memoryFiles.readMemory()
         const todayLog = this._stripHollowReasons(await this.dailyLog.readForConsolidation(150))
@@ -852,7 +689,6 @@ Return ONLY the updated skills.md content, nothing else.`
 
         if (!todayLog.trim()) return false
 
-        // load current persona
         let persona
         try {
             const raw = await readFile(this.personaPath, 'utf-8')
@@ -862,17 +698,10 @@ Return ONLY the updated skills.md content, nothing else.`
             return false
         }
 
-        // Identity changes on its own clock, not the sleep clock. Sleep is
-        // hourly because memory should be consolidated while the day is
-        // still fresh; running the character sheet at that rate gave 24
-        // chances a day to rewrite him, and produced seven versions of one
-        // trait in a single night. This does not skip a reflection, it
-        // defers it to the next eligible sleep.
-        //
-        // The clock is read from the persona's own evolution log rather than
-        // kept in a new state file, so it survives a restart. That matters:
-        // the service restarts often enough that an in-memory timestamp
-        // would hand back a free reflection every time.
+        // the sheet runs on its own clock, not the sleep clock. hourly sleeps
+        // gave 24 chances a day to rewrite him (seven versions of one trait in
+        // a night). defers, doesn't skip. read off the evolution log so a
+        // restart doesnt hand out a free reflection
         const minGapMs = (this.config.personaEvolutionMinHours || 0) * 3600 * 1000
         if (minGapMs > 0) {
             const lastAt = lastEvolutionAt(persona)
@@ -887,14 +716,12 @@ Return ONLY the updated skills.md content, nothing else.`
             }
         }
 
-        // v0.3.1: _originalPersona is now loaded from immutable baseline file at startup
-        // via loadOriginalPersona(). if somehow not loaded, fall back to current.
+        // should already be loaded by loadOriginalPersona() at startup
         if (!this._originalPersona) {
             this.logger.warn('Drift guard: no baseline loaded, using current persona (unsafe)')
             this._originalPersona = this._extractComparableFields(persona)
         }
 
-        // check drift before allowing evolution
         const driftScore = this._measureDrift(persona)
         const maxDrift = 0.6  // 60% divergence threshold
         const driftBlocked = driftScore >= maxDrift
@@ -924,12 +751,9 @@ For example, to add one quirk you still return ALL quirks: {"changes": {"quirks"
 
 Respond with JSON only.`
 
-        // The evolution log used to ride along inside the persona here, all
-        // twenty entries of it. Nine of Victor's twelve said "warranting the
-        // subtle addition of a resourceful trait" and carried a byte-identical
-        // trait list, because the model was reading its own past proposals and
-        // making them again. The current sheet already says what he is; the
-        // log only ever taught him to repeat himself.
+        // evolution log stays out of the prompt. it used to ride along and 9
+        // of 12 entries were the same "subtle addition of a resourceful trait",
+        // the model was just re-making its own old proposals
         const { evolution, ...sheet } = persona
         const declined = this._declinedProposals.length > 0
             ? `\n\nALREADY CONSIDERED AND DECLINED (do not propose these again, they did not survive the guards):\n${this._declinedProposals.map((r) => `- ${r}`).join('\n')}`
@@ -953,7 +777,7 @@ Should ${persona.name} evolve? Respond with JSON.`
         if (!result) return false
 
         try {
-            // parse JSON from response
+            // dig the json out, it comes back fenced half the time
             let jsonStr = result.trim()
             const fenceMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/)
             if (fenceMatch) jsonStr = fenceMatch[1].trim()
@@ -971,14 +795,13 @@ Should ${persona.name} evolve? Respond with JSON.`
                 return true
             }
 
-            // apply changes to persona
             if (reflection.changes && typeof reflection.changes === 'object') {
-                // never change name, id, or backstory
+                // name, id and backstory are off limits
                 delete reflection.changes.name
                 delete reflection.changes.id
                 delete reflection.changes.backstory
 
-                // v0.3.1: type validation — reject changes that would corrupt persona structure
+                // wrong types here would corrupt the persona file
                 const arrayFields = new Set(['traits', 'values', 'fears', 'quirks'])
                 for (const [key, val] of Object.entries(reflection.changes)) {
                     if (arrayFields.has(key) && !Array.isArray(val)) {
@@ -986,22 +809,12 @@ Should ${persona.name} evolve? Respond with JSON.`
                         await this.dailyLog.append(`Persona evolution REJECTED, "${key}" had wrong type (${typeof val})`)
                         return false
                     }
-                    // voice.style is not his to rewrite.
-                    //
-                    // It was the only field the nightly evolution could edit
-                    // freely: the sanitizer covers traits, values, fears and
-                    // quirks, and voice was checked for TYPE and nothing
-                    // else. It had drifted from the authored "plain, dry,
-                    // short complete sentences anyone instantly understands,
-                    // never twisted language, a sharp friend texting you, not
-                    // a poet" to "sparse, fragmentary, like he's listening to
-                    // something else under the surface, plays loose with
-                    // grammar, thinks in fragments".
-                    //
-                    // Every rule added to make him concrete was arguing with
-                    // that line, and losing, because it sits in the persona
-                    // block above them. How he SOUNDS is authored. What he
-                    // notices and cares about is his.
+                    // voice.style isnt his to rewrite. it was the one field
+                    // evolution could edit freely and it drifted from "plain,
+                    // dry, short complete sentences" to "sparse, fragmentary...
+                    // plays loose with grammar", and every plain-speech rule
+                    // was arguing with it and losing. how he sounds is authored,
+                    // what he notices is his
                     if (key === 'voice') {
                         this.logger.info('Persona evolution: ignoring a proposed voice change, voice.style is authored')
                         delete reflection.changes.voice
@@ -1009,12 +822,10 @@ Should ${persona.name} evolve? Respond with JSON.`
                     }
                 }
 
-                // scrub silt before the merge: observation-shaped entries,
-                // dupes, motif pile-ups, over-cap growth. the richness floor
-                // below guards the opposite failure (hollowing out).
-                // Subjects retired from the desire layer are barred here too,
-                // for the same window: the thread bar and the persona writer
-                // have to agree, or letting go of something only moves it.
+                // scrub silt before the merge (observations, dupes, motif
+                // pile-ups, over cap). the floor below covers the opposite.
+                // retired thread subjects are barred here too, same window
+                // TODO: this is _barredStems() again, just call that
                 let barredStems = null
                 try {
                     const retired = (await this.memoryFiles.readRetiredThreads())
@@ -1030,8 +841,8 @@ Should ${persona.name} evolve? Respond with JSON.`
                     await this.dailyLog.append(`Self-reflection: sanitizer dropped ${scrubbed} proposed entries (observations/dupes/motif ceiling/cap)`)
                 }
 
-                // meaning-level pass, after the word-level ones: fail-soft,
-                // and never more than a few moves a night
+                // meaning-level pass after the word-level ones. fail soft, and
+                // only a few moves a night
                 let twins = 0
                 try {
                     twins = await this._semanticTwinPass(reflection.changes, persona)
@@ -1040,36 +851,26 @@ Should ${persona.name} evolve? Respond with JSON.`
                     await this.dailyLog.append(`Self-reflection: semantic twin pass collapsed ${twins} entries`)
                 }
 
-                // What the sheet looked like before, so we can tell an actual
-                // change from a proposal the guards ate.
+                // to tell a real change from a proposal the guards ate
                 const before = JSON.stringify(this._extractComparableFields(persona))
 
-                // backup persona before overwriting
                 try {
                     await copyFile(this.personaPath, this.personaPath + '.bak')
                 } catch { /* first run, no file to back up */ }
 
-                // merge changes
                 for (const [key, val] of Object.entries(reflection.changes)) {
                     persona[key] = val
                 }
 
-                // RICHNESS FLOOR: the merge above replaces an array field
-                // wholesale, so a too-short list from the model would hollow
-                // the personality out (nine traits to one). Re-seed pruned
-                // baseline entries for anything that fell below 60% richness.
+                // the merge replaces arrays wholesale, a short list from the
+                // model hollows him out (nine traits to one once). puts any
+                // missing authored entries back
                 enforceRichnessFloor(persona, this._originalPersona, this.logger)
 
-                // Nothing actually moved.
-                //
-                // Once traits sat at the cap the sanitizer dropped every new
-                // one, so the merge put back exactly what was already there.
-                // The old code still logged "evolved", still appended an
-                // evolution entry claiming a change, and still rewrote the
-                // file: nine of twelve entries on 11 Aug were this, each one
-                // a record of something that did not happen. Say so instead,
-                // keep the reason so the next pass knows not to bother, and
-                // leave the file alone.
+                // nothing actually moved. at the cap the sanitizer drops every
+                // new entry and the merge puts back what was there, but this
+                // still logged "evolved" and wrote an entry (9 of 12 on 11 Aug).
+                // keep the reason for next time and leave the file alone
                 if (JSON.stringify(this._extractComparableFields(persona)) === before) {
                     const why = reflection.reason || 'no reason given'
                     this._declinedProposals.push(why)
@@ -1079,7 +880,6 @@ Should ${persona.name} evolve? Respond with JSON.`
                     return true
                 }
 
-                // add evolution log entry
                 if (!persona.evolution) persona.evolution = []
                 persona.evolution.push({
                     date: new Date().toISOString(),
@@ -1087,12 +887,10 @@ Should ${persona.name} evolve? Respond with JSON.`
                     changes: reflection.changes,
                     driftScore: this._measureDrift(persona),
                 })
-                // keep evolution log manageable
                 if (persona.evolution.length > 20) {
                     persona.evolution = persona.evolution.slice(-20)
                 }
 
-                // write updated persona
                 await writeFile(this.personaPath, JSON.stringify(persona, null, 2), 'utf-8')
 
                 const newDrift = this._measureDrift(persona)
@@ -1110,32 +908,17 @@ Should ${persona.name} evolve? Respond with JSON.`
         return false
     }
 
-    // the desire layer: distill ONE current thread, a want with direction,
-    // grounded in the day, that persists across days in the decision
-    // prompt. Kept small on purpose: one thread, plain sentence, first
-    // person. The LLM may keep, replace, or retire it each sleep.
+    // the desire layer: ONE thread, a want with direction, first person, one
+    // sentence, carried in the decision prompt across days. the model can
+    // keep, replace or retire it each sleep.
     //
-    // A thread must be able to die of old age, and until now it could not.
-    //
-    // Victor spent over a day on "I want to hear what the shrine whispers",
-    // and the shrine cannot whisper: there is no stone in the world, he
-    // invented it. That single line sits at the top of every decision
-    // prompt, so he went to the shrine constantly, the day's log filled
-    // with it (217 mentions of "stone" and 216 of "whisper" in one day),
-    // consolidation read that log back and wrote his entire long-term
-    // memory about it, and then this pass asked "does it still pull?"
-    // while showing the model a day made of nothing but pursuing it.
-    //
-    // It always answered keep, and it was right to: the thread was
-    // magnificently well grounded. It had manufactured its own evidence.
-    // No input could ever have retired it, which means the honest reading
-    // is that the exit was missing rather than that the model chose badly.
-    //
-    // So threads now expire. Not because wanting something unreachable is
-    // wrong (it is one of the better things about him, and "the shrine
-    // stays mute no matter how often I check it" is a real Learned Fact he
-    // formed) but because a want that has survived this many sleeps has
-    // stopped being a want and become the whole personality.
+    // threads expire now. "I want to hear what the shrine whispers" ran for
+    // over a day (the shrine cant whisper, he made that up). it sits on top
+    // of every prompt so he went there constantly, the log filled up with it
+    // (217 "stone", 216 "whisper" in a day) and then "does it still pull?"
+    // got asked against that log. it made its own evidence, nothing could
+    // retire it. wanting something unreachable is fine, a want that survives
+    // this many sleeps has just become the personality
     async _formDesire() {
         const rawTodayLog = this._stripHollowReasons(await this.dailyLog.readForConsolidation(80))
         if (!rawTodayLog.trim()) return false
@@ -1143,12 +926,10 @@ Should ${persona.name} evolve? Respond with JSON.`
         const existing = await this.memoryFiles.readCurrentThread()
         const memory = await this.memoryFiles.readMemory()
 
-        // Subjects that were forced out recently are off the table. The
-        // failure mode this closes: retirement fired correctly, called the
-        // thread a rut in its own words, and the replacement came back as
-        // the same fixation reworded within the hour, because it was chosen
-        // from evidence the retired thread had written. Barring the subject
-        // (stems, not phrasings) is the exit the loop never had.
+        // recently retired subjects are off the table. retirement worked but
+        // the replacement came back as the same fixation reworded within the
+        // hour, picked from evidence the old thread wrote. bar the subject
+        // (stems), not the phrasing
         const RETIRED_BAR_DAYS = 6
         const retired = (await this.memoryFiles.readRetiredThreads())
             .filter((r) => (Date.now() - new Date(r.at).getTime()) / 86400000 < RETIRED_BAR_DAYS)
@@ -1160,9 +941,8 @@ Should ${persona.name} evolve? Respond with JSON.`
             return false
         }
 
-        // The re-seeding channel: memory and day-log lines about the barred
-        // subject don't get shown to the chooser either, or "grounded in
-        // the day" keeps meaning "grounded in the rut".
+        // and dont show it the barred lines either, or "grounded in the day"
+        // just means grounded in the rut
         const todayLog = barredStems.size
             ? rawTodayLog.split('\n').filter((l) => !circlesRetired(l)).join('\n')
             : rawTodayLog
@@ -1171,9 +951,8 @@ Should ${persona.name} evolve? Respond with JSON.`
             .filter((l) => !circlesRetired(l))
             .slice(-8).join('\n')
 
-        // Has this one run its course? Two independent limits, because they
-        // fail differently: renewals catches a thread that is renewed hard
-        // and often, age catches one that quietly never lets go.
+        // run its course? two limits, they fail differently. renewals catches
+        // one renewed hard and often, age catches one that just never lets go
         const renewals = Number(existing?.renewals || 0)
         const ageDays = existing?.formedAt
             ? (Date.now() - new Date(existing.formedAt).getTime()) / 86400000
@@ -1241,13 +1020,10 @@ What pulls at ${pName} now? JSON only.`
             }
             const text = String(parsed.thread).trim().slice(0, 160)
 
-            // One sentence, at the top of every decision prompt, all day. It
-            // is the most-read string he owns, and "I want to find the pond's
-            // glow, hoping its light lifts the flatness" spent eight hours
-            // there: a want dressed as a throughline, built out of the exact
-            // abstraction the voice rules forbid. Refuse it rather than carry
-            // it, and let tonight pass threadless. A quiet night costs
-            // nothing; a bad thread costs a day.
+            // top of every decision prompt all day, the most-read string he
+            // has. "I want to find the pond's glow, hoping its light lifts the
+            // flatness" sat there eight hours. refuse and go threadless, a
+            // quiet night costs nothing and a bad thread costs a day
             const hits = bannedIn(text, banned)
             if (hits.length > 0) {
                 this.logger.info(`Desire rejected for "${hits[0]}": "${text}"`)
@@ -1256,9 +1032,8 @@ What pulls at ${pName} now? JSON only.`
                 return true
             }
 
-            // The prompt bar above is advisory; this is the gate. A model
-            // reading evidence the rut produced cannot be trusted to notice
-            // it is offering the rut back with fresh words.
+            // the prompt bar is advisory, this is the gate. the model won't
+            // notice it's offering the rut back in new words
             if (circlesRetired(text)) {
                 this.logger.info(`Desire rejected, retired subject: "${text}"`)
                 await this.dailyLog.append('Thread rejected: that subject already ran its course')
@@ -1277,11 +1052,8 @@ What pulls at ${pName} now? JSON only.`
 
             const sameAsBefore = existing?.text && text.toLowerCase() === existing.text.toLowerCase()
             if (spent && (parsed.action === 'keep' || sameAsBefore)) {
-                // It was told it could not keep this one and kept it anyway,
-                // or handed the same sentence back as a "replacement". The
-                // whole point is that this decision cannot be left to a
-                // model reading evidence the thread produced, so retire it
-                // here and let tomorrow start clean.
+                // told it couldnt keep it and kept it anyway, or handed the same
+                // sentence back as a "replacement". retire it here
                 await this.memoryFiles.writeCurrentThread(null)
                 await this.memoryFiles.recordRetiredThread(existing.text)
                 await this.dailyLog.append(`Thread retired: carried ${renewals} sleeps without moving`)
@@ -1316,7 +1088,7 @@ What pulls at ${pName} now? JSON only.`
 
     // persona drift guard
 
-    // extract fields that can evolve for comparison
+    // just the fields that can evolve
     _extractComparableFields(persona) {
         return {
             traits: [...(persona.traits || [])],
@@ -1327,8 +1099,7 @@ What pulls at ${pName} now? JSON only.`
         }
     }
 
-    // measure how far the current persona has drifted from the original.
-    // returns 0..1 (0 = identical, 1 = completely different).
+    // 0 = same as the baseline, 1 = nothing in common
     _measureDrift(currentPersona) {
         if (!this._originalPersona) return 0
 
@@ -1338,15 +1109,10 @@ What pulls at ${pName} now? JSON only.`
         let totalDrift = 0
         let fieldCount = 0
 
-        // array fields: jaccard distance against the baseline, so losses
-        // AND additions both move the dial. the old measure only counted
-        // surviving originals, which meant a sheet could grow two traits
-        // it was never authored with and read 0% drift: the 25 aug review
-        // caught exactly that, twenty evolution entries all stamped
-        // driftScore 0 while traits went 9 to 11 and a member swapped out
-        // and back. a dial that cannot see additive drift is no dial, and
-        // additive drift is the kind a fixation actually produces, it
-        // writes traits that justify itself rather than deleting old ones.
+        // jaccard against the baseline so additions move the dial too, not
+        // just losses. the old one only counted surviving originals, 25 aug
+        // had twenty entries all at driftScore 0 while traits went 9 to 11.
+        // additive drift is exactly what a fixation does
         for (const field of ['traits', 'values', 'fears', 'quirks']) {
             const orig = new Set(original[field].map(s => s.toLowerCase()))
             const curr = new Set(current[field].map(s => s.toLowerCase()))
@@ -1362,7 +1128,6 @@ What pulls at ${pName} now? JSON only.`
             totalDrift += union > 0 ? 1 - shared / union : 0
         }
 
-        // voice style (simple string equality)
         if (original.voiceStyle) {
             fieldCount++
             if (current.voiceStyle !== original.voiceStyle) {

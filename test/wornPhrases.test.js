@@ -1,6 +1,5 @@
-// A phrase coming back whole is a stuck record, and the word-level guard
-// could not see it: "settle my legs" eleven times in an afternoon only
-// nudged "settle" and "leg" toward their separate thresholds.
+// whole phrases repeating. word level guard missed "settle my legs" 11 times
+// in one afternoon, it only nudged settle and leg seperately
 
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
@@ -23,9 +22,8 @@ test('the shorter gram inside a reported phrase is not reported twice', () => {
 })
 
 test('an inflection shift still gets caught through the stable words', () => {
-    // "settling" and "settle" stem apart (the shared stem does not fold
-    // e-final verbs), but the phrase is still caught by the part that
-    // holds still. What matters is that SOMETHING flags, not which slice.
+    // settling/settle stem apart (stemmer doesn't fold e-final verbs) but the
+    // rest of the phrase holds still. don't care which slice flags
     const worn = wornPhrases(['settling my legs by the pond', 'need to settle my legs'])
     assert.ok(worn.some((w) => w.includes('legs')), `got: ${worn.join(', ')}`)
 })

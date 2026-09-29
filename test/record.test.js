@@ -23,8 +23,7 @@ test('a banned phrase only matches as a phrase', () => {
 })
 
 test('substrings of ordinary words are not banned words', () => {
-    // the failure this guard has to avoid: banning "light" and eating
-    // "slight", or banning "curb" and eating "kerb-side"
+    // banning "light" mustn't eat "slight"
     assert.deepEqual(bannedIn('a slight disturbance in the water', ['light']), [])
     assert.deepEqual(bannedIn('the light came on', ['light']), ['light'])
 })
@@ -50,7 +49,7 @@ test('banned bullets are dropped and the file structure survives', () => {
 })
 
 test('one subject cannot own the whole record', () => {
-    // victor's real memory.md: 45 lines, "glow" in seven of them
+    // victor's real memory.md, 45 lines, "glow" in seven
     const md = ['## Important Memories',
         '- The pond showed no glow today.',
         '- The phone glinted, a hope of the glow.',
@@ -63,7 +62,6 @@ test('one subject cannot own the whole record', () => {
     const { text, crowded } = filterRecord(md, { subjectCeiling: 2 })
     assert.equal(crowded, 3)
     assert.equal((text.match(/glow/g) || []).length, 2)
-    // an unrelated memory is untouched by another subject's ceiling
     assert.ok(text.includes('quiet nest'))
 })
 
@@ -91,8 +89,7 @@ test('the reflection cannot write a banned word onto the character sheet', () =>
 })
 
 test('an authored entry keeps its wording even when the ban would catch it', () => {
-    // "just past the edge of things" is a real authored value. the ban is on
-    // what reflection WRITES, never on what was authored.
+    // real authored value. ban only applies to what reflection writes
     const authored = 'something just past the edge of things'
     const changes = { values: [authored] }
     const persona = { values: [authored] }
@@ -104,7 +101,6 @@ test('an authored entry keeps its wording even when the ban would catch it', () 
 })
 
 test('a phrase ban does not eat a word that merely starts the same', () => {
-    // "a clueless bird" contains "a clue" as a substring and is not the tic
     assert.deepEqual(bannedIn('a clueless bird', AVOID), [])
     assert.deepEqual(bannedIn('the needle flashes like a clue', AVOID), ['a clue'])
 })
@@ -118,10 +114,9 @@ test('a phrase only matches as consecutive words', () => {
 })
 
 test('a fixation cannot hide behind synonyms: the idea pair is capped', () => {
-    // glint/spark/glow/firefly all stem apart, so the word ceiling sat at
-    // 4-4-4-4 and caught nothing while 17 of 31 bullets were one thought.
-    // The PAIR is the idea, and the anchors (museum, flash) cannot be
-    // respelled away.
+    // glint/spark/glow/firefly stem apart so the word cap sat at 4-4-4-4 and
+    // caught nothing, while 17 of 31 bullets were one thought. cap the pair,
+    // the anchor (museum) can't be respelled
     const md = [
         '# M', '',
         '- the firefly glow at the museum case',

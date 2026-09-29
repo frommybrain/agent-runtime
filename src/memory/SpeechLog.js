@@ -1,10 +1,7 @@
-// persistent speech history. survives sleep cycles.
-//
-// working memory and the repetition guard both get cleared during sleep
-// so the agent forgets what it said. this buffer persists across sleep
-// boundaries, gives the LLM context to avoid repeating phrases.
-//
-// persisted to disk for crash recovery. trimmed (not cleared) during sleep.
+// what he's said lately, kept across sleeps.
+// working memory and the repetition guard both get wiped at sleep so he'd
+// forget and start repeating himself. on disk for crash recovery, trimmed
+// not cleared at sleep.
 
 import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -19,7 +16,6 @@ export class SpeechLog {
         this._dirty = false
     }
 
-    // load from disk (crash recovery)
     async init() {
         try {
             const raw = await readFile(this._filePath, 'utf-8')
@@ -46,14 +42,13 @@ export class SpeechLog {
         this._dirty = true
     }
 
-    // get recent speeches formatted for prompt injection
     recentForPrompt() {
         if (this._speeches.length === 0) return null
         const recent = this._speeches.slice(-this.promptSize)
         return recent.map(s => `- "${s.message}"`).join('\n')
     }
 
-    // persist to disk (called during state checkpoint)
+    // called from the state checkpoint
     async save() {
         if (!this._dirty) return
         try {

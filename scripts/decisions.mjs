@@ -1,14 +1,12 @@
-// What his decisions looked like, read from data/decisions.
+// summary of data/decisions, read only
 //
 //   node scripts/decisions.mjs                 today (UTC)
 //   node scripts/decisions.mjs 2026-09-27      one day
-//   node scripts/decisions.mjs --days 7        the last seven days together
-//   node scripts/decisions.mjs --dir <path>    somewhere other than ./data/decisions
+//   node scripts/decisions.mjs --days 7        last 7 days together
+//   node scripts/decisions.mjs --dir <path>    if not ./data/decisions
 //
-// Read-only. The questions it exists for: why a tick went to the tier it
-// did, which model answered and what that cost, how often the brain asked
-// for something a guard then changed, and how often he was asked the same
-// question on the same evidence as the time before.
+// mostly for: why a tick got its tier, which model answered + cost, how often
+// a guard overrode the brain, how often we asked him the same thing twice
 
 import { readFile, readdir } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -37,7 +35,7 @@ const rows = []
 for (const file of wanted) {
     for (const line of (await readFile(join(dir, file), 'utf-8')).split('\n')) {
         if (!line.trim()) continue
-        try { rows.push(JSON.parse(line)) } catch { /* a torn last line from a hard stop */ }
+        try { rows.push(JSON.parse(line)) } catch { /* torn last line after a hard kill */ }
     }
 }
 
@@ -63,7 +61,7 @@ console.log(`  persona ${count(rows.map((r) => r.persona || 'unknown')).map(([k,
 
 console.log('\ntiers')
 console.log(table(count(rows.map((r) => r.tier))))
-// A tick routed by repetition can carry several kinds; count each.
+// one repetition tick can have several kinds, count each
 const repetition = rows.filter((r) => String(r.why || '').startsWith('repetition:'))
 console.log(`\n  why quality: ${repetition.length} by repetition warning, ${rows.filter((r) => String(r.why || '').startsWith('world_event:')).length} by world event`)
 console.log(table(count(repetition.flatMap((r) => r.why.slice('repetition:'.length).split('+'))), repetition.length))
@@ -96,8 +94,8 @@ if (offMenu.length) {
     console.log(table(count(offMenu.map((r) => r.asked?.action || '(none)')), offMenu.length, 10))
 }
 
-// The same evidence again. scene is the coarse situation, detail adds the
-// place labels and the environment line; see evidenceKeys in DecisionLog.
+// scene = coarse situation, detail adds place labels + environment line.
+// see evidenceKeys in DecisionLog
 console.log('\nsame evidence again')
 let sameScene = 0
 let sameDetail = 0

@@ -1,74 +1,67 @@
 # 3aiii
 
-Portable autonomous agent cognition runtime. Runs on a Raspberry Pi 5 (or any node host). Env-agnostic, plug it into anything that speaks the WebSocket protocol.
+Cognition runtime for one autonomous agent. A process is one agent: a persona file, a few markdown files of memory, and a loop that asks an LLM what to do next. It talks to its world over a small WebSocket protocol and doesnt care what the world is.
 
-## What it does
+The repo and package are still called `agent-runtime`. In production it runs Pino in 3eyes (`personas/victor.json`, Victor is his code name) on a Raspberry Pi 5, but it's plain Node ESM with no build step, so anything with Node 20+ will run it.
 
-Each instance is one agent with a persistent identity, memory, and an LLM-driven cognition loop:
+## How it works
 
-```
-OBSERVE (get world state) → THINK (LLM decides) → ACT (send action) → repeat
-```
+Each tick it asks the world for an observation, diffs it against the last one, updates mood and energy, asks the model for an action, sends it, and carries the result into the next tick. The tick interval moves between 4s and 15s depending on energy.
 
-Every 4 hours the agent sleeps for 1 hour. During sleep the LLM consolidates memory, extracts skills, and cleans up logs.
+Not every tick costs the same. Nothing new happening means no LLM call at all. Routine ticks go to a small cloud model (`fast`), bigger moments (world events, repetition warnings) go to the `quality` model, and local Ollama picks up when the cloud is down or rate limited. There's also an optional `decision` tier on the Anthropic API for high-stakes ticks: the world opts in by sending `signals.decision_pending >= 0.5`, and without `ANTHROPIC_API_KEY` set it just uses the quality chain.
+
+A repetition guard watches the recent actions and speech. When it spots a fixation it tells the model in the next prompt, and a hard block redirects if that doesn't work.
+
+It also sleeps. If the observation carries a `world_clock` it sleeps once per world night, until the world says it's morning. Without one it's a timer: `ACTIVE_HOURS_BEFORE_SLEEP` awake (default 0.83), `SLEEP_DURATION_MINUTES` asleep (default 10). Sleep dedups and consolidates `memory.md`, pulls skills into `skills.md`, lets the persona evolve a little (checked against a saved baseline so it can't drift too far, and at most once every `PERSONA_EVOLUTION_MIN_HOURS`, 12 by default) and clears out old logs.
 
 ## Setup
 
 ```bash
 npm install
 cp .env.example .env
-# edit .env, set AGENT_ID, SERVER_URL, OLLAMA_MODEL
+# set AGENT_ID, PERSONA_PATH, SERVER_URL, and CLOUD_API_KEY + CLOUD_API_URL
 npm start
 ```
 
-Needs [Ollama](https://ollama.com) running locally with a model pulled:
+The cloud side is any OpenAI-style chat completions endpoint. Defaults are Groq's `openai/gpt-oss-120b` for quality and `openai/gpt-oss-20b` for fast (`CLOUD_MODEL`, `CLOUD_MODEL_FAST`). For the local fallback, run Ollama with the default model pulled:
+
 ```bash
-ollama pull llama3.2:3b
+ollama pull qwen3:4b
 ```
+
+With no cloud key it runs on Ollama alone, just slowly (30-60s a tick on a Pi).
+
+`docs/quickstart.md` walks through running it against the bundled test server. `npm test` runs the unit tests in `test/`.
 
 ## HTTP API
 
-Local REST API (default port 5000):
+Default port 5000, bound to 127.0.0.1 unless `API_HOST` says otherwise. If `ADMIN_TOKEN` is set, POST and PUT need `Authorization: Bearer <ADMIN_TOKEN>`. GETs stay open. Don't bind to 0.0.0.0 without a token, it will warn you.
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/status` | Agent state, tick count, uptime, recent actions |
-| `GET` | `/memory` | All three memory files (memory.md, skills.md, tools.md) |
-| `POST` | `/memory/remember` | Inject a memory: `{ section, content }` |
-| `GET` | `/logs/today` | Today's daily log (plain text) |
-| `POST` | `/sleep` | Trigger sleep cycle now |
-| `POST` | `/wake` | Wake agent early |
-| `PUT` | `/persona` | Hot-swap persona JSON |
-| `GET` | `/events` | SSE stream of all runtime events |
+- `GET /status` state, tick count, uptime, recent actions
+- `GET /memory` memory.md, skills.md and tools.md
+- `POST /memory/remember` inject a memory, body `{ section, content }`
+- `GET /logs/today` today's daily log as plain text
+- `POST /sleep` sleep now
+- `POST /wake` wake early
+- `PUT /persona` hot-swap the persona JSON
+- `GET /metrics` tier counts, buffer sizes, heap
+- `GET /events` SSE stream
 
-### SSE events
-
-Connect to `GET /events` for a live event stream:
-
-```
-event: tick       every cognition cycle (action, reason, result)
-event: sleep      sleep started
-event: wake       agent woke up
-event: memory     memory written (injected or LLM-remembered)
-event: persona    persona swapped
-event: error      tick failed
-event: connected  initial state on SSE connect
-```
+SSE events: `connected` (initial state), `started`, `tick`, `sleep`, `wake`, `memory`, `persona`, `error`.
 
 ## Environment protocol
 
-The env server has to implement this WebSocket protocol on its agent port:
+The world runs a WebSocket server. The short version:
 
-| Direction | Message | Description |
-|-----------|---------|-------------|
-| → server | `{ type: "IDENTIFY", agentId, name }` | Register agent on connect |
-| ← server | `{ type: "IDENTIFIED", worldBounds }` | Confirm registration |
-| → server | `{ type: "OBSERVE" }` | Request current world state |
-| ← server | `{ type: "OBSERVATION", data: { self, nearbyAgents, nearbyObjects, recentSpeech, available_actions } }` | World state snapshot |
-| → server | `{ type: "ACT", action, params }` | Perform an action |
-| ← server | `{ type: "ACTION_RESULT", success, message }` | Action outcome |
+- server sends `WELCOME`
+- agent sends `{ type: "IDENTIFY", agentId }`, plus `token` when `ADMIN_TOKEN` is set
+- server replies `{ type: "IDENTIFIED", worldBounds }`
+- each tick: agent sends `{ type: "OBSERVE" }`, server replies `{ type: "OBSERVATION", data: { self, nearbyAgents, nearbyObjects, available_actions, signals, recentSpeech } }`
+- agent sends `{ type: "ACT", action, params }`, server replies `{ type: "ACTION_RESULT", success, message }`
+- server can push `WORLD_EVENT` any time
 
-`available_actions` tells the agent what it can do right now:
+`available_actions` is what the agent is allowed to do right now:
+
 ```json
 [
   { "name": "move_to", "params": "x, z", "description": "Move to world coordinates" },
@@ -77,31 +70,35 @@ The env server has to implement this WebSocket protocol on its agent port:
 ]
 ```
 
-## Memory files
+Full spec in `docs/environment-protocol.md`.
 
-Three persistent markdown files in `./data/`:
+## Memory
 
-- **memory.md** — episodic memory (relationships, learned facts, important moments)
-- **skills.md** — procedural knowledge (how to do things)
-- **tools.md** — auto-populated with available actions and discovered objects
+Everything lives under `./data/` (`DATA_DIR`):
 
-Daily logs in `./data/logs/YYYY-MM-DD.md`. Files older than 7 days get garbage collected during sleep.
+- `memory.md` relationships, learned facts, important moments
+- `skills.md` how-to knowledge pulled out during sleep
+- `tools.md` rebuilt from the live observation, available actions and nearby objects
+- `logs/YYYY-MM-DD.md` daily logs, deleted after 7 days
+- `decisions/YYYY-MM-DD.jsonl` one line per decision, kept `DECISION_LOG_DAYS` (14). `node scripts/decisions.mjs` summarises a day, or `--days N`
+- `persona-baseline.json` the persona as it was on first boot, what the drift guard compares against
 
-## Multi-agent setup
+## More than one agent
 
-Each Pi runs one agent instance. Use different ports and persona files:
+One agent per process. Give each its own id, persona and port:
 
 ```bash
-# Pi 1 — pip
+# pi 1
 AGENT_ID=pip PERSONA_PATH=./personas/pip.json API_PORT=5001 npm start
 
-# Pi 2 — bean
+# pi 2
 AGENT_ID=bean PERSONA_PATH=./personas/bean.json API_PORT=5002 npm start
 ```
 
 ## Personas
 
-Persona files in `./personas/*.json`:
+JSON files in `./personas/`. The shape:
+
 ```json
 {
   "id": "npc_pip",
@@ -114,3 +111,5 @@ Persona files in `./personas/*.json`:
   "backstory": "..."
 }
 ```
+
+`voice.canon` (an array of lines) replaces the default rules for the reason field if a persona needs different ones.

@@ -1,10 +1,8 @@
-// fix common LLM JSON mistakes before parsing.
-// handles: trailing commas, single-line comments, unquoted newlines in strings.
+// the model sometimes hands back json with comments and trailing commas
 
 export function sanitizeJson(str) {
     return str
-        // remove single-line comments (// ...) that arent inside strings
+        // whole-line comments only, a // inside a string is left alone
         .replace(/^\s*\/\/.*$/gm, '')
-        // remove trailing commas before } or ]
         .replace(/,\s*([\]}])/g, '$1')
 }

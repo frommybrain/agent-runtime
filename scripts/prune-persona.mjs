@@ -1,18 +1,12 @@
-// Prune a persona that has already silted up.
-//
-// The evolution sanitizer only guards what a reflection is about to write, so
-// tightening it does nothing about traits that already got in. Victor's sheet
-// had grown from 9 traits to 14, five of them the same sentence with
-// different nouns, and that is what he was still being prompted with every
-// tick.
-//
-// Runs the CURRENT rules over an existing persona using its own recorded
-// baseline, so this stays honest as the rules change: no hand-picking.
+// one-off cleanup for a persona that's already silted up. the sanitizer only
+// sees new writes, so tightening it doesn't remove what already got in (victor
+// went 9 -> 14 traits, five of them the same sentence).
+// runs the current rules against the persona's own baseline, no hand picking.
 //
 //   node scripts/prune-persona.mjs <persona.json> <persona-baseline.json>
 //   node scripts/prune-persona.mjs <persona.json> <baseline.json> --write
 //
-// Without --write it only reports. Always writes a .bak next to the file.
+// report only without --write. --write keeps a .bak
 
 import { readFile, writeFile, copyFile } from 'node:fs/promises'
 import { sanitizeEvolvedArrays } from '../src/loop/SleepCycle.js'

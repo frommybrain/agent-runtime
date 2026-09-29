@@ -106,15 +106,15 @@ test('a crystal that read nothing hands the next slot to the shrine, and a movin
     assert.equal(first.kind, 'crystal')
     assert.equal(first.waitedMin, 720)
     assert.equal(first.from, 'Cocoepi')
-    // Nothing was read: same count, so the shrine takes the slot.
+    // nothing read, count unchanged, shrine gets the slot
     const second = dueOfferingAttention(observation, 0, 1_000_000, 15, { kind: 'crystal', target: 'sacrifice_oldest', count: 8 })
     assert.equal(second.target, 'artifact_shrine')
     assert.equal(second.kind, 'shrine')
-    // The queue moved after that: back to the crystals.
+    // queue moved, back to crystals
     observation.pending_sacrifices = 7
     const third = dueOfferingAttention(observation, 0, 1_000_000, 15, { kind: 'crystal', target: 'sacrifice_oldest', count: 8 })
     assert.equal(third.target, 'sacrifice_oldest')
-    // A shrine attempt that read nothing is not repeated either.
+    // same the other way, a shrine go that read nothing isn't repeated
     observation.pending_sacrifices = 8
     const fourth = dueOfferingAttention(observation, 0, 1_000_000, 15, { kind: 'shrine', target: 'artifact_shrine', count: 8 })
     assert.equal(fourth.target, 'sacrifice_oldest')
@@ -141,12 +141,12 @@ test('the reason is his own line from the facts, never the same one twice, and t
     assert.match(seen[0].system, /Starving/, 'and his recent reasons are ground to avoid')
     assert.ok(!/sitting long enough/.test(seen[0].system), 'no authored sentence anywhere in the prompt')
 
-    // The model repeating a recent reason word for word is refused, and the facts stand.
+    // model parrots a recent reason word for word: refused, fall back to the facts
     const echo = { ...think, llm: { async generate() { return { text: JSON.stringify({ reason: 'Starving' }) } } } }
     const held = await attentionReason(echo, due, ['Starving'])
     assert.equal(held, "Cocoepi's note has waited 12 hours, 7 more notes are waiting behind it")
 
-    // Silence from the model: the facts, which at least change with the facts.
+    // model says nothing: facts again, at least they change when the facts do
     const quiet = { ...think, llm: { async generate() { return { text: null } } } }
     assert.equal(await attentionReason(quiet, { kind: 'shrine', count: 1, waitedMin: 50, from: null }, []), 'a note has waited 50 minutes')
     assert.equal(await attentionReason(null, { kind: 'crystal', count: 2, waitedMin: 3, from: 'J' }, []), "J's note has waited 3 minutes, 1 more note is waiting behind it")

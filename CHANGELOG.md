@@ -1,265 +1,165 @@
 # Changelog
 
-Reverse chronological. Versions follow the boot-string in `src/index.js`.
-Earlier entries reconstructed from commit history; later entries from
-contemporaneous version commits.
+Newest first. Version numbers follow the boot string in `src/index.js`. The early entries were pieced together from commit history, the later ones written at the time.
 
-## [Unreleased] — 2026-09-17
+## [Unreleased] - 2026-09-17
 
-- Every decision now leaves one JSON line in `data/decisions/YYYY-MM-DD.jsonl`
-  (kept `DECISION_LOG_DAYS`, 14 by default): the tier and the rule that chose
-  it, the model that actually answered with its latency and tokens, what the
-  brain asked for next to what was sent, each guard that stepped in, the
-  fallback kind, the act result, the running commit, a hash of the persona
-  the prompt is built from, and two evidence keys (`scene`, `detail`) so a
-  situation asked about again unchanged can be counted. On 25 September 836
-  of 1,384 decisions ran on the 120B and victor.log could not say why, and
-  19 were turned into wait with no record of what the model had asked for.
-- `scripts/decisions.mjs` reads a day of it (or `--days N`): tiers and why,
-  models with latency and tokens, guards, repeated evidence, failures and
-  repeated reasons.
-- `_classifyTick` returns `{ tier, why }`. `RepetitionGuard.checkDetailed()`
-  gives each warning a kind, and `check()` is unchanged. `LLMClient.generate()`
-  also returns `model`, `usage` and `ms`.
-- The visitor-attention slot is checked before the model is asked. It used to
-  replace the model's answer after the call, which paid for a decision it
-  threw away, and that decision's `remember` still reached memory.md and the
-  world.
-- The visitor-attention slot no longer chooses a crystal it already set out
-  for and did not read: when the pending count has not moved since the last
-  slot, the shrine takes the next one (the world's shrine fallback reads the
-  oldest waiting note from there), and a moving count hands it back to the
-  crystals. Live on 17 September the slot had chosen one unreachable crystal
-  seventeen times in nine hours.
-- The reason it carries is written by the fast tier from facts (who left the
-  note, how long it has waited, how many wait behind it), with his recent
-  reasons as ground to avoid and the facts alone as the fallback. The single
-  authored sentence it used to carry published sixteen times in a day.
-- `dueOfferingAttention` reads `waited_min` and `from` off each waiting
-  crystal when the world sends them.
+- every decision writes one JSON line to `data/decisions/YYYY-MM-DD.jsonl`, kept `DECISION_LOG_DAYS` (14 default). has the tier and the rule that picked it, the model that actually answered plus latency and tokens, what the brain asked for vs what got sent, every guard that stepped in, fallback kind, act result, running commit, a hash of the persona the prompt was built from, and two evidence keys (`scene`, `detail`) so the same situation asked about again unchanged can be counted. on 25 september 836 of 1,384 decisions went to the 120B and victor.log couldnt say why, and 19 got turned into wait with no record of what the model wanted.
+- `scripts/decisions.mjs` reads a day of that (or `--days N`): tiers and why, models with latency/tokens, guards, repeated evidence, failures, repeated reasons.
+- `_classifyTick` returns `{ tier, why }`. `RepetitionGuard.checkDetailed()` gives each warning a kind, `check()` unchanged. `LLMClient.generate()` also returns `model`, `usage` and `ms`.
+- visitor-attention slot is checked before the model is asked now. it used to replace the model's answer after the call, so we paid for a decision and threw it away, and that decision's `remember` still reached memory.md and the world.
+- visitor-attention slot stops picking a crystal it already set out for and didn't read. if the pending count hasn't moved since the last slot the shrine takes the next one (the world's shrine fallback reads the oldest waiting note from there), a moving count hands it back to the crystals. live on 17 september it picked one unreachable crystal seventeen times in nine hours.
+- its reason is written by the fast tier from facts (who left the note, how long it's waited, how many are behind it), with his recent reasons passed as ground to avoid and the bare facts as fallback. the one authored sentence it used to use got published sixteen times in a day.
+- `dueOfferingAttention` reads `waited_min` and `from` off each waiting crystal when the world sends them.
 
-## [Unreleased] — 2026-09-16
+## [Unreleased] - 2026-09-16
 
-- Added structured execution-state handling. `self.busy` and
-  `self.journey.active` now pause new decisions until the environment reports
-  that an accepted journey or timed action has finished. The old movement-text
-  check remains as protocol compatibility for older environments.
-- Bounded live observation rendering at 12,000 characters. Oversized entity
-  state and generic observation fields are clipped while immediate state and
-  the narrative tail are retained.
-- The prompt budget now trims oversized live situation text before removing
-  durable memory, then fits the assembled user prompt to the remaining space.
-  This covers large delta, exploration, and voice-history blocks outside the
-  situation. Prompt metrics record the final payload that was sent.
-- Added a stalled-heartbeat watchdog. A tick that remains in flight for at
-  least 120 seconds exits the process so the system service can restart it.
-- Added `ops/victor-agent.logrotate` for daily rotation, with an earlier
-  rotation at 10 MB, retaining seven compressed generations. The policy uses
-  the root ownership applied when systemd opens `StandardOutput`.
-- Added regression coverage for structured work state, older protocol
-  compatibility, observation bounds, narrative retention, and watchdog wiring.
+- structured execution state. `self.busy` and `self.journey.active` hold off new decisions until the env says the accepted journey or timed action is done. the old movement-text check stays for older envs.
+- live observation rendering capped at 12,000 chars. oversized entity state and generic fields get clipped, immediate state and the narrative tail are kept.
+- prompt budget trims oversized live situation text before it drops durable memory, then fits the whole user prompt into what's left. covers big delta, exploration and voice-history blocks outside the situation too. prompt metrics record the payload actually sent.
+- stalled-heartbeat watchdog: a tick in flight for 120s or more exits the process so the service restarts it.
+- `ops/victor-agent.logrotate`: daily, or earlier at 10 MB, seven compressed generations kept. uses root ownership because that's what systemd opens `StandardOutput` as.
+- tests for work state, older protocol compat, observation bounds, narrative retention, watchdog wiring.
 
-## [Unreleased] — 2026-07
+## [Unreleased] - 2026-07
 
-- New `decision` LLM tier: Anthropic-backed routing for money/high-stakes
-  ticks. An environment opts in by sending `signals.decision_pending >= 0.5`
-  in the observation; with no `ANTHROPIC_API_KEY` configured the tier
-  aliases to the normal quality chain. Config: `ANTHROPIC_API_KEY`,
-  `DECISION_MODEL`.
-- Persona voice canon override: `voice.canon` (array of lines) replaces the
-  default reason-field rules per persona. Default canon unchanged byte-for-
-  byte, so victor/synth prompts read exactly as before. Needed because the
-  default canon bans quoting numbers, which is wrong for a trading persona.
-- Anti-fixation redirect made env-aware: fixation blocks now pick their
-  escape from `available_actions` (move_to → wait → hold) instead of always
-  forcing `move_to("wander")`, which non-spatial envs can't execute. Also
-  fixed the block log naming the redirect action instead of the blocked one.
+- new `decision` LLM tier, Anthropic-backed, for money / high-stakes ticks. an env opts in with `signals.decision_pending >= 0.5` in the observation. no `ANTHROPIC_API_KEY` means it aliases to the normal quality chain. config: `ANTHROPIC_API_KEY`, `DECISION_MODEL`.
+- `voice.canon` (array of lines) on a persona replaces the default reason-field rules. default canon is byte-for-byte the same so victor/synth prompts don't change. needed because the default bans quoting numbers, which is wrong for a trading persona.
+- anti-fixation redirect is env-aware: blocks pick their escape from `available_actions` (move_to, then wait, then hold) instead of always forcing `move_to("wander")`, which non-spatial envs can't run. also the block log named the redirect action instead of the blocked one, fixed.
 
-## [Unreleased] — 2026-05
+## [Unreleased] - 2026-05
 
-- Renamed internal-state field names: `valence` → `mood`, `arousal` → `energy`.
-  Plain-English for the diligence package. API/SSE/checkpoint JSON keys
-  changed accordingly; downstream consumers (anon-ai-world viewer, sim-server
-  bridge) need updating to match.
-- Branding pass: user-facing references rebranded `agent-runtime` → `3aiii`.
-  Technical identifiers (repo name, package name, systemd unit, file paths)
-  unchanged.
-- Editorial pass on source comments and docs: thinned em-dash density,
-  dropped polished-essay structures, shifted to a more direct voice.
-- Added diligence handover materials: `docs/handover.md`, audit memo,
-  SBOM, LICENCE, this changelog, fresh smoke test report in
-  `test-results/diligence/`.
+- renamed internal-state fields: `valence` to `mood`, `arousal` to `energy`. plainer english for the diligence package. API/SSE/checkpoint JSON keys changed with it, so downstream consumers (anon-ai-world viewer, sim-server bridge) need updating.
+- branding: user-facing references say `3aiii` now instead of `agent-runtime`. repo name, package name, systemd unit and file paths unchanged.
+- tidied source comments and docs.
+- diligence handover material: `docs/handover.md`, audit memo, SBOM, LICENCE, this changelog, fresh smoke test report in `test-results/diligence/`.
 
-## [v0.4] — 2026-03-17
+## [v0.4] - 2026-03-17
 
-- Environment Protocol Standard documented in `docs/environment-protocol.md`.
-  First formal spec of the WebSocket contract between 3aiii and any
-  environment server.
-- Anti-fixation guard generalised: removed hardcoded entity-type checks,
-  scoped to inspect actions only, skips survival targets in warnings.
-- Tightened fixation detection thresholds.
-- Behavioural tuning: fixed desperate cycling, shiny fixation, ghost actions.
-- Fixed delta-detection noise from positional jitter.
-- Fixed energy saturation under sustained signals.
-- `ADMIN_TOKEN` support added to the `IDENTIFY` handshake.
-- `FallbackBrain.move_to` made compatible with sim-server.
+- environment protocol written up in `docs/environment-protocol.md`, first proper spec of the WebSocket contract between 3aiii and an env server.
+- anti-fixation guard generalised: no more hardcoded entity-type checks, only looks at inspect actions, skips survival targets in warnings.
+- tighter fixation thresholds.
+- behaviour fixes: desperate cycling, shiny fixation, ghost actions.
+- delta detection no longer fires on positional jitter.
+- energy no longer saturates under sustained signals.
+- `ADMIN_TOKEN` on the `IDENTIFY` handshake.
+- `FallbackBrain.move_to` works with sim-server.
 
-## [v0.3.10] — 2026-03-16
+## [v0.3.10] - 2026-03-16
 
-- Added `SpeechLog` — persistent speech history that survives sleep cycles.
-- Stability hardening from a structured code review.
+- `SpeechLog`, speech history that survives sleep.
+- stability fixes from a code review.
 
-## [v0.3.9] — 2026-03-16
+## [v0.3.9] - 2026-03-16
 
-- Quiet hours scheduling (`QUIET_HOURS` env var, UTC window). Reduced
-  activity during low-viewership windows.
-- JSON resilience improvements in LLM response parsing.
+- quiet hours (`QUIET_HOURS`, UTC window), less activity when hardly anyone's watching.
+- more forgiving JSON parsing of LLM responses.
 
-## [v0.3.8.1] — 2026-03-16
+## [v0.3.8.1] - 2026-03-16
 
-- Fast-tier routing prefers cloud 8B over local Ollama. On the Pi, Ollama
-  generation time was exceeding heartbeat interval and causing tick skipping.
-  Cloud 8B is fast enough to avoid missed ticks and cheap enough for routine
-  use.
+- fast tier prefers cloud 8B over local Ollama. on the Pi Ollama was taking longer than the heartbeat interval and ticks were getting skipped. cloud 8B is fast enough not to miss ticks and cheap enough for routine use.
 
-## [v0.3.8] — 2026-03-15
+## [v0.3.8] - 2026-03-15
 
-- Tiered LLM routing: `quality` (cloud 70B) for important moments,
-  `fast` (cloud 8B / Ollama) for routine ticks, `skip` (no LLM) when
-  nothing is happening. Routes per-tick based on deltas, world events,
-  internal state, and repetition warnings.
+- tiered LLM routing: `quality` (cloud 70B) for important moments, `fast` (cloud 8B / Ollama) for routine ticks, `skip` (no LLM) when nothing's happening. picked per tick from deltas, world events, internal state and repetition warnings.
 
-## [v0.3.7] — 2026-03-15
+## [v0.3.7] - 2026-03-15
 
-Deployment readiness pass. Eight stability fixes shipped together:
+Deployment prep, eight stability fixes in one go:
 
-- 60s cooldown on cloud 429 rate limits, auto-fallback to Ollama during
-  cooldown.
-- Periodic Ollama re-check every 5 min if initially unavailable.
-- Pending observe/action promises rejected immediately on WebSocket
-  disconnect (was hanging for 5s on every disconnect).
-- Daily log buffer entries tagged with target file at creation time
-  (fixes wrong-day write at midnight boundary).
-- Tick counter persisted in state checkpoint, restored on startup.
-- 5s delay between sleep-cycle LLM calls to spread rate-limit load.
-- Read cache in `MemoryFiles` with write-through invalidation
-  (10,800 file reads/day → ~30).
-- `DeltaDetector` tracks property mutations on existing objects.
+- 60s cooldown on cloud 429s, falls back to Ollama meanwhile.
+- re-check Ollama every 5 min if it wasn't there at boot.
+- pending observe/action promises rejected straight away on WebSocket disconnect (was hanging 5s every time).
+- daily log buffer entries tagged with their target file when created, fixes writing to the wrong day at midnight.
+- tick counter saved in the state checkpoint and restored on boot.
+- 5s gap between sleep-cycle LLM calls to spread out rate limit load.
+- read cache in `MemoryFiles`, invalidated on write (10,800 file reads/day down to ~30).
+- `DeltaDetector` tracks property changes on existing objects.
 
-## [v0.3.6] — 2026-03-15
+## [v0.3.6] - 2026-03-15
 
-- Speech creativity feedback loop. Each speech is scored against recent
-  speeches via keyword overlap (0.0 = exact repeat, 1.0 = completely
-  novel). Score nudges mood: <0.4 → mild penalty, >0.8 → mild reward.
-  The agent never sees the score, only the resulting mood shift.
+- speech creativity feedback. each speech is scored against recent ones by keyword overlap (0.0 exact repeat, 1.0 completely new). under 0.4 is a small mood penalty, over 0.8 a small reward. the agent never sees the score, only the mood shift.
 
-## [v0.3.5] — 2026-03-15
+## [v0.3.5] - 2026-03-15
 
-- Cloud model upgraded llama-3.1-8b-instant → llama-3.3-70b-versatile.
-  Interact rate doubled from 12% to 30%; hallucinations dropped to zero.
-- Local fallback upgraded qwen2.5:3b → qwen3:4b.
-- Signal descriptions changed from raw metrics to felt-experience prose
-  (`vitality: 0.55` → `there is a healthy energy here`).
-- Internal-state numbers removed from prompt context — agent sees only
-  the description string.
+- cloud model llama-3.1-8b-instant to llama-3.3-70b-versatile. interact rate went from 12% to 30%, hallucinations to zero.
+- local fallback qwen2.5:3b to qwen3:4b.
+- signals described as how they feel instead of raw numbers (`vitality: 0.55` becomes `there is a healthy energy here`).
+- internal-state numbers taken out of the prompt, the agent only sees the description.
 
-## [v0.3.4] — 2026-03-15
+## [v0.3.4] - 2026-03-15
 
-- Memory vs. hallucination distinction. The prompt now allows the agent
-  to *remember* absent objects in past tense, while continuing to block
-  hallucinated current-tense references.
-- Soak test false-positive fix: word-boundary regex instead of substring
-  match for hallucination detection.
-- qwen3:4b set as the default local model.
+- memory vs hallucination: the prompt lets the agent *remember* objects that are gone, in past tense, and still blocks present-tense mentions of things that aren't there.
+- soak test false positive: word-boundary regex instead of substring match for hallucination detection.
+- qwen3:4b is the default local model.
 
-## [v0.3.3] — 2026-03-14
+## [v0.3.3] - 2026-03-14
 
-- Asymmetric reward fix. Success now generates mild positive mood (+0.02,
-  +0.04 for interact). Previously only failures affected mood, and mood
-  flatlined at 0.000 in signal-free environments. 7.5:1 negativity ratio
-  preserved.
-- `GONE` warning window extended from 10 to 30 ticks (~4 minutes).
-- Soak test phases given baseline signals instead of nulls.
+- asymmetric reward fix. success gives a small mood bump (+0.02, +0.04 for interact). before only failures moved mood, and mood flatlined at 0.000 in envs with no signals. 7.5:1 negativity ratio kept.
+- `GONE` warning window 10 to 30 ticks (~4 minutes).
+- soak test phases get baseline signals instead of nulls.
 
-## [v0.3.2] — 2026-03-14
+## [v0.3.2] - 2026-03-14
 
-- Disappeared-object tracking + explicit `GONE` warning in prompt.
-- Fuzzy speech dedup via keyword overlap (60% threshold).
-- Emotional descriptions expanded from 9 to 16; neutral catch-all band
-  narrowed.
-- Working memory: action + action-result events merged into one slot.
-  Buffer size 12 → 20.
-- Object position narration: distance or coordinates included.
+- tracks objects that disappear, explicit `GONE` warning in the prompt.
+- fuzzy speech dedup by keyword overlap (60% threshold).
+- emotional descriptions 9 to 16, neutral catch-all band narrower.
+- working memory: action and action-result merged into one slot. buffer 12 to 20.
+- object narration includes distance or coordinates.
 
-## [v0.3.1] — 2026-03-14
+## [v0.3.1] - 2026-03-14
 
-3-month readiness audit. Seven critical fixes:
+Readiness pass for a 3-month run. Seven fixes:
 
-- Memory corruption protection: backup → validate → write, restore on
-  failure for `memory.md` and `skills.md`.
-- Destructive `_refreshTools()` removed (`tools.md` is rebuilt from
-  live observation every tick).
-- Persona evolution type validation: arrays must be arrays, objects
-  must be objects. Rejects malformed LLM output.
-- Immutable persona baseline. `persona-baseline.json` saved on
-  first-ever boot, never modified. Drift guard compares against this
-  permanent reference, not a moving target.
-- Skills-extraction hallucination guard: constrained to evidence in
-  the activity log only.
-- Memory truncation order fixed. Cuts from middle of `Learned Facts`
-  (largest, least critical) instead of from the end (would have cut
-  `Important Memories` first).
-- Hard 120-char cap on memory entries.
+- memory corruption protection: backup, validate, write, restore on failure, for `memory.md` and `skills.md`.
+- removed the destructive `_refreshTools()` (`tools.md` is rebuilt from the live observation every tick anyway).
+- persona evolution type checks: arrays must be arrays, objects objects. malformed LLM output rejected.
+- immutable persona baseline. `persona-baseline.json` saved on the very first boot and never touched again. the drift guard compares against that, not a moving target.
+- skills extraction can only use evidence from the activity log, stops it inventing skills.
+- memory truncation order: cuts from the middle of `Learned Facts` (biggest, least important) instead of from the end (which would have cut `Important Memories` first).
+- hard 120-char cap on memory entries.
 
-## [v0.3] — 2026-03-14
+## [v0.3] - 2026-03-14
 
-Long-term stability overhaul for months-long operation:
+Stability work for running months at a time:
 
-- `DailyLog` rewritten to use in-memory buffer + periodic flush
-  (21,600 disk writes/day → ~288).
-- Background maintenance timer runs hourly, independent of sleep cycle.
-- Sleep consolidation input capped at 200 lines.
-- Crash recovery: internal state checkpoints every 5 min, restored on
-  startup if less than 1 hour old.
-- Persona drift guard with quantitative measurement (60% threshold).
-- Token budget for prompts, truncates `memory.md` if over.
-- `tools.md` hash-based write skipping.
-- WebSocket exponential backoff (5s → 5min cap).
-- SSE stale client cleanup.
-- `/metrics` endpoint added.
+- `DailyLog` buffers in memory and flushes periodically (21,600 disk writes/day down to ~288).
+- hourly maintenance timer, independent of sleep.
+- sleep consolidation input capped at 200 lines.
+- crash recovery: internal state checkpointed every 5 min, restored on boot if under an hour old.
+- persona drift guard with an actual measurement (60% threshold).
+- prompt token budget, truncates `memory.md` when over.
+- `tools.md` skips the write when the hash hasn't changed.
+- WebSocket exponential backoff (5s up to a 5 min cap).
+- stale SSE client cleanup.
+- `/metrics` endpoint.
 
-## [v0.2] — 2026-03-14
+## [v0.2] - 2026-03-14
 
-Cognitive redesign. Replaced the simpler `OBSERVE → THINK → ACT` loop
-with a five-stage pipeline:
+Rewrote the loop. The simple `OBSERVE / THINK / ACT` became five stages:
 
-- `SENSE → FEEL → THINK → ACT → REFLECT`
-- New module: `InternalState` (two-axis mood/energy)
-- New module: `DeltaDetector` (diff observations between ticks)
-- New module: `RepetitionGuard` (track recent actions, surface fixation)
-- Adaptive heartbeat (4-15s based on energy)
-- Sleep cycle with self-reflection + persona evolution
-- Test suite added at repo root
+- `SENSE / FEEL / THINK / ACT / REFLECT`
+- `InternalState` (two axes, mood and energy)
+- `DeltaDetector` (diffs observations between ticks)
+- `RepetitionGuard` (tracks recent actions, surfaces fixation)
+- adaptive heartbeat, 4-15s depending on energy
+- sleep does self-reflection and persona evolution
+- test suite at the repo root
 
-## [v0.1] — 2026-02-20
+## [v0.1] - 2026-02-20
 
-Initial portable agent cognition runtime:
+First version:
 
-- `OBSERVE → THINK → ACT` loop on fixed 8s timer
-- 3-tier memory: persistent markdown + RAM ring buffer + daily logs
-- Dual LLM: Ollama primary, cloud fallback
-- Sleep cycle: 4hr active / 1hr LLM-driven memory consolidation
+- `OBSERVE / THINK / ACT` on a fixed 8s timer
+- 3 layers of memory: markdown files, RAM ring buffer, daily logs
+- two LLMs, Ollama first with cloud fallback
+- sleep cycle, 4h awake / 1h of LLM memory consolidation
 - HTTP API + SSE
 - Pi bootstrap script
-- Four personas: Pip, Bean, Mochi, Taro
+- four personas: Pip, Bean, Mochi, Taro
 
-## Persona additions
+## Personas
 
-| Persona | Added | Notes |
-|---|---|---|
-| Pip, Bean, Mochi, Taro | 2026-02-20 | Initial four |
-| Victor | 2026-02-28 | Flagship reference persona, most soak-test data drawn from |
-| Sharay | 2026-03-31 | Wider output range, more specific reasoning |
+Pip, Bean, Mochi and Taro came with v0.1 on 2026-02-20. Victor was added 2026-02-28 and is the main one, most of the soak test data comes from him. Sharay was added 2026-03-31, wider output range and more specific reasoning.
 
-(Each persona is a JSON file in `personas/`. The runtime accommodates any
-number; these six ship with the package.)
+Each is a JSON file in `personas/` and the runtime doesn't care how many there are.

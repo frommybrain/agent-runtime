@@ -1,9 +1,7 @@
-// The three exits that were missing from the loop that produced the stone.
-//
-// Fixtures are the real thing off the Pi, not invented: seven traits that
-// arrived one per sleep, and the thread "I want to hear what the shrine
-// whispers" that wrote his entire long-term memory and then cited it back
-// as evidence it should stay.
+// the loop that gave us the stone had no way out, these pin the exits.
+// fixtures are real, off the pi: seven traits that turned up one per sleep,
+// and the shrine-whisper thread that wrote his whole long term memory then
+// cited it back as the reason to keep it.
 
 import { test } from 'node:test'
 import assert from 'node:assert'
@@ -14,8 +12,8 @@ const AUTHORED = [
     'spontaneous', 'creative', 'quick-witted', 'an omnivert, sometimes bold, sometimes shy',
 ]
 
-// Verbatim from personas/victor.json on the Pi. All one trait, worded seven
-// ways, which is exactly why a lexical guard could not hold the line.
+// verbatim from personas/victor.json on the pi. one trait worded seven
+// ways, which is why the lexical guard couldn't hold
 const REAL_DRIFT = [
     "finds calm in water's ripple",
     'attuned to subtle rhythms in mundane hums',
@@ -26,7 +24,7 @@ const REAL_DRIFT = [
     'uses sensory spikes to reset focus',
 ]
 
-/** One sleep: the model returns the whole sheet plus one new trait. */
+// one sleep: model hands back the whole sheet plus one new trait
 function oneSleep(traits, addition) {
     const original = { traits: AUTHORED, values: [], fears: [], quirks: [] }
     const persona = { traits: [...traits], values: [], fears: [], quirks: [] }
@@ -39,7 +37,7 @@ test('the real drift, dripped one per sleep, stays bounded', () => {
     let traits = [...AUTHORED]
     for (const t of REAL_DRIFT) traits = oneSleep(traits, t)
 
-    // Before the cap change this reached 14 and production reached 16.
+    // got to 14 here before the cap, 16 on the pi
     assert.ok(
         traits.length <= AUTHORED.length + 2,
         `ended at ${traits.length} traits, cap is ${AUTHORED.length + 2}: ${JSON.stringify(traits.slice(AUTHORED.length))}`,
@@ -55,15 +53,15 @@ test('the authored sheet is never eaten by the additions', () => {
 })
 
 test('a genuinely different trait can still get in', () => {
-    // The cap must bound a monoculture without freezing him solid.
+    // cap stops a monoculture, shouldn't freeze him solid
     const traits = oneSleep(AUTHORED, 'keeps a running argument with the speaking clock')
     assert.ok(traits.length === AUTHORED.length + 1)
     assert.ok(traits.includes('keeps a running argument with the speaking clock'))
 })
 
 test('sustained drift cannot outlast the cap however it is worded', () => {
-    // Forty attempts, each phrased differently, none using a frame verb the
-    // lexical checks know about.
+    // 40 goes, all worded differently, none using a frame verb the lexical
+    // checks know about
     let traits = [...AUTHORED]
     for (let i = 0; i < 40; i++) {
         traits = oneSleep(traits, `is quietly gripped by thing number ${i} and what it does to him`)
@@ -71,10 +69,9 @@ test('sustained drift cannot outlast the cap however it is worded', () => {
     assert.ok(traits.length <= AUTHORED.length + 2, `ended at ${traits.length}`)
 })
 
-// The fourth exit, added after the glow recurrence of 08-13: retirement
-// fired correctly and the replacement was the same fixation reworded
-// within the hour, because nothing barred the subject. These are the two
-// real pairs from the Pi's log.
+// fourth exit, after the glow came back on 13 Aug. retirement worked fine,
+// then the same fixation reappeared reworded within the hour becuase nothing
+// barred the subject. both pairs are real, from the pi log
 import { subjectTokens } from '../src/util/record.js'
 
 const circles = (a, b) => {
@@ -105,11 +102,9 @@ test('a genuinely new want does not trip the subject bar', () => {
     ))
 })
 
-// The persona had its own door. On 13 Aug the glow was retired as a thread
-// and scrubbed from memory; the next morning the persona consolidator wrote
-// "occasionally seeks patterns in the glow thread online" as a quirk, and it
-// was steering decision reasons again by lunchtime. Letting go of a subject
-// has to mean both writers let go of it.
+// persona was a second way back in. glow retired + scrubbed 13 Aug, next
+// morning the consolidator wrote it in as a quirk and it was steering reasons
+// again by lunch. both writers have to let go of a subject
 test('a retired subject cannot come back as a disposition', () => {
     const barred = new Set()
     for (const t of subjectTokens('follow the firefly glow thread to its source')) barred.add(t)
@@ -130,10 +125,9 @@ test('the authored sheet is never judged against the bar', () => {
     assert.deepEqual(changes.quirks, ['chases the glow'], 'an authored quirk survives its own subject being retired')
 })
 
-// The reasons funnel: hollow-register reasons flow through the daily log
-// into every sleep-pass reader, which is the pipe that put the drum
-// fixation into three persona slots. The cleaned view keeps the fact and
-// loses the reason; plain reasons pass untouched.
+// hollow reasons go through the daily log into every sleep pass reader,
+// that's how the drum fixation ended up in three persona slots. strip the
+// reason, keep the fact, leave plain ones alone
 import { SleepCycle } from '../src/loop/SleepCycle.js'
 const stripHollow = (t) => SleepCycle.prototype._stripHollowReasons.call(null, t)
 

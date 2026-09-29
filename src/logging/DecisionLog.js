@@ -2,28 +2,16 @@ import { appendFile, readdir, unlink, mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import { createHash } from 'node:crypto'
 
-// One line per decision, so "why did he do that" can be answered from a
-// file instead of guessed at.
-//
-// 25 Sep: 836 of 1,384 decisions ran on the 120B, although the classifier
-// keeps the quality tier narrow on purpose, and victor.log had no way to say
-// why. 19 more were turned into wait because the model named an action that
-// was not on offer, and nothing recorded what it had asked for. Each line
-// here carries the tier and the rule that chose it, the model that answered
-// and what it cost, what the model asked for next to what was sent, every
-// guard that stepped in, and two keys for the evidence the decision saw, so
-// a situation that comes round again unchanged can be counted.
-//
-// Buffered and flushed like DailyLog, for the same SD card. One file per
-// UTC day under data/decisions, kept decisionLogDays days.
+// one json line per decision so "why did he do that" has an answer. tier +
+// the rule that picked it, model and cost, what was asked vs what got sent,
+// which guards fired, and evidence hashes so repeat situations can be counted.
+// buffered like DailyLog (sd card). one file per UTC day in data/decisions
 export class DecisionLog {
     constructor(config, logger, { code = null } = {}) {
         this.dir = join(config.dataDir, 'decisions')
         this.maxAgeDays = config.decisionLogDays || 14
         this.flushIntervalMs = config.logFlushIntervalMs || 5 * 60 * 1000
-        // Which build wrote the line: the prompts live in the code, so this
-        // is the prompt version too.
-        this.code = code
+        this.code = code  // git sha, doubles as prompt version
         this.logger = logger
         this._buffer = []
         this._bufferMaxSize = 200
@@ -40,8 +28,7 @@ export class DecisionLog {
         await this.garbageCollect().catch((err) => this.logger.warn(`DecisionLog GC failed: ${err.message}`))
     }
 
-    // No disk I/O here; the file is chosen now so a line written at 23:59
-    // lands in that day even if it is flushed after midnight.
+    // pick the file now, so 23:59 lands in the right day even if the flush is after midnight
     record(entry) {
         const at = new Date()
         const line = JSON.stringify({ t: at.toISOString(), code: this.code, ...entry })
@@ -64,8 +51,7 @@ export class DecisionLog {
                 await appendFile(file, lines.join('\n') + '\n', 'utf-8')
             } catch (err) {
                 this.logger.error(`DecisionLog write failed: ${err.message}`)
-                // Kept for the next flush, but not without limit: a card
-                // that has stopped taking writes must not also eat the RAM.
+                // retry next flush, but capped. a dead card shouldnt eat the ram too
                 this._buffer.unshift(...lines.map((line) => ({ line, file })))
                 if (this._buffer.length > this._bufferMaxSize * 5) {
                     this._buffer.splice(0, this._buffer.length - this._bufferMaxSize * 5)
@@ -118,8 +104,7 @@ function actionName(action) {
     return typeof action === 'string' ? action : action?.name
 }
 
-// The world's own word for how much a need is pressing when it sends one
-// (the 3eyes bridge does), otherwise the level in quarters.
+// use the worlds own urgency word if it sends one (3eyes does), else level in quarters
 function needBand(need) {
     if (need && typeof need === 'object' && typeof need.urgency === 'string') return need.urgency
     const raw = typeof need === 'number' ? need : Number(need?.level || 0)
@@ -127,23 +112,12 @@ function needBand(need) {
     return Math.min(3, Math.floor(level / 25))
 }
 
-/**
- * Two keys for what a decision could see.
- *
- * `scene` is the situation in coarse facts: roughly where he is, how
- * pressing each need is, day or night, the menu, what is waiting, what each
- * place is to him (its felt distance, not its exact one), the drives on
- * offer, any world events, and how the last action went. Two decisions with
- * the same scene were asked the same question on the same evidence.
- *
- * `detail` adds the prose: every place's label and the environment line.
- * A label carries opening hours and "you were there not long ago", so a
- * scene that repeats with a new detail did learn something.
- *
- * Deliberately left out: the clock, exact distances and his own recent
- * lines. The first changes every tick and the last is his conclusions, not
- * evidence about the world.
- */
+// two hashes of what a decision could see.
+// scene = coarse facts (rough position, need bands, night, menu, places by
+// felt distance, drives, events, last result). same scene = same question.
+// detail = scene + place labels and the environment prose.
+// no clock, exact distances or his own lines on purpose, the clock changes
+// every tick and his lines arent evidence
 export function evidenceKeys(observation, worldEvents = [], lastActionResult = null) {
     const o = observation || {}
     const self = o.self || {}

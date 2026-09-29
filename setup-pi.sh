@@ -1,13 +1,12 @@
 #!/bin/bash
-# setup-pi.sh — bootstrap a Raspberry Pi 5 as a 3aiii host.
+# bootstrap a pi 5 as a 3aiii host
 #
-# Usage:
 #   curl -fsSL https://raw.githubusercontent.com/frommybrain/agent-runtime/main/setup-pi.sh | bash -s -- <agent_id> <server_url>
 #
-# Example:
+# e.g.
 #   curl -fsSL https://raw.githubusercontent.com/frommybrain/agent-runtime/main/setup-pi.sh | bash -s -- pip ws://192.168.1.100:4001
 #
-# Or if already cloned:
+# or from a clone:
 #   bash setup-pi.sh pip ws://192.168.1.100:4001
 
 set -euo pipefail
@@ -23,14 +22,14 @@ if [ -z "$AGENT_ID" ] || [ -z "$SERVER_URL" ]; then
     echo "Usage: setup-pi.sh <agent_id> <server_url> [groq_api_key] [ollama_model] [cloud_model] [api_port]"
     echo "  agent_id:      pip, bean, mochi, taro, etc."
     echo "  server_url:    ws://YOUR_MAC_IP:4001"
-    echo "  groq_api_key:  Groq API key (recommended — cloud primary, Ollama fallback)"
+    echo "  groq_api_key:  Groq API key (recommended - cloud primary, Ollama fallback)"
     echo "  ollama_model:  qwen3:4b (default, local fallback)"
     echo "  cloud_model:   llama-3.3-70b-versatile (default, Groq primary)"
     echo "  api_port:      5000 (default)"
     exit 1
 fi
 
-echo "3aiii — Pi Setup"
+echo "3aiii - Pi Setup"
 echo "  Agent:  $AGENT_ID"
 echo "  Server: $SERVER_URL"
 echo "  Cloud:  ${GROQ_API_KEY:+Groq ($CLOUD_MODEL)}${GROQ_API_KEY:-NONE (Ollama only)}"
@@ -38,11 +37,9 @@ echo "  Local:  $OLLAMA_MODEL (fallback)"
 echo "  API:    port $API_PORT"
 echo ""
 
-# --- Step 1: System update ---
 echo "[1/7] Updating system packages..."
 sudo apt update -qq && sudo apt upgrade -y -qq
 
-# --- Step 2: Install Node.js 20 ---
 echo "[2/7] Installing Node.js 20 LTS..."
 if command -v node &> /dev/null && [[ "$(node -v)" == v20* ]]; then
     echo "  Node.js $(node -v) already installed"
@@ -52,7 +49,6 @@ else
     echo "  Node.js $(node -v) installed"
 fi
 
-# --- Step 3: Install Ollama ---
 echo "[3/7] Installing Ollama..."
 if command -v ollama &> /dev/null; then
     echo "  Ollama already installed"
@@ -60,7 +56,8 @@ else
     curl -fsSL https://ollama.com/install.sh | sh
 fi
 
-# Configure Ollama optimisations for Pi 5
+# 4 threads = the pi 5's cores. keep_alive stops ollama unloading the model
+# between ticks
 echo "[3/7] Configuring Ollama optimisations..."
 if ! grep -q "OLLAMA_NUM_THREADS" /etc/environment 2>/dev/null; then
     sudo tee -a /etc/environment > /dev/null << 'ENVEOF'
@@ -70,19 +67,17 @@ ENVEOF
     echo "  Added OLLAMA_NUM_THREADS=4 and OLLAMA_KEEP_ALIVE=24h"
 fi
 
-# Export for current session
+# /etc/environment only kicks in on next login
 export OLLAMA_NUM_THREADS=4
 export OLLAMA_KEEP_ALIVE=24h
 
-# Ensure Ollama service is running before pulling model
+# pull fails if the service isn't up yet
 sudo systemctl start ollama 2>/dev/null || true
 sleep 3
 
-# --- Step 4: Pull model ---
 echo "[4/7] Pulling $OLLAMA_MODEL (this may take a while on first run)..."
 ollama pull "$OLLAMA_MODEL"
 
-# --- Step 5: Clone/update agent-runtime ---
 echo "[5/7] Setting up agent-runtime..."
 RUNTIME_DIR="$HOME/agent-runtime"
 
@@ -98,7 +93,6 @@ fi
 
 npm install --production
 
-# Generate .env
 cat > "$RUNTIME_DIR/.env" << ENVFILE
 AGENT_ID=$AGENT_ID
 PERSONA_PATH=./personas/$AGENT_ID.json
@@ -113,11 +107,10 @@ DATA_DIR=./data
 API_PORT=$API_PORT
 LOG_LEVEL=info
 ENVFILE
-# Remove any blank lines from conditional expansion
+# no groq key leaves blank lines from the ${:+} bits
 sed -i '/^$/d' "$RUNTIME_DIR/.env"
 echo "  .env created for $AGENT_ID"
 
-# --- Step 6: Create systemd service ---
 echo "[6/7] Creating systemd service..."
 sudo tee /etc/systemd/system/agent-runtime.service > /dev/null << SERVICEEOF
 [Unit]
@@ -142,7 +135,7 @@ sudo systemctl daemon-reload
 sudo systemctl enable agent-runtime
 echo "  Service created and enabled"
 
-# --- Step 7: Set up auto-update cron ---
+# TODO: update.sh hardcodes /home/pi, won't work under any other user
 echo "[7/7] Setting up auto-update cron..."
 cat > "$RUNTIME_DIR/update.sh" << 'UPDATEEOF'
 #!/bin/bash
@@ -153,14 +146,14 @@ AFTER=$(git rev-parse HEAD)
 if [ "$BEFORE" != "$AFTER" ]; then
     npm install --production
     sudo systemctl restart agent-runtime
-    echo "[$(date)] Updated and restarted: $BEFORE → $AFTER"
+    echo "[$(date)] Updated and restarted: $BEFORE -> $AFTER"
 else
     echo "[$(date)] No changes"
 fi
 UPDATEEOF
 chmod +x "$RUNTIME_DIR/update.sh"
 
-# Add cron job if not already present
+# grep -v so a rerun doesn't stack up duplicate cron lines
 CRON_LINE="*/15 * * * * $RUNTIME_DIR/update.sh >> $RUNTIME_DIR/update.log 2>&1"
 (crontab -l 2>/dev/null | grep -v "update.sh"; echo "$CRON_LINE") | crontab -
 echo "  Auto-update cron set (every 15 minutes)"

@@ -1,14 +1,10 @@
 import { appendFile, readFile, readdir, unlink, mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
 
-// daily log with in-memory buffer and periodic disk flush.
-//
-// instead of writing to disk every tick (21,600 writes/day),
-// entries sit in a RAM buffer and flush every flushIntervalMs.
-// drops disk I/O by ~99% and saves the Pi's SD card from getting cooked.
-//
-// v0.3.7: buffer entries tagged with target file at creation time,
-// stops midnight-boundary entries going into the wrong day.
+// daily log, buffered in RAM and flushed every flushIntervalMs.
+// writing every tick was 21,600 writes a day and cooking the Pi's SD card.
+// each entry is tagged with its file when appended (v0.3.7), otherwise a
+// flush just after midnight put yesterdays lines in the wrong day
 
 export class DailyLog {
     constructor(config, logger) {
@@ -17,8 +13,7 @@ export class DailyLog {
         this.flushIntervalMs = config.logFlushIntervalMs || 5 * 60 * 1000  // 5 min default
         this.logger = logger
 
-        // in-memory buffer. entries are { line, file } objects
-        this._buffer = []
+        this._buffer = []  // { line, file }
         this._bufferMaxSize = 500  // safety cap
         this._flushTimer = null
         this._lastGC = Date.now()
@@ -29,8 +24,7 @@ export class DailyLog {
         this._startFlushTimer()
     }
 
-    // append a line. writes to buffer only, no disk I/O.
-    // file target captured now, not at flush time (prevents day boundary bug)
+    // buffer only, no disk. file is picked now, not at flush time
     async append(entry) {
         const time = new Date().toLocaleTimeString('en-US', { hour12: false })
         const line = `[${time}] ${entry}`
@@ -38,19 +32,17 @@ export class DailyLog {
 
         this._buffer.push({ line, file })
 
-        // safety: if buffer exceeds max, force flush
         if (this._buffer.length >= this._bufferMaxSize) {
             await this.flush()
         }
     }
 
-    // flush buffer to disk. grouped by target file (handles midnight boundary)
+    // grouped by file, a flush can straddle midnight
     async flush() {
         if (this._buffer.length === 0) return
 
-        const entries = this._buffer.splice(0)  // drain buffer
+        const entries = this._buffer.splice(0)
 
-        // group entries by target file
         const byFile = new Map()
         for (const { line, file } of entries) {
             if (!byFile.has(file)) byFile.set(file, [])
@@ -63,7 +55,7 @@ export class DailyLog {
                 await appendFile(file, content, 'utf-8')
             } catch (err) {
                 this.logger.error(`DailyLog flush failed: ${err.message}`)
-                // re-add lines to buffer so theyre not lost
+                // put them back so theyre not lost, next flush tries again
                 for (const line of lines) {
                     this._buffer.unshift({ line, file })
                 }
@@ -71,15 +63,15 @@ export class DailyLog {
         }
     }
 
-    // read today's log (buffer + disk combined)
+    // disk + whatever's still in the buffer
     async readToday() {
         let disk = ''
         try {
             disk = await readFile(this._todayFile(), 'utf-8')
         } catch {
-            // file doesnt exist yet
+            // no file yet
         }
-        // append unflushed buffer entries for today only
+        // unflushed lines, today's only
         const todayFile = this._todayFile()
         const bufferLines = this._buffer
             .filter(e => e.file === todayFile)
@@ -90,33 +82,29 @@ export class DailyLog {
         return disk
     }
 
-    // read last N lines. pulls from buffer first (fast), then disk if needed
+    // buffer first, only hits disk if the buffer is short
     async readRecentLines(n = 5) {
         const bufferLines = this._buffer.map(e => e.line)
-        // buffer has enough recent lines
         if (bufferLines.length >= n) {
             return bufferLines.slice(-n)
         }
 
-        // need some from disk too
         const content = await this.readToday()
         if (!content) return bufferLines.slice(-n)
         const lines = content.trim().split('\n').filter(Boolean)
         return lines.slice(-n)
     }
 
-    // read last N lines for consolidation (capped to prevent context overflow)
+    // capped, a whole day blows the context
     async readForConsolidation(maxLines = 200) {
         const content = await this.readToday()
         if (!content) return ''
         const lines = content.trim().split('\n').filter(Boolean)
         if (lines.length <= maxLines) return content
-        // return only the last maxLines with a note
         const truncated = lines.slice(-maxLines)
         return `[... ${lines.length - maxLines} earlier entries omitted ...]\n` + truncated.join('\n')
     }
 
-    // read a specific day's log (for sleep consolidation)
     async readDay(dateStr) {
         try {
             return await readFile(join(this.logsDir, `${dateStr}.md`), 'utf-8')
@@ -125,7 +113,6 @@ export class DailyLog {
         }
     }
 
-    // list all log files
     async listLogFiles() {
         try {
             const files = await readdir(this.logsDir)
@@ -158,7 +145,7 @@ export class DailyLog {
         return deleted
     }
 
-    // is GC overdue? (called by heartbeat as fallback)
+    // heartbeat checks this in case sleep hasn't run gc for a while
     isGCOverdue(maxHours = 24) {
         return (Date.now() - this._lastGC) > maxHours * 60 * 60 * 1000
     }
@@ -178,7 +165,7 @@ export class DailyLog {
         if (this._flushTimer.unref) this._flushTimer.unref()
     }
 
-    // flush and stop timer. called during shutdown
+    // shutdown
     async stop() {
         if (this._flushTimer) {
             clearInterval(this._flushTimer)

@@ -1,7 +1,6 @@
-// The message-frame guard. The fixation survived a wipe, a stem bar and a
-// twin pass by changing hosts while keeping its shape, "some object holds
-// a message from elsewhere". These pin the detector to real lines from the
-// 19 Aug review and the cap to its keep-first-N behaviour.
+// message frame guard. the fixation got past a wipe, the stem bar and the
+// twin pass by swapping objects and keeping the shape ("X holds a message
+// from elsewhere"). real lines from the 19 Aug review
 
 import { test } from 'node:test'
 import assert from 'node:assert'
@@ -57,8 +56,8 @@ test('a frame line eaten by the subject cap does not spend a frame slot', () => 
         '- a message hidden under the bench, meant for me',
         '- a whisper from somewhere far away, waiting for me',
     ].join('\n')
-    // subjectCeiling 2 eats the third dryer line before the frame rule sees
-    // it spend anything; the two clean frame lines still get both slots.
+    // subject cap eats the 3rd dryer line first, so both frame slots are
+    // still free for the other two
     const { text } = filterRecord(md, { subjectCeiling: 2, frameCeiling: 2 })
     assert.ok(!text.includes('voice from beyond'), 'subject cap ate it')
     assert.ok(text.includes('hidden under the bench'), 'frame slot one')
@@ -72,10 +71,8 @@ test('ceiling 0 disables the frame rule', () => {
     assert.ok(text.includes('voice from beyond'))
 })
 
-// ── 21 Aug: the third re-keying, pinned to the corpus that forced it ──
-// The fixation dropped both noun halves and moved into verbs; the detector
-// returned false for all 28 live bullets while at least four were the
-// frame. These are the real lines, not imagined ones.
+// 21 Aug, third re-key. it dropped the nouns and moved into verbs, detector
+// passed all 28 live bullets when at least 4 were the frame. real lines
 
 test('the verb forms are caught (21 Aug live corpus)', () => {
     for (const line of [
@@ -96,7 +93,7 @@ test('the 21 Aug ordinary lines still pass', () => {
         'The phone line feels like a thin thread to reach out.',
         'Trades tick along on it by themselves and the balance moves.',
         'a hidden path behind the dumpsters',
-        // literal museum glass is an exhibition, not a hidden meaning
+        // actual museum glass, not a hidden meaning
         "I want to see what's under the glass in the Small Gods exhibit.",
     ]) {
         assert.ok(!isMessageFrame(line), `should pass: ${line}`)

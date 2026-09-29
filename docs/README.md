@@ -1,9 +1,11 @@
 # Docs
 
-- [3aiii overview](3aiii-overview.md) - architecture, modules, cognitive pipeline, what's proven, production-hardening backlog
-- [Handover](handover.md) - diligence package index, 30-minute evaluation path, honest framing
-- [Quickstart](quickstart.md) - clone, install, run, watch a tick in under 10 minutes
-- [Codebase audit memo](codebase-audit-memo.md) - self-audit against the four patent-relevant items with file/line evidence
-- [Environment protocol](environment-protocol.md) - WebSocket contract any host environment has to implement
-- [Test results](test-results.md) - API endpoints with sample responses, smoke + integration smoke + historical runs
-- [SBOM](sbom/) - dependency licence summary
+- [quickstart.md](quickstart.md) clone, install, run it against the test server and watch a tick. about 10 minutes
+- [environment-protocol.md](environment-protocol.md) the WebSocket contract a world has to implement to host an agent
+- [3aiii-overview.md](3aiii-overview.md) architecture, modules, the cognitive pipeline, what's been proven, the production hardening backlog
+- [test-results.md](test-results.md) API endpoints with sample responses, the smoke and integration smoke runs, older soak runs
+- [handover.md](handover.md) index of the diligence package and a 30 minute evaluation path
+- [codebase-audit-memo.md](codebase-audit-memo.md) self-audit against the four patent-relevant items, with file and line refs
+- [sbom/](sbom/) dependency licences
+
+The overview, test results, handover, audit memo and SBOM were written for a diligence review in May 2026 and describe the code as it was then. Some details have moved on since, so check the source when it matters.

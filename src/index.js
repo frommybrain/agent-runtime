@@ -22,9 +22,8 @@ import { Heartbeat } from './loop/Heartbeat.js'
 import { SleepCycle } from './loop/SleepCycle.js'
 import { ApiServer } from './api/ApiServer.js'
 
-// The commit this process is running, for the decision log. The prompts
-// live in the code, so it is the prompt version too. Local edits to
-// tracked files are marked, so a hand-patched Pi cannot pass for a commit.
+// commit sha for the decision log (prompts live in code so its the prompt
+// version too). +dirty if someone hand patched the pi
 function codeVersion() {
     const cwd = dirname(fileURLToPath(import.meta.url))
     const run = (args) => execFileSync('git', args, { cwd, encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'] }).trim()
@@ -42,12 +41,8 @@ async function main() {
     const config = loadConfig()
     const logger = new Logger(config)
 
-    // Last-resort safety net for an unattended installation: a stray throw
-    // or rejected promise in any fire-and-forget path (sleep consolidation,
-    // a socket callback, an API handler) must NOT take the whole agent
-    // down. Log loudly and keep running — systemd is the backstop, but an
-    // in-process survivor preserves working memory and avoids reconnect
-    // churn. (Paired with the guarded socket parse in EnvironmentSocket.)
+    // dont die on a stray throw from some fire-and-forget path (sleep, socket
+    // callbacks, api). systemd would restart us but we'd lose working memory
     process.on('uncaughtException', (err) => {
         logger.error(`uncaughtException: ${err?.stack || err}`)
     })
@@ -88,7 +83,6 @@ async function main() {
     const llmClient = new LLMClient(config, logger)
     const promptBuilder = new PromptBuilder(persona)
 
-    // new cognitive modules
     const internalState = new InternalState(config, logger)
     const deltaDetector = new DeltaDetector(logger)
     const repetitionGuard = new RepetitionGuard(config, logger)
@@ -100,24 +94,23 @@ async function main() {
     await decisionLog.init()
     await llmClient.init()
     await speechLog.init()
-    const checkpoint = await internalState.restore()  // crash recovery: reload last emotional state
+    const checkpoint = await internalState.restore()  // last mood/energy from before a crash
 
     const think = new Think(llmClient, promptBuilder, memoryFiles, dailyLog, workingMemory, logger)
     const sleepCycle = new SleepCycle(think, memoryFiles, dailyLog, workingMemory, internalState, repetitionGuard, speechLog, config, logger)
-    await sleepCycle.loadOriginalPersona(persona)  // immutable drift baseline
+    await sleepCycle.loadOriginalPersona(persona)  // drift baseline, never changes
     const heartbeat = new Heartbeat(
         socket, think, workingMemory, memoryFiles, dailyLog, sleepCycle,
         internalState, deltaDetector, repetitionGuard, speechLog,
         config, logger
     )
 
-    // restore tick counter from checkpoint (prevents reset on restart)
+    // otherwise tick count resets to 0 every restart
     if (checkpoint?.tickCount) {
         heartbeat.tickCount = checkpoint.tickCount
         logger.info(`Tick counter restored: ${checkpoint.tickCount}`)
     }
 
-    // start API server. shared state object passed in
     const apiState = {
         persona, heartbeat, sleepCycle, memoryFiles, dailyLog,
         workingMemory, socket, promptBuilder, internalState,
@@ -129,11 +122,11 @@ async function main() {
     })
     api.start()
 
-    // wire API emitter into heartbeat so tick/sleep events flow to SSE clients
+    // so ticks go out over SSE
     heartbeat.api = api
     heartbeat.decisionLog = decisionLog
 
-    // also emit sleep/wake events from sleepCycle
+    // bit hacky, wraps sleepCycle so sleep/wake hit SSE too
     const origStart = sleepCycle._startSleep.bind(sleepCycle)
     sleepCycle._startSleep = async (quiet) => {
         await origStart(quiet)
@@ -145,7 +138,6 @@ async function main() {
         api.emit('wake', { agent: persona.name, timestamp: Date.now() })
     }
 
-    // connect to environment server
     try {
         await socket.connect()
         logger.info('Connected and identified with environment server')
@@ -154,19 +146,17 @@ async function main() {
         logger.info('Will keep trying via reconnect...')
     }
 
-    // log startup
     await dailyLog.append(`=== AGENT STARTED === (${persona.name})`)
     api.emit('started', { agent: persona.name, timestamp: Date.now() })
 
-    // start the heartbeat loop
-    // keep the sim's idea of him current. reads the file fresh so it always
-    // carries SleepCycle's latest evolution, not the boot-time object.
+    // hourly persona push to the sim. read off disk each time so it has
+    // whatever SleepCycle evolved, not the boot copy
     socket.setPersonaProvider(async () => JSON.parse(await readFile(config.personaPath, 'utf-8')))
     const personaPush = setInterval(() => socket.pushPersona(), 60 * 60 * 1000)
 
     heartbeat.start()
 
-    // graceful shutdown (guarded against double-signal)
+    // second ctrl-c shouldnt run this twice
     let shuttingDown = false
     const shutdown = async (signal) => {
         if (shuttingDown) return
@@ -177,7 +167,7 @@ async function main() {
         api.stop()
         await dailyLog.append('=== AGENT STOPPED ===')
         await speechLog.save()
-        await dailyLog.stop()  // flush buffer to disk
+        await dailyLog.stop()  // flushes
         await decisionLog.stop()
         clearInterval(personaPush)
         socket.close()
@@ -187,7 +177,7 @@ async function main() {
     process.on('SIGINT', () => shutdown('SIGINT'))
     process.on('SIGTERM', () => shutdown('SIGTERM'))
 
-    logger.info(`3aiii running — API on http://localhost:${config.apiPort}`)
+    logger.info(`3aiii running - API on http://localhost:${config.apiPort}`)
 }
 
 main().catch(err => {

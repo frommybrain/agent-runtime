@@ -3,8 +3,8 @@ import { join } from 'node:path'
 
 import { bannedIn, bannedWords, filterRecord, isMessageFrame } from '../util/record.js'
 
-// manages the three persistent knowledge files: memory.md, skills.md, tools.md.
-// v0.3.1: backup + restore for consolidation safety (LLMs are liars)
+// memory.md, skills.md, tools.md.
+// consolidation writes go through backup + restore (v0.3.1), LLMs are liars
 
 const STOP_WORDS = new Set([
     'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
@@ -24,26 +24,22 @@ export class MemoryFiles {
         this._lastToolsHash = null  // skip redundant tools.md writes
         // read cache. avoids re-reading static files every tick
         this._cache = { memory: null, skills: null, tools: null }
-        // how many memory bullets one content word may own before the rest
-        // are dropped. see filterRecord: this is the fixation guard, and it
-        // needs no list of what the fixation might be about.
+        // fixation guard (see filterRecord): max bullets one content word can
+        // own. doesn't need to know what the fixation is about
         this._subjectCeiling = config.memorySubjectCeiling ?? 4
-        // and how many bullets may share one PAIR of content words. the word
-        // ceiling alone let a fixation sit at exactly the cap under four
-        // different nouns (glint 4, spark 4, glow 4, firefly 4); the pair is
-        // the idea, and it cannot be respelled away from its anchors.
+        // max bullets sharing a PAIR of content words. the word cap alone let
+        // one fixation sit right at the cap under four nouns (glint, spark,
+        // glow, firefly)
         this._ideaCeiling = config.memoryIdeaCeiling ?? 2
-        // and how many bullets may cast an object as carrying a message
-        // from elsewhere, whatever the object is. the fixation has now worn
-        // four different hosts (shrine token, glow, green stone, payphone)
-        // and both stem ceilings passed it every time, because each host
-        // brings fresh stems. the FRAME is the one thing it cannot change.
+        // max bullets casting an object as a message from elsewhere. its been
+        // through four hosts (shrine token, glow, green stone, payphone), fresh
+        // stems every time, but the frame never changes
         this._frameCeiling = config.memoryFrameCeiling ?? 2
         this._banned = []
     }
 
-    // the persona owns the ban list, so the runtime stays generic. called at
-    // startup and again whenever the persona is hot-swapped.
+    // ban list comes from the persona so the runtime stays generic.
+    // called at startup and on persona hot-swap
     setPersona(persona) {
         this._banned = bannedWords(persona)
     }
@@ -51,17 +47,14 @@ export class MemoryFiles {
     async init() {
         await mkdir(this.dataDir, { recursive: true })
 
-        // make sure all three files exist with defaults
         await this._ensureFile('memory.md', `# ${this.agentId}'s Memory\n\n## Relationships\n\n## Learned Facts\n\n## Important Memories\n`)
         await this._ensureFile('skills.md', `# ${this.agentId}'s Skills\n`)
         await this._ensureFile('tools.md', `# Available Actions\n\n# Discovered Objects\n`)
 
-        // fix header if agent identity changed (eg pip → victor)
+        // header goes stale if the agent id changes (pip -> victor)
         await this._fixHeader('memory.md', `# ${this.agentId}'s Memory`)
         await this._fixHeader('skills.md', `# ${this.agentId}'s Skills`)
     }
-
-    // read
 
     async readMemory() {
         if (this._cache.memory !== null) return this._cache.memory
@@ -84,18 +77,9 @@ export class MemoryFiles {
         return content
     }
 
-    // write (full replace, used by sleep consolidation)
-
-    // The gate lives HERE, not at the two callers.
-    //
-    // memory.md grows two ways: a full rewrite from sleep consolidation, and
-    // single bullets appended from a decision's "remember" field. Both end up
-    // here, so this is the one place that sees everything on its way to disk.
-    // Gating the consolidator alone would have left the append path open, and
-    // the append path is the one that runs all day.
-    //
-    // Only bullets are filtered, so the file's headers survive whatever gets
-    // dropped and it still validates as memory.md afterwards.
+    // the gate is here, not in the callers. memory.md gets the full rewrite at
+    // sleep and single bullets from "remember" all day, both land here.
+    // only bullets are filtered so the headers survive and it still validates
     async writeMemory(content) {
         const { text, banned, crowded } = filterRecord(content, {
             banned: this._banned,
@@ -132,18 +116,16 @@ export class MemoryFiles {
         this._cache.tools = content
     }
 
-    // append (used during waking hours for incremental updates)
-
+    // waking-hours path, one bullet at a time
     async appendToMemory(section, content) {
-        // v0.3.1: hard length cap so LLM cant write essays into memory
+        // hard cap or the LLM writes essays in here
         if (content.length > 150) {
             content = content.slice(0, 150)
             this.logger.debug(`Memory entry truncated to 150 chars`)
         }
 
-        // writeMemory is the gate and would drop this anyway. Catching it here
-        // saves a read-modify-write, and stops the debug line below claiming
-        // it appended something that never landed.
+        // writeMemory would drop it anyway, this just saves the read-modify-write
+        // and stops the debug line below claiming an append that never landed
         const hits = bannedIn(content, this._banned)
         if (hits.length > 0) {
             this.logger.debug(`Memory guard: refused "${hits[0]}" in "${content.slice(0, 60)}"`)
@@ -152,31 +134,30 @@ export class MemoryFiles {
 
         const current = await this.readMemory()
 
-        // dedup: exact substring match (minus [salient] tag)
+        // exact substring, ignoring the [salient] tag
         const bare = content.replace(/\s*\[salient\]\s*$/, '').trim().toLowerCase()
         if (current.toLowerCase().includes(bare)) {
-            this.logger.debug(`Memory dedup — skipping "${content}" (exact match)`)
+            this.logger.debug(`Memory dedup - skipping "${content}" (exact match)`)
             return
         }
 
-        // fuzzy dedup: extract key words and check if a similar entry exists
+        // fuzzy, on keywords
         const keywords = this._extractKeywords(bare)
         if (keywords.length >= 2) {
             const existingLines = current.split('\n').filter(l => l.startsWith('- '))
             for (const line of existingLines) {
                 const lineKeywords = this._extractKeywords(line.slice(2).toLowerCase())
                 if (this._keywordsSimilar(keywords, lineKeywords)) {
-                    this.logger.debug(`Memory dedup — skipping "${content}" (similar to "${line.slice(2).trim()}")`)
+                    this.logger.debug(`Memory dedup - skipping "${content}" (similar to "${line.slice(2).trim()}")`)
                     return
                 }
             }
         }
 
-        // Frame cap, checked BEFORE insertion. Appends land at the top of
-        // their section, so leaving this to writeMemory's filter would keep
-        // the new frame line and rotate an old one out: the fixation would
-        // hold its two slots forever with fresh wording. Refusing here means
-        // the slots fill once and every later restatement bounces.
+        // frame cap has to be checked before insert. appends go at the top of
+        // the section, so writeMemory would keep the new one and rotate an old
+        // one out and the fixation holds both slots forever with new wording.
+        // refused here, the slots fill once and the rest bounce
         if (this._frameCeiling > 0 && isMessageFrame(content)) {
             const held = current.split('\n').filter(l => /^\s*[-*] /.test(l) && isMessageFrame(l)).length
             if (held >= this._frameCeiling) {
@@ -188,11 +169,10 @@ export class MemoryFiles {
         const marker = `## ${section}`
         const idx = current.indexOf(marker)
         if (idx === -1) {
-            // section doesnt exist, append at end
+            // no such section yet, add it at the end
             const updated = current.trimEnd() + `\n\n## ${section}\n- ${content}\n`
             await this.writeMemory(updated)
         } else {
-            // insert after section heading
             const afterMarker = idx + marker.length
             const updated = current.slice(0, afterMarker) + `\n- ${content}` + current.slice(afterMarker)
             await this.writeMemory(updated)
@@ -200,7 +180,7 @@ export class MemoryFiles {
         this.logger.debug(`Memory appended to [${section}]: ${content}`)
     }
 
-    // extract meaningful keywords (strip stop words) for fuzzy dedup
+    // content words for the fuzzy dedup
     _extractKeywords(text) {
         return text
             .replace(/[^a-z0-9\s]/g, '')
@@ -208,31 +188,25 @@ export class MemoryFiles {
             .filter(w => w.length > 2 && !STOP_WORDS.has(w))
     }
 
-    // Is entry `a` redundant against entry `b` (the one we'd keep)? True when
-    // they overlap heavily (near-identical) OR when `a` is the shorter entry
-    // almost entirely CONTAINED in `b` — a length-mismatched paraphrase like
-    // "the cold shrine" sitting inside "the cold shrine pulses at dusk and I
-    // wait". The containment arm is DIRECTIONAL on purpose: it only ever
-    // discards the shorter/vaguer entry, never the more detailed one. Both
-    // paths require ≥2 shared content words so tiny entries can't match
-    // spuriously. Deliberately general — NO project-specific topic lists,
-    // since this pipeline is shared across agents — and additive: it never
-    // loosens the original 0.7 bar.
+    // is `a` redundant next to `b` (the one that stays)? either heavy overlap,
+    // or `a` is the shorter one and nearly all inside `b`, like "the cold
+    // shrine" vs "the cold shrine pulses at dusk and I wait". containment is
+    // one way on purpose, it only ever drops the vaguer entry.
+    // both need 2+ shared words so tiny entries don't match by accident.
+    // no topic lists in here, other agents use this too
     _keywordsSimilar(a, b) {
         if (a.length < 2 || b.length < 2) return false
         const overlap = a.filter(k => b.includes(k)).length
         if (overlap < 2) return false
         const simMax = overlap / Math.max(a.length, b.length)
         if (simMax >= 0.7) return true
-        // containment: drop `a` only when it is the shorter/equal entry
+        // containment, only when a is the shorter (or equal)
         const simMin = overlap / Math.min(a.length, b.length)
         return simMin >= 0.8 && a.length <= b.length
     }
 
-    // pre-consolidation dedup
-    // strips near-duplicate entries from memory.md before the LLM sees it.
-    // the LLM cant be trusted to merge duplicates, it keeps everything.
-
+    // runs before consolidation. the LLM cant be trusted to merge dupes,
+    // it just keeps everything
     async deduplicateMemory() {
         const content = await this.readMemory()
         const lines = content.split('\n')
@@ -249,7 +223,6 @@ export class MemoryFiles {
             const text = line.slice(2).replace(/\s*\[salient\]\s*$/, '').trim().toLowerCase()
             const keywords = this._extractKeywords(text)
 
-            // check against already-seen entries
             let isDuplicate = false
             if (keywords.length >= 2) {
                 for (const existing of seen) {
@@ -274,14 +247,12 @@ export class MemoryFiles {
         return removed
     }
 
-    // tools auto-update from observations
-
+    // tools.md is rebuilt from each observation
     async updateToolsFromObservation(observation) {
         const tools = await this.readTools()
         let changed = false
         let updated = tools
 
-        // update available actions
         if (observation.available_actions) {
             const actionsSection = this._buildActionsSection(observation.available_actions)
             if (updated.includes('# Available Actions')) {
@@ -295,19 +266,12 @@ export class MemoryFiles {
             changed = true
         }
 
-        // rebuild discovered objects from current observation. only show whats
-        // actually nearby RIGHT NOW. stale objects = hallucination.
+        // only whats nearby RIGHT NOW. stale objects = hallucination
         const nearbyObjects = observation.nearbyObjects || observation.nearby_objects || []
-        // the name leads and the id is marked as a handle. this line used to
-        // be `- ${obj.id}: ${obj.type}` and dropped the name the bridge
-        // sends, so under a heading that says GROUND TRUTH the only word he
-        // had for the rock by the pond was artifact_greenstone. it came out
-        // of his mouth as "Greenstone glints, want to see the cut number",
-        // which is a bird reading a database key aloud.
-        //
-        // the position was always (?, ?) too: the bridge sends distance and
-        // a felt distance, never pos, so every object in here has been
-        // reporting unknown coordinates for as long as this has run.
+        // name first, id as a handle. this used to print the id and type only,
+        // so the only word he had for the rock by the pond was
+        // artifact_greenstone and he said it out loud ("Greenstone glints...").
+        // no coords either, the bridge only sends distance, never pos
         const objectsSection = '# Nearby Objects (GROUND TRUTH, if something is not listed here, it is not present)\n' + (
             nearbyObjects.length > 0
                 ? nearbyObjects.map(obj => {
@@ -317,7 +281,6 @@ export class MemoryFiles {
                 }).join('\n') + '\n'
                 : '(nothing nearby, the area is empty)\n'
         )
-        // replace or append the objects section
         const objMarker = updated.match(/# (?:Discovered|Nearby) Objects[^\n]*/)
         if (objMarker) {
             const start = updated.indexOf(objMarker[0])
@@ -327,7 +290,7 @@ export class MemoryFiles {
         }
         changed = true
 
-        // only write if content actually changed (saves ~10,800 disk writes/day)
+        // skip the write if nothing changed, saves ~10,800 writes a day
         const hash = this._quickHash(updated)
         if (hash !== this._lastToolsHash) {
             this._lastToolsHash = hash
@@ -335,7 +298,7 @@ export class MemoryFiles {
         }
     }
 
-    // fast string hash for change detection (djb2)
+    // djb2, only for change detection
     _quickHash(str) {
         let hash = 5381
         for (let i = 0; i < str.length; i++) {
@@ -353,26 +316,24 @@ export class MemoryFiles {
         return `# Available Actions\n${lines.join('\n')}\n`
     }
 
-    // backup / restore (consolidation safety)
+    // backup / restore around LLM rewrites
 
-    // make a .bak copy before destructive LLM overwrites
     async backup(filename) {
         const src = join(this.dataDir, filename)
         const dst = join(this.dataDir, `${filename}.bak`)
         try {
             await copyFile(src, dst)
         } catch {
-            // source doesnt exist yet, nothing to back up
+            // nothing to back up yet
         }
     }
 
-    // restore from backup if the current file is corrupted
     async restore(filename) {
         const bak = join(this.dataDir, `${filename}.bak`)
         const dst = join(this.dataDir, filename)
         try {
             await copyFile(bak, dst)
-            // invalidate cache for restored file
+            // cache is stale now
             const key = filename.replace('.md', '')
             if (this._cache[key] !== undefined) this._cache[key] = null
             this.logger.warn(`Restored ${filename} from backup`)
@@ -383,35 +344,28 @@ export class MemoryFiles {
         }
     }
 
-    // validate that LLM output actually looks like valid memory.md
+    // does the LLM output look like a memory.md at all
     validateMemoryContent(content) {
         if (!content || content.trim().length < 20) return false
-        // must have at least one markdown header
         if (!content.includes('# ')) return false
-        // must have at least one list entry (or be a valid empty structure)
+        // bullets, or at least the empty sections
         const hasEntries = content.includes('- ')
         const hasExpectedSections = content.includes('## ')
         return hasEntries || hasExpectedSections
     }
 
-    // validate that LLM output looks like valid skills.md
     validateSkillsContent(content) {
         if (!content || content.trim().length < 10) return false
         if (!content.includes('# ')) return false
         return true
     }
 
-    // Put the header back rather than throwing the extraction away.
-    //
-    // The prompt asks for "a simple markdown bullet list" and the validator
-    // demanded a "# " header, so a model that did exactly as it was told
-    // failed every single time: twelve extractions on 11 Aug, twelve
-    // rejections, the backup restored each cycle. Memory never hit this
-    // because "## Relationships" happens to contain "# ".
-    //
-    // The prompt now asks for the header too, but asking is the half that
-    // can regress the next time the wording is tuned. Repairing a list that
-    // is otherwise perfectly good is the half that holds.
+    // put the header back instead of binning the extraction. the prompt asked
+    // for a plain bullet list and the validator wanted a "# " header, so the
+    // model did as told and failed every time (12 of 12 on 11 Aug). memory
+    // never hit it becuase "## Relationships" contains "# ".
+    // the prompt asks for the header now too, but that can regress the next
+    // time someone tunes the wording. this cant
     normaliseSkills(content) {
         const text = String(content ?? '').trim()
         if (!text) return text
@@ -421,7 +375,7 @@ export class MemoryFiles {
         return `# ${this.agentId}'s Skills\n\n${text}`
     }
 
-    // safe write: backup → validate → write, or restore on failure
+    // backup, validate, write. restore if it doesn't validate
     async safeWriteMemory(content) {
         await this.backup('memory.md')
         if (this.validateMemoryContent(content)) {
@@ -445,10 +399,9 @@ export class MemoryFiles {
         return false
     }
 
-    // ── current thread (the desire layer) ────────────────────────────
-    // ONE thing the agent is chasing across days — formed/updated during
-    // sleep, injected into every decision prompt. Stored as small JSON:
-    // { text, formedAt, updatedAt } or null when nothing pulls.
+    // current thread, the desire layer. the ONE thing he's chasing across
+    // days, set at sleep and put in every decision prompt.
+    // { text, formedAt, updatedAt } or null when nothing pulls
 
     async readCurrentThread() {
         const raw = await this._read('current-thread.json')
@@ -466,12 +419,10 @@ export class MemoryFiles {
             await this._write('current-thread.json', 'null')
             return
         }
-        // The frame does not get to BE the thread. The 21 Aug review found
-        // "I want to see if the lake's glow reveals something new" formed
-        // at 06:17 and renewed six times while every guard watched other
-        // doors; three of four retired threads were the same shape wearing
-        // different hosts. Same detector as the memory choke point, so the
-        // two doors cannot disagree.
+        // the frame doesn't get to be the thread. "I want to see if the lake's
+        // glow reveals something new" got renewed six times on 21 Aug while
+        // every guard watched other doors. same detector as the memory gate so
+        // the two cant disagree
         if (isMessageFrame(thread.text)) {
             this.logger?.info?.(`Thread refused (message-frame shaped): "${String(thread.text).slice(0, 70)}"`)
             await this._write('current-thread.json', 'null')
@@ -480,12 +431,9 @@ export class MemoryFiles {
         await this._write('current-thread.json', JSON.stringify(thread, null, 2))
     }
 
-    // Threads that were forced out (spent, or retired as a rut). Kept so
-    // the next formation can be told "not that": without this, retirement
-    // was cosmetic, because the replacement is chosen from the memory and
-    // daily log the retired thread itself wrote, and it came straight back
-    // reworded (the stone loop, then the glow). Last few only.
-
+    // threads that were forced out (spent or a rut), last few only. the next
+    // one gets told "not that", otherwise the replacement is picked from the
+    // memory the old thread wrote and it comes straight back reworded
     async readRetiredThreads() {
         const raw = await this._read('retired-threads.json')
         if (!raw) return []
@@ -535,7 +483,7 @@ export class MemoryFiles {
         if (firstLine.startsWith('# ') && firstLine !== expectedHeader) {
             const updated = expectedHeader + content.slice(firstLine.length)
             await this._write(filename, updated)
-            this.logger.info(`Fixed header in ${filename}: "${firstLine}" → "${expectedHeader}"`)
+            this.logger.info(`Fixed header in ${filename}: "${firstLine}" -> "${expectedHeader}"`)
         }
     }
 }
