@@ -6,5 +6,5 @@ This source code is proprietary. No licence is granted to any party except by
 written agreement with the copyright holder. Permission must be obtained
 before any reproduction, distribution, modification, or commercial use.
 
-Third-party dependencies retain their original licences. See `docs/SBOM.md`
+Third-party dependencies retain their original licences. See `docs/sbom/README.md`
 for the full dependency licence summary.

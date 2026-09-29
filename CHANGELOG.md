@@ -32,7 +32,7 @@ Newest first. Version numbers follow the boot string in `src/index.js`. The earl
 - renamed internal-state fields: `valence` to `mood`, `arousal` to `energy`. plainer english for the diligence package. API/SSE/checkpoint JSON keys changed with it, so downstream consumers (anon-ai-world viewer, sim-server bridge) need updating.
 - branding: user-facing references say `3aiii` now instead of `agent-runtime`. repo name, package name, systemd unit and file paths unchanged.
 - tidied source comments and docs.
-- diligence handover material: `docs/handover.md`, audit memo, SBOM, LICENCE, this changelog, fresh smoke test report in `test-results/diligence/`.
+- diligence material: SBOM, LICENCE, this changelog, fresh smoke test report in `test-results/diligence/`.
 
 ## [v0.4] - 2026-03-17
 

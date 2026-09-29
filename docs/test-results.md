@@ -1,7 +1,7 @@
 # 3aiii: Endpoints and test results
 
 Captured 2026-05-12 against the diligence-ready `main` branch.
-For orientation see `handover.md`; for the step-by-step run path see `quickstart.md`.
+For the step-by-step run path see `quickstart.md`.
 
 ## Environment
 
@@ -310,8 +310,6 @@ sleep consolidation, and writes a soak report.
 For a deeper evaluation:
 
 - `3aiii-overview.md`: the main architecture reference
-- `codebase-audit-memo.md`: self-audit against the four
-  patent-relevant items, with file/line evidence
 - `environment-protocol.md`: the WebSocket contract for any
   environment that wants to host a 3aiii agent
 
