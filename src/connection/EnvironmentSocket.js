@@ -154,6 +154,13 @@ export class EnvironmentSocket {
             case 'WORLD_EVENT':
                 this._worldEvents.push(msg)
                 if (this._worldEvents.length > 20) this._worldEvents.shift()
+                this._onWorldEvent?.(msg)
+                break
+
+            // an env that owns the persona sends it after IDENTIFIED, and again
+            // whenever it changes. null means it hasnt got one for us yet
+            case 'PERSONA':
+                this._onPersona?.(msg.persona || null)
                 break
 
             case 'ERROR':
@@ -210,6 +217,9 @@ export class EnvironmentSocket {
     isConnected() {
         return this.connected && this.identified && this.ws?.readyState === WebSocket.OPEN
     }
+
+    onWorldEvent(fn) { this._onWorldEvent = fn }
+    onPersona(fn) { this._onPersona = fn }
 
     // index.js passes a fn that rereads the persona file, so the sim always
     // gets whatever SleepCycle wrote last

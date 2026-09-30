@@ -623,6 +623,10 @@ export class Heartbeat {
             }
             this._ticking = false
             this._lastTickSettledAt = Date.now()
+            if (this._nudged) {
+                this._nudged = false
+                this.nudge(500)
+            }
         }
     }
 
@@ -701,6 +705,22 @@ export class Heartbeat {
             for (const k of Object.keys(signals)) signals[k] /= 100
         }
         return signals
+    }
+
+    // somebody spoke to us. tick soon rather than whenever the interval says,
+    // or a reply lands 15s after the question. if a tick is running, go again
+    // straight after it
+    nudge(delayMs = 1500) {
+        if (this._timer === null) return
+        if (this._ticking) {
+            this._nudged = true
+            return
+        }
+        clearTimeout(this._timer)
+        this._timer = setTimeout(() => {
+            this._tick().catch(err => this.logger.error(`Uncaught tick error: ${err.message}`))
+            if (this._timer !== null) this._scheduleNext()
+        }, delayMs)
     }
 
     _scheduleNext() {

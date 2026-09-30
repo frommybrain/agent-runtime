@@ -342,6 +342,15 @@ export class SleepCycle {
 
     // immutable persona baseline. written once on the first ever boot, read
     // back from that file every boot after (crashes included)
+    // the world rewrote who we are (persona from the world). the new one is the
+    // baseline from now on, or the floor repair puts the old traits back
+    async replaceBaseline(persona) {
+        const { join } = await import('node:path')
+        await writeFile(join(this.dataDir, 'persona-baseline.json'), JSON.stringify(persona, null, 2), 'utf-8')
+        this._originalPersona = this._extractComparableFields(persona)
+        this.logger.info('Drift guard: baseline replaced by the world')
+    }
+
     async loadOriginalPersona(currentPersona) {
         const { join } = await import('node:path')
         const baselinePath = join(this.dataDir, 'persona-baseline.json')

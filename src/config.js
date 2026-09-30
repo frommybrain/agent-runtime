@@ -5,6 +5,9 @@ export function loadConfig() {
         // identity
         agentId: process.env.AGENT_ID || 'pip',
         personaPath: process.env.PERSONA_PATH || './personas/pip.json',
+        // 1 = the world hands over the persona (and later rewrites of it) instead
+        // of a file shipped with the agent. the file at PERSONA_PATH becomes a cache
+        personaFromWorld: process.env.PERSONA_FROM_WORLD === '1',
 
         // connection
         serverUrl: process.env.SERVER_URL || 'ws://localhost:4001',

@@ -1,5 +1,5 @@
 import 'dotenv/config'
-import { readFile } from 'node:fs/promises'
+import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import { execFileSync } from 'node:child_process'
 import { dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -60,19 +60,31 @@ async function main() {
         logger.info(`Quiet hours: ${config.quietHours} UTC (${config.quietActiveMinutes}m active / ${config.quietSleepMinutes}m sleep)`)
     }
 
-    // load persona
+    const socket = new EnvironmentSocket(config, logger)
+
+    // load persona. with PERSONA_FROM_WORLD and no file yet there is nobody to
+    // be, so connect and wait for the world to hand one over, however long
     let persona
     try {
-        const raw = await readFile(config.personaPath, 'utf-8')
-        persona = JSON.parse(raw)
-        logger.info(`Persona loaded: ${persona.name} (${persona.traits?.join(', ')})`)
+        persona = JSON.parse(await readFile(config.personaPath, 'utf-8'))
     } catch (err) {
-        logger.error(`Failed to load persona from ${config.personaPath}: ${err.message}`)
-        process.exit(1)
+        if (!config.personaFromWorld) {
+            logger.error(`Failed to load persona from ${config.personaPath}: ${err.message}`)
+            process.exit(1)
+        }
     }
+    if (!persona) {
+        logger.info('No persona yet, waiting for the world to send one')
+        persona = await new Promise((resolve) => {
+            socket.onPersona((p) => { if (p?.name) resolve(p) })
+            socket.connect().catch((err) => logger.warn(`Not connected yet: ${err.message}`))
+        })
+        await mkdir(dirname(config.personaPath), { recursive: true })
+        await writeFile(config.personaPath, JSON.stringify(persona, null, 2), 'utf-8')
+    }
+    logger.info(`Persona loaded: ${persona.name} (${persona.traits?.join(', ')})`)
 
     // init modules
-    const socket = new EnvironmentSocket(config, logger)
     const workingMemory = new WorkingMemory(config)
     const memoryFiles = new MemoryFiles(config, logger)
     memoryFiles.setPersona(persona)  // the ban list is the persona's, not the runtime's
@@ -138,8 +150,32 @@ async function main() {
         api.emit('wake', { agent: persona.name, timestamp: Date.now() })
     }
 
+    // later rewrites from the world. theirs replaces ours and becomes the new
+    // baseline, but our evolution history stays so the rate limit still counts
+    if (config.personaFromWorld) {
+        socket.onPersona(async (next) => {
+            if (!next?.name || (next.worldVersion || 0) <= (apiState.persona.worldVersion || 0)) return
+            try {
+                const merged = { ...next, evolution: apiState.persona.evolution || next.evolution }
+                await writeFile(config.personaPath, JSON.stringify(merged, null, 2), 'utf-8')
+                await sleepCycle.replaceBaseline(next)
+                apiState.persona = merged
+                promptBuilder.setPersona(merged)
+                memoryFiles.setPersona(merged)
+                logger.info(`Persona rewritten by the world (v${next.worldVersion})`)
+                await dailyLog.append(`=== PERSONA REWRITTEN === (v${next.worldVersion})`)
+            } catch (err) {
+                logger.warn(`Persona rewrite not taken: ${err.message}`)
+            }
+        })
+    }
+    // spoken to: answer now, not on the next scheduled tick
+    socket.onWorldEvent((e) => {
+        if (e?.data?.event === 'agent_speech') heartbeat.nudge()
+    })
+
     try {
-        await socket.connect()
+        if (!socket.isConnected()) await socket.connect()
         logger.info('Connected and identified with environment server')
     } catch (err) {
         logger.error(`Failed to connect: ${err.message}`)

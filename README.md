@@ -2,7 +2,7 @@
 
 Cognition runtime for one autonomous agent. A process is one agent: a persona file, a few markdown files of memory, and a loop that asks an LLM what to do next. It talks to its world over a small WebSocket protocol and doesnt care what the world is.
 
-The repo and package are still called `agent-runtime`. In production it runs Pino in 3eyes (`personas/victor.json`, Victor is his code name) on a Raspberry Pi 5, but it's plain Node ESM with no build step, so anything with Node 20+ will run it.
+The repo and package are still called `agent-runtime`. In production it runs Pino, a kiwi who lives in a small town at pinos.world, on a Raspberry Pi 5, but it's plain Node ESM with no build step, so anything with Node 20+ will run it. One process is one agent, so running another is just another process with its own `AGENT_ID`, persona and `DATA_DIR`.
 
 ## How it works
 
