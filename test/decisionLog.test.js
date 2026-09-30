@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { DecisionLog, evidenceKeys } from '../src/logging/DecisionLog.js'
+import { DecisionLog, evidenceKeys, digestDecisions } from '../src/logging/DecisionLog.js'
 import { Heartbeat } from '../src/loop/Heartbeat.js'
 import { RepetitionGuard } from '../src/cognition/RepetitionGuard.js'
 import { LLMClient } from '../src/llm/LLMClient.js'
@@ -301,9 +301,62 @@ test('the runtime builds the decision log, hands it to the heartbeat and flushes
     const source = readFileSync(new URL('../src/index.js', import.meta.url), 'utf8')
         .replace(/\/\*[\s\S]*?\*\//g, '')
         .replace(/\/\/[^\n]*/g, '')
-    assert.match(source, /import \{ DecisionLog \} from '\.\/logging\/DecisionLog\.js'/)
+    assert.match(source, /import \{ DecisionLog, digestDecisions \} from '\.\/logging\/DecisionLog\.js'/)
     assert.match(source, /new DecisionLog\(config, logger, \{ code \}\)/)
     assert.match(source, /await decisionLog\.init\(\)/)
     assert.match(source, /heartbeat\.decisionLog = decisionLog/)
     assert.match(source, /await decisionLog\.stop\(\)/)
+})
+
+test('the digest is the log as numbers: tiers, why, models, guards, failures and repeats', () => {
+    const row = (over) => ({
+        t: '2026-09-30T10:00:00.000Z', code: 'abc1234', persona: 'p1', tier: 'fast', why: 'default',
+        scene: 's1', model: 'small', ms: 600, tokens: { in: 8000, out: 100 }, overrides: [],
+        asked: { action: 'forage', target: 'food_1' }, took: { action: 'forage', target: 'food_1' },
+        reason: 'need a bite', result: { ok: true, msg: 'done' }, ...over,
+    })
+    const d = digestDecisions([
+        row({ tier: 'quality', why: 'repetition:same_action_x3+wording_rut', model: 'big', ms: 900, scene: 's2' }),
+        row({ why: 'appeared_or_gone', result: { ok: false, msg: 'That place is shut at this hour. closed, opens 11am' }, scene: 's2' }),
+        row({ overrides: ['not_on_menu'], asked: { action: 'jam_on_synth_rack' }, took: { action: 'wait' } }),
+        row({ tier: 'skip', why: 'asleep', model: null, fallback: 'skip', remember: true, scene: 's3' }),
+    ])
+    assert.equal(d.decisions, 4)
+    assert.deepEqual(d.tiers, { fast: 2, quality: 1, skip: 1 })
+    assert.deepEqual(d.repetitionKinds, { same_action_x3: 1, wording_rut: 1 })
+    assert.equal(d.models.big.n, 1)
+    assert.equal(d.models.small.tokensIn, 16000)
+    assert.deepEqual(d.notOnMenu, { jam_on_synth_rack: 1 })
+    assert.equal(d.failed.n, 1)
+    assert.equal(d.failed.share, 25)
+    assert.deepEqual(Object.keys(d.failed.top), ['forage: That place is shut at this hour. closed, opens 11am'])
+    assert.equal(d.sameSceneAsBefore, 1)
+    assert.deepEqual(d.reasons.repeated, { 'need a bite': 4 })
+    assert.equal(d.remembered, 1)
+    assert.ok(JSON.stringify(d).length < 40000, 'small enough for the environment to take')
+})
+
+test('the log reads back what it wrote since a time, including what is still buffered', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'decisions-'))
+    try {
+        const log = new DecisionLog({ dataDir }, logger, { code: 'abc1234' })
+        await log.init()
+        log.record({ tick: 1 })
+        log.record({ tick: 2 })
+        const rows = await log.readSince(Date.now() - 60000)
+        assert.deepEqual(rows.map((r) => r.tick), [1, 2])
+        assert.deepEqual(await log.readSince(Date.now() + 60000), [])
+        await log.stop()
+    } finally {
+        await rm(dataDir, { recursive: true, force: true })
+    }
+})
+
+test('the digest goes out only when DIGEST_URL is set, with the admin token', () => {
+    const source = readFileSync(new URL('../src/index.js', import.meta.url), 'utf8')
+    assert.match(source, /if \(!config\.digestUrl \|\| !config\.adminToken\) return/)
+    assert.match(source, /'x-admin-token': config\.adminToken/)
+    assert.match(source, /body: JSON\.stringify\(digestDecisions\(rows\)\)/)
+    assert.match(source, /setInterval\(sendDigest, 6 \* 60 \* 60 \* 1000\)/)
+    assert.match(readFileSync(new URL('../src/config.js', import.meta.url), 'utf8'), /digestUrl: process\.env\.DIGEST_URL \|\| ''/)
 })

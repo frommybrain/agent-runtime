@@ -1,4 +1,4 @@
-import { appendFile, readdir, unlink, mkdir } from 'node:fs/promises'
+import { appendFile, readdir, readFile, unlink, mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import { createHash } from 'node:crypto'
 
@@ -91,8 +91,82 @@ export class DecisionLog {
         await this.flush()
     }
 
+    // rows since a time, oldest first. flushes first so the last few minutes count
+    async readSince(sinceMs) {
+        await this.flush()
+        const out = []
+        for (let day = sinceMs; day <= Date.now() + 86400000; day += 86400000) {
+            let text = ''
+            try { text = await readFile(this._fileFor(new Date(day)), 'utf-8') } catch { continue }
+            for (const line of text.split('\n')) {
+                if (!line.trim()) continue
+                try {
+                    const row = JSON.parse(line)
+                    if (Date.parse(row.t) >= sinceMs) out.push(row)
+                } catch { /* torn line */ }
+            }
+        }
+        return out.sort((a, b) => Date.parse(a.t) - Date.parse(b.t))
+    }
+
     _fileFor(date) {
         return join(this.dir, `${date.toISOString().slice(0, 10)}.jsonl`)
+    }
+}
+
+const tally = (xs) => {
+    const m = {}
+    for (const x of xs) m[x] = (m[x] || 0) + 1
+    return Object.fromEntries(Object.entries(m).sort((a, b) => b[1] - a[1]))
+}
+const top = (obj, n) => Object.fromEntries(Object.entries(obj).slice(0, n))
+const pct = (xs, q) => {
+    if (!xs.length) return null
+    const s = [...xs].sort((a, b) => a - b)
+    return s[Math.min(s.length - 1, Math.floor(q * s.length))]
+}
+
+// the log as numbers, small enough to send. what the environment reads about
+// the brain without needing the pi's own network
+export function digestDecisions(rows) {
+    const n = rows.length
+    const models = {}
+    for (const r of rows.filter((x) => x.model)) {
+        const m = models[r.model] ||= { n: 0, ms: [], in: 0, out: 0 }
+        m.n++
+        if (Number.isFinite(r.ms)) m.ms.push(r.ms)
+        m.in += r.tokens?.in || 0
+        m.out += r.tokens?.out || 0
+    }
+    const failed = rows.filter((r) => r.result && r.result.ok === false)
+    const reasons = rows.map((r) => String(r.reason || '').trim().toLowerCase()).filter(Boolean)
+    let sameScene = 0
+    for (let i = 1; i < rows.length; i++) if (rows[i].scene && rows[i].scene === rows[i - 1].scene) sameScene++
+    return {
+        from: rows[0]?.t || null,
+        to: rows.at(-1)?.t || null,
+        code: rows.at(-1)?.code || null,
+        persona: rows.at(-1)?.persona || null,
+        decisions: n,
+        tiers: tally(rows.map((r) => r.tier)),
+        why: tally(rows.map((r) => String(r.why || '').split(':')[0])),
+        repetitionKinds: tally(rows.filter((r) => String(r.why || '').startsWith('repetition:')).flatMap((r) => r.why.slice(11).split('+'))),
+        models: Object.fromEntries(Object.entries(models).map(([k, m]) => [k, { n: m.n, p50ms: pct(m.ms, 0.5), p90ms: pct(m.ms, 0.9), tokensIn: m.in, tokensOut: m.out }])),
+        fallbacks: tally(rows.filter((r) => r.fallback).map((r) => r.fallback)),
+        overrides: tally(rows.flatMap((r) => r.overrides || [])),
+        notOnMenu: top(tally(rows.filter((r) => (r.overrides || []).includes('not_on_menu')).map((r) => r.asked?.action || '?')), 12),
+        failed: {
+            n: failed.length,
+            share: n ? Math.round((failed.length / n) * 100) : 0,
+            top: top(tally(failed.map((r) => `${r.took?.action}: ${String(r.result.msg || '').slice(0, 80)}`)), 10),
+        },
+        sameSceneAsBefore: sameScene,
+        reasons: {
+            written: reasons.length,
+            repeated: top(Object.fromEntries(Object.entries(tally(reasons)).filter(([, c]) => c >= 3)), 8),
+        },
+        remembered: rows.filter((r) => r.remember).length,
+        promptChars: { p50: pct(rows.map((r) => r.promptChars).filter(Number.isFinite), 0.5), p90: pct(rows.map((r) => r.promptChars).filter(Number.isFinite), 0.9) },
     }
 }
 

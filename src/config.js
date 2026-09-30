@@ -50,6 +50,9 @@ export function loadConfig() {
         maxDailyLogAgeDays: 7,
         // data/decisions, ~1MB a day. two weeks so you can compare a week to the last one
         decisionLogDays: parseInt(process.env.DECISION_LOG_DAYS || '14'),
+        // where to POST the last 24h of decisions as numbers, every 6h, with the
+        // admin token. empty = off
+        digestUrl: process.env.DIGEST_URL || '',
 
         // internal state
         stateDecayRate: parseFloat(process.env.STATE_DECAY_RATE || '0.1'),

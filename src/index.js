@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url'
 
 import { loadConfig } from './config.js'
 import { Logger } from './logging/Logger.js'
-import { DecisionLog } from './logging/DecisionLog.js'
+import { DecisionLog, digestDecisions } from './logging/DecisionLog.js'
 import { EnvironmentSocket } from './connection/EnvironmentSocket.js'
 import { WorkingMemory } from './memory/WorkingMemory.js'
 import { MemoryFiles } from './memory/MemoryFiles.js'
@@ -154,6 +154,27 @@ async function main() {
     socket.setPersonaProvider(async () => JSON.parse(await readFile(config.personaPath, 'utf-8')))
     const personaPush = setInterval(() => socket.pushPersona(), 60 * 60 * 1000)
 
+    // last 24h of decisions as numbers to DIGEST_URL every 6h, so the environment
+    // can watch the brain without the pi's own network. off when unset
+    const sendDigest = async () => {
+        if (!config.digestUrl || !config.adminToken) return
+        try {
+            const rows = await decisionLog.readSince(Date.now() - 24 * 60 * 60 * 1000)
+            if (!rows.length) return
+            const res = await fetch(config.digestUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-admin-token': config.adminToken },
+                body: JSON.stringify(digestDecisions(rows)),
+                signal: AbortSignal.timeout(15000),
+            })
+            if (!res.ok) logger.warn(`Decision digest not taken: ${res.status}`)
+        } catch (err) {
+            logger.warn(`Decision digest failed: ${err.message}`)
+        }
+    }
+    setTimeout(sendDigest, 10 * 60 * 1000).unref?.()
+    const digestTimer = setInterval(sendDigest, 6 * 60 * 60 * 1000)
+
     heartbeat.start()
 
     // second ctrl-c shouldnt run this twice
@@ -170,6 +191,7 @@ async function main() {
         await dailyLog.stop()  // flushes
         await decisionLog.stop()
         clearInterval(personaPush)
+        clearInterval(digestTimer)
         socket.close()
         process.exit(0)
     }
