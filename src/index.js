@@ -169,9 +169,11 @@ async function main() {
             }
         })
     }
-    // spoken to: answer now, not on the next scheduled tick
+    // spoken to, or the world says wake up (wake: true on the event): act
+    // now, not on the next scheduled tick. a world that keeps its agent
+    // asleep until something happens pays for nothing in between
     socket.onWorldEvent((e) => {
-        if (e?.data?.event === 'agent_speech') heartbeat.nudge()
+        if (e?.data?.event === 'agent_speech' || e?.data?.wake === true) heartbeat.nudge()
     })
 
     try {
@@ -225,6 +227,7 @@ async function main() {
         await dailyLog.append('=== AGENT STOPPED ===')
         await speechLog.save()
         await dailyLog.stop()  // flushes
+        llmClient.budget?.flush()
         await decisionLog.stop()
         clearInterval(personaPush)
         clearInterval(digestTimer)

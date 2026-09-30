@@ -228,6 +228,7 @@ export class ApiServer {
             actionDiversity: repetitionGuard?.diversityScore() || 0,
             // where the money goes
             tierCounts: this.state.think?.llm?.tierCounts || { skip: 0, fast: 0, quality: 0 },
+            usage: this.state.think?.llm?.budget?.snapshot() || null,
             // the one to watch. share of recent calls a model actually
             // answered, 1.0 is fine, low means hes running on the fallback
             llmSuccessRate: this.state.think?.llm?.recentSuccessRate?.() ?? null,

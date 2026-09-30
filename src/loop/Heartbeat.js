@@ -483,6 +483,7 @@ export class Heartbeat {
             if (decision.remember?.content) receipt.remember = true
 
             this.logger.info(`[tick ${this.tickCount}] ${decision.action} (${decision.source}/${tier}) - ${decision.reason} [v=${stateDesc.mood.toFixed(2)} a=${stateDesc.energy.toFixed(2)}]`)
+            if (decision.source !== 'fallback') this.sleepCycle?.noteDecision?.()
 
             const result = await this.socket.act(decision.action, decision.params)
 

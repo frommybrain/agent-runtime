@@ -1,4 +1,5 @@
 import { Ollama } from 'ollama'
+import { Budget } from './Budget.js'
 
 // llm client, routes by tier to keep cost down.
 // quality = big cloud model, fast = small cloud model, decision = anthropic
@@ -44,6 +45,8 @@ export class LLMClient {
 
         // short backoff after a non-429 cloud failure. 429 gets its own 60s
         this._cloudSoftCooldownMs = 8000
+
+        this.budget = new Budget(config, logger)
 
         this.tierCounts = { skip: 0, fast: 0, quality: 0, decision: 0 }
         // last 50 calls, true if a model answered. quickest way to tell if
@@ -98,12 +101,22 @@ export class LLMClient {
         this.tierCounts[tier] = (this.tierCounts[tier] || 0) + 1
 
         const startedAt = Date.now()
+        // spent for the day: the free local model if its there, else nothing
+        if (!this.budget.allows()) {
+            this.tierCounts.budget = (this.tierCounts.budget || 0) + 1
+            const local = await this._tryOllama(systemPrompt, userPrompt, 'budget spent')
+            this._recordOutcome(!!local.text)
+            return { ...local, ms: Date.now() - startedAt }
+        }
         const result = tier === 'fast'
             ? await this._generateFast(systemPrompt, userPrompt, timeoutMs, jsonMode)
             : tier === 'decision'
                 ? await this._generateDecision(systemPrompt, userPrompt, timeoutMs, jsonMode)
                 : await this._generateQuality(systemPrompt, userPrompt, timeoutMs, jsonMode)
 
+        if (result.source && result.source !== 'ollama' && (result.text || result.usage)) {
+            this.budget.record(result.usage, String(systemPrompt || '').length + String(userPrompt || '').length)
+        }
         this._recordOutcome(!!result.text)
         return { ...result, ms: Date.now() - startedAt }
     }

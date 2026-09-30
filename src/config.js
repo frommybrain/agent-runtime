@@ -46,6 +46,9 @@ export function loadConfig() {
         // (json_validate_failed), about half the quality ticks ended up on
         // FallbackBrain. 1500 leaves room for both
         maxTokens: parseInt(process.env.MAX_TOKENS || '1500'),
+        // a ceiling on paid calls per UTC day (llm/Budget.js). 0 = none
+        dailyCallBudget: parseInt(process.env.DAILY_CALL_BUDGET || '0'),
+        dailyTokenBudget: parseInt(process.env.DAILY_TOKEN_BUDGET || '0'),
 
         // memory
         dataDir: process.env.DATA_DIR || './data',

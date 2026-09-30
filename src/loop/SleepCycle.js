@@ -437,29 +437,39 @@ export class SleepCycle {
                 logsDeleted: 0,
             }
 
-            // pass 0: strip near-dupes before the LLM sees them
-            const dedupRemoved = await this.memoryFiles.deduplicateMemory()
-            if (dedupRemoved > 0) {
-                await this.dailyLog.append(`Pre-consolidation dedup: removed ${dedupRemoved} near-duplicates`)
+            // nothing was decided by a model since he woke (the world kept him
+            // asleep, or every tick was a skip): theres nothing to consolidate
+            // and the four passes below are four paid calls for a quiet day.
+            // an agent the world only wakes now and then slept like this
+            // every 6h for nothing
+            if (!this._decisionsSinceWake) {
+                this.logger.info('Nothing decided since waking, sleeping without consolidating')
+                await this.dailyLog.append('Nothing decided since waking, no consolidation')
+            } else {
+                // pass 0: strip near-dupes before the LLM sees them
+                const dedupRemoved = await this.memoryFiles.deduplicateMemory()
+                if (dedupRemoved > 0) {
+                    await this.dailyLog.append(`Pre-consolidation dedup: removed ${dedupRemoved} near-duplicates`)
+                }
+
+                // pass 1: memory.md
+                stats.memoryConsolidated = await this._consolidateMemory()
+                await this._sleepDelay(5000)  // spread the rate limit load
+
+                // pass 2: skills.md
+                stats.skillsExtracted = await this._extractSkills()
+                await this._sleepDelay(5000)
+
+                // (the old tools cleanup pass was cut in v0.3.1, it could wreck the
+                // ground truth header and tools.md gets rebuilt every tick anyway)
+
+                // pass 3: self-reflection, maybe evolve the persona
+                stats.selfReflected = await this._selfReflect()
+
+                // pass 4: the desire layer, the one thread pulling at him across
+                // days. needs with no wants reads as a tamagotchi
+                stats.desireFormed = await this._formDesire()
             }
-
-            // pass 1: memory.md
-            stats.memoryConsolidated = await this._consolidateMemory()
-            await this._sleepDelay(5000)  // spread the rate limit load
-
-            // pass 2: skills.md
-            stats.skillsExtracted = await this._extractSkills()
-            await this._sleepDelay(5000)
-
-            // (the old tools cleanup pass was cut in v0.3.1, it could wreck the
-            // ground truth header and tools.md gets rebuilt every tick anyway)
-
-            // pass 3: self-reflection, maybe evolve the persona
-            stats.selfReflected = await this._selfReflect()
-
-            // pass 4: the desire layer, the one thread pulling at him across
-            // days. needs with no wants reads as a tamagotchi
-            stats.desireFormed = await this._formDesire()
 
             stats.logsDeleted = await this.dailyLog.garbageCollect()
 
@@ -498,8 +508,14 @@ export class SleepCycle {
         this._sleepTimer = setTimeout(() => this._wake(), sleepMs)
     }
 
+    // a tick a model decided, not FallbackBrain. Heartbeat calls this
+    noteDecision() {
+        this._decisionsSinceWake = (this._decisionsSinceWake || 0) + 1
+    }
+
     _wake() {
         this.sleeping = false
+        this._decisionsSinceWake = 0
         this._wakeTime = Date.now()
         this._sleepTimer = null
         this.logger.info('=== SLEEP ENDED ===')

@@ -220,6 +220,8 @@ Pushed between ticks. The agent keeps the last 20 and reads them on its next tic
 
 `agent_speech` (with `agentId`, `message`), `agent_joined` and `agent_left` are understood. Anything else gets narrated generically.
 
+Speech makes the agent act straight away rather than on its next tick. Any other event can do the same with `"wake": true` in `data`, which is how a world that keeps its agent asleep (`self.asleep`) to save on model calls brings it round the moment something happens.
+
 ## IDENTIFIED
 
 Can carry world metadata:

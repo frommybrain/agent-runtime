@@ -44,7 +44,7 @@ Default port 5000, bound to 127.0.0.1 unless `API_HOST` says otherwise. If `ADMI
 - `POST /sleep` sleep now
 - `POST /wake` wake early
 - `PUT /persona` hot-swap the persona JSON
-- `GET /metrics` tier counts, buffer sizes, heap
+- `GET /metrics` tier counts, the day's usage, buffer sizes, heap
 - `GET /events` SSE stream
 
 SSE events: `connected` (initial state), `started`, `tick`, `sleep`, `wake`, `memory`, `persona`, `error`.
@@ -71,6 +71,16 @@ The world runs a WebSocket server. The short version:
 ```
 
 Full spec in `docs/environment-protocol.md`.
+
+## Keeping it cheap
+
+Every tick a model decides costs money, so the cheapest tick is one that never asks. Roughly in order of how much they save:
+
+- let the world keep it asleep. An observation with `self.asleep: true` never goes to a model, so a world that only wakes its agent when something is happening (someone walks up, a screen gets switched on) pays for those moments and nothing in between. A `WORLD_EVENT` with `wake: true` makes it act straight away instead of on its next interval, the same as speech does
+- nothing new, no call. A tick with no change and no action result to read goes to the skip tier, so actions that change nothing should come back without a `message`
+- the small model for routine ticks (`fast`), `quality` only for the moments that matter
+- a ceiling. `DAILY_CALL_BUDGET` and `DAILY_TOKEN_BUDGET` cap paid calls per UTC day (0 = no cap). The count is kept in `data/usage.json` so a restart doesnt reset it. Once its spent the agent gets local Ollama if there is one, otherwise FallbackBrain, which never speaks. `GET /metrics` shows the day so far under `usage`
+- a sleep with nothing to sleep on is free. If no model decided anything since the agent last woke, sleep skips the consolidation passes
 
 ## Memory
 
